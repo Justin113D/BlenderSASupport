@@ -23,6 +23,11 @@ class ColorARGB:
     takes values from 0.0 - 1.0 as input and converts them to 0 - 255
     """
 
+    alpha = 0
+    red = 0
+    green = 0
+    blue = 0
+
     def __init__(self, c = [0,0,0,0]):
         self.alpha = round(c[0] * 255)
         self.red = round(c[1] * 255)
@@ -44,6 +49,11 @@ class ColorARGB:
 
 class Vector3:
     """Point in 3D Space"""
+
+    x = 0
+    y = 0
+    z = 0
+
     def __init__(self, x = 0, y = 0, z = 0):
         self.x = x
         self.y = y
@@ -64,6 +74,9 @@ class UV:
     Converts from 0.0 - 1.0 range to 0 - 255 range
     """
 
+    x = 0
+    y = 0
+
     def __init__(self, x = 0, y = 0):
         self.x = round(x * 255)
         self.y = round(y * 255)
@@ -76,9 +89,15 @@ class UV:
 class Material:
     """Material of a mesh"""
 
+    diffuse = ColorARGB()
+    specular = ColorARGB()
+    exponent = 0
+    textureID = 0
+    materialFlags = 0
+
     def __init__(self,
-             diffuse = ColorARGB(0,0,0,0), 
-             specular = ColorARGB(0,0,0,0),
+             diffuse = ColorARGB(), 
+             specular = ColorARGB(),
              exponent = 0,
              textureID = 0,
              materialFlags = 0,
@@ -108,15 +127,20 @@ class PolyVert:
     an array/list represents a single mesh
     """
 
-    def __init__(self, polyIndex, polyNormal = None, vColor = None, UV = None):
+    polyIndex = 0
+    polyNormal = Vector3()
+    vColor = ColorARGB()
+    uv = UV()
+
+    def __init__(self, polyIndex, polyNormal = None, vColor = None, uv = None):
         self.polyIndex = polyIndex
         # polynormals are basically not needed 99% of the time
         if polyNormal is not None:
             self.polyNormal = polyNormal
         if vColor is not None:
             self.vColor = vColor
-        if UV is not None:
-            self.UV = UV
+        if uv is not None:
+            self.uv = vu
 
     def collisionFromLoops(mesh, IDTransl):
         """creates a poly list (triangle list) from a mesh"""
@@ -192,15 +216,24 @@ class PolyVert:
 
         #uv map
         UVAddress = 0
-        if hasattr(polyList[0], 'UV'):
+        if hasattr(polyList[0], 'uv'):
             UVAddress = fileW.tell() + baseOffset
             for p in polyList:
-                p.UV.write(fileW)
+                p.uv.write(fileW)
 
         return MeshSet(materialID, enums.PolyType.Strips, len(polyList), polyAddress, 0, polyNormalAddress, vColorAddress, UVAddress)
 
 class MeshSet:
     """A single mesh set in the model"""
+
+    materialID = 0
+    polyType = enums.PolyType.Strips
+    polyCount = 0
+    polyAddress = 0
+    polyAttribts = 0
+    polyNormalAddress = 0
+    vColorAddress = 0
+    UVAddress = 0
 
     def __init__(self,
              materialID = 0,
@@ -237,6 +270,13 @@ class MeshSet:
 
 class BoundingBox:
     """Used to calculate the bounding sphere which the game uses"""
+
+    x = 0
+    xn = 0
+    y = 0
+    yn = 0
+    z = 0
+    zn = 0
 
     def __init__(self):
         self.x = 0
