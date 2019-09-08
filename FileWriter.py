@@ -1,10 +1,7 @@
 import os
 import mathutils
 import struct
-<<<<<<< HEAD
-=======
 import tempfile
->>>>>>> progress on basic format
 
 
 class FileWriter:
@@ -15,12 +12,6 @@ class FileWriter:
     Default endian: little
     """
 
-<<<<<<< HEAD
-    __init__(self, filepath):
-        self.filepath = filepath
-        self.endian = "<"
-        self.oFile = open(filepath, "wb+") # write and read, binary
-=======
     __init__(self): # no filepath creates a temporary file
         self.oFile = tempfile.TemporaryFile(mode="wb+") # write and read, binary  
         self.filepath = oFile.name
@@ -30,7 +21,6 @@ class FileWriter:
         self.filepath = filepath
         self.oFile = open(filepath, "wb+") # write and read, binary        
         self.endian = "<"
->>>>>>> progress on basic format
 
     # general methods
 
@@ -56,19 +46,12 @@ class FileWriter:
         self.oFile.seek(0, 2)
 
     def close(self):
-<<<<<<< HEAD
-        """Closes File"""
-        self.oFile.close()
-        self.oFile = None
-        self.oFile = ""
-=======
         """Closes File and returns bytes"""
         data = self.oFile.read()
         self.oFile.close()
         self.oFile = None
         self.oFile = ""
         return data
->>>>>>> progress on basic format
 
     def align(self, by):
         size = self.tell()
