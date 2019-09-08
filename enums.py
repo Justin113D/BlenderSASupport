@@ -1,5 +1,4 @@
-from enum import Enum
-from flags import Flag
+from enum import Enum, Flag
 
 # General File Enums and Flags
 
