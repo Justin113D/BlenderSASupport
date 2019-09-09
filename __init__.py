@@ -17,6 +17,8 @@ if "bpy" in locals():
         importlib.reload(export_sa2mdl)
     if "export_sa2lvl" in locals():
         importlib.reload(export_sa2lvl)
+    if "Strippifier" in locals():
+        importlib.reload(Strippifier)
     #if "fileName" in locals():
     #    importlib.reload(fileName)
 
@@ -155,6 +157,92 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
         keywords["global_matrix"] = global_matrix
         return export_sa2lvl.load(context, **keywords)
 
+class StrippifyTest(bpy.types.Operator):
+    bl_idname = "object.strippifytest"
+    bl_label = "Strippify (testing)"
+    bl_description = "Strippifies the active model object and puts each strip into a new object"
+
+    def mesh_triangulate(self, me):
+        import bmesh
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        bmesh.ops.triangulate(bm, faces=bm.faces)
+        bm.to_mesh(me)
+        bm.free()
+
+    def execute(self, context):
+        import os
+        os.system("cls")
+        obj = context.active_object
+        if obj is None or not isinstance(obj.data, bpy.types.Mesh):
+            print("active object not a mesh")
+            return {'FINISHED'}
+
+        ob_for_convert = obj.original
+        me = ob_for_convert.to_mesh()
+        self.mesh_triangulate(me)
+
+        # creating the vertex list
+        verts = []
+        oIDtodID = [0] * len(me.vertices)
+        
+        for IDo, vo in enumerate(me.vertices):
+            vert = [vo.co.x, vo.co.y, vo.co.z]
+            found = -1
+            for IDd, vd in enumerate(verts):
+                if vert == vd:
+                    found = IDd
+                    break
+            if found == -1:
+                verts.append(vert)
+                oIDtodID[IDo] = len(verts) - 1
+            else:
+                oIDtodID[IDo] = found
+
+        # creating the index list
+        indexList = [0] * len(me.polygons) * 3
+
+        for i, p in enumerate(me.polygons):
+            for j, li in enumerate(p.loop_indices):
+                indexList[i * 3 + j] = oIDtodID[me.loops[li].vertex_index]
+
+        doConcat = False
+
+        # strippifying it
+        from . import Strippifier
+        stripf = Strippifier.WeightStrippifier()
+        indexStrips = stripf.strippify(indexList, concat=doConcat)
+
+
+        if not doConcat:
+            empty = bpy.data.objects.new(obj.data.name + "_str", None)
+            context.collection.objects.link(empty)           
+            for i, s in enumerate(indexStrips):
+                # making them lists so blender can use them
+                indexList = list()
+                for j in range(0, len(s)-2):
+                    p = [s[j], s[j+1], s[j+2]]
+                    indexList.append(p)
+
+                mesh = bpy.data.meshes.new(name = obj.data.name + "_str_" + str(i))
+                mesh.from_pydata(verts, [], indexList)
+                meObj = bpy.data.objects.new(mesh.name, object_data = mesh)
+                context.collection.objects.link(meObj)
+                meObj.parent = empty
+        else:
+            indexList = list()
+            for i in range(0, len(indexStrips) - 2):
+                p = [indexStrips[i], indexStrips[i+1], indexStrips[i+2]]
+                if len(set(p)) == 3:
+                    indexList.append(p)
+
+            mesh = bpy.data.meshes.new(name = obj.data.name + "_str")
+            mesh.from_pydata(verts, [], indexList)
+            meObj = bpy.data.objects.new(mesh.name, object_data = mesh)
+            context.collection.objects.link(meObj)
+
+
+        return {'FINISHED'}
 
 def menu_func_exportmdl(self, context):
     self.layout.operator(ExportSA2MDL.bl_idname, text ="SA2 Model format (.sa2mdl/.sa2bmdl)")
@@ -162,9 +250,13 @@ def menu_func_exportmdl(self, context):
 def menu_func_exportlvl(self, context):
     self.layout.operator(ExportSA2LVL.bl_idname, text ="SA2 Level format (.sa2lvl/.sa2blvl)")
     
+def menu_func_strippifyTest(self, context):
+    self.layout.operator(StrippifyTest.bl_idname)
+
 classes = (
     ExportSA2MDL,
     ExportSA2LVL,
+    StrippifyTest
 )
 
 def register():
@@ -173,10 +265,12 @@ def register():
     
     bpy.types.TOPBAR_MT_file_export.append(menu_func_exportmdl)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_exportlvl)
+    bpy.types.VIEW3D_MT_object.append(menu_func_strippifyTest)
 
 def unregister():
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportmdl)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportlvl)
+    bpy.types.VIEW3D_MT_object.remove(menu_func_strippifyTest)
 
     for cls in classes:
         bpy.utils.unregister_class(cls)
