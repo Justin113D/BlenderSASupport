@@ -166,7 +166,7 @@ class StrippifyTest(bpy.types.Operator):
         import bmesh
         bm = bmesh.new()
         bm.from_mesh(me)
-        bmesh.ops.triangulate(bm, faces=bm.faces)
+        bmesh.ops.triangulate(bm, faces=bm.faces, quad_method='FIXED', ngon_method='FIXED')
         bm.to_mesh(me)
         bm.free()
 
@@ -210,8 +210,8 @@ class StrippifyTest(bpy.types.Operator):
 
         # strippifying it
         from . import Strippifier
-        stripf = Strippifier.WeightStrippifier()
-        indexStrips = stripf.strippify(indexList, concat=doConcat)
+        stripf = Strippifier.Strippifier()
+        indexStrips = stripf.seqStrippify(indexList, concat=doConcat)
 
 
         if not doConcat:
