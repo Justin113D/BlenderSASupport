@@ -166,9 +166,25 @@ class StrippifyTest(bpy.types.Operator):
         import bmesh
         bm = bmesh.new()
         bm.from_mesh(me)
-        bmesh.ops.triangulate(bm, faces=bm.faces, quad_method='FIXED', ngon_method='FIXED')
+        bmesh.ops.triangulate(bm, faces=bm.faces, quad_method='FIXED', ngon_method='EAR_CLIP')
         bm.to_mesh(me)
         bm.free()
+
+    doConcat: BoolProperty(
+        name = "Concat",
+        description="Combines all strips into one big strip",
+        default=False
+        )
+
+    doSwaps: BoolProperty(
+        name = "Utilize Swapping",
+        description = "Utilizes swapping when creating strips, which can result in a smaller total strip count",
+        default = False
+        )
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
 
     def execute(self, context):
         import os
@@ -206,15 +222,13 @@ class StrippifyTest(bpy.types.Operator):
             for j, li in enumerate(p.loop_indices):
                 indexList[i * 3 + j] = oIDtodID[me.loops[li].vertex_index]
 
-        doConcat = False
-
         # strippifying it
         from . import Strippifier
         stripf = Strippifier.Strippifier()
-        indexStrips = stripf.seqStrippify(indexList, concat=doConcat)
+        indexStrips = stripf.Strippify(indexList, doSwaps = self.doSwaps, concat = self.doConcat)
 
 
-        if not doConcat:
+        if not self.doConcat:
             empty = bpy.data.objects.new(obj.data.name + "_str", None)
             context.collection.objects.link(empty)           
             for i, s in enumerate(indexStrips):
@@ -257,7 +271,7 @@ classes = (
     ExportSA2MDL,
     ExportSA2LVL,
     StrippifyTest
-)
+    )
 
 def register():
     for cls in classes:

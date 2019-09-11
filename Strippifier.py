@@ -124,10 +124,10 @@ class Triangle:
             if hasBase:
                 # if a swap is needed, add weight
                 if t.hasVertex(curVert):
-                    weights[i] += 1
+                    weights[i] -= 1
                     vConnection[i] = prevVert.availableTris()
                 else:
-                    weights[i] -= 1
+                    weights[i] += 1
                     vConnection[i] = curVert.availableTris()
             else:
                 e = t.getCommonAdjacency(self)
@@ -136,10 +136,9 @@ class Triangle:
             if vConnection[i] > biggestConnection:
                 biggestConnection = vConnection[i]
         
-
         # integrating connectivity into the weights
-        for i in range(len(trisToUse)):
-            if vConnection[i] < biggestConnection:
+        for i, v in enumerate(vConnection):
+            if v < biggestConnection:
                 weights[i] -= 1
             else:
                 weights[i] += 1
@@ -152,6 +151,7 @@ class Triangle:
             elif hasBase and weights[i] == weights[index]:
                 if trisToUse[i].hasVertex(curVert):
                     index = i
+        
         return trisToUse[index]
 
     def getNextStripTriSeq(self, prevVert, curvVert):
@@ -236,16 +236,19 @@ class Vertex:
 class Strippifier:
     # based on the paper written by David Kronmann:
     # https://pdfs.semanticscholar.org/9749/331d92f865282c3f5a19b73b25c4f0ac02bc.pdf
+    # The code has been written and slightly modified by me Justin113D, and added
+    # options such as noSwaps, and also slightly optimized the strips by handling
+    # the priority list slightly different
 
-    # creates a strip from a triangle with no (free) neighbours
     def addZTriangle(self, tri: Triangle):
+        """creates a strip from a triangle with no (free) neighbours"""
         v = tri.vertices
         self.strips.append([v[0].index, v[1].index, v[2].index])
         self.written += 1
         tri.used = True
 
-    # fills the priority list
     def priorityFill(self):
+        """Fills the priority list, which is used to get the starting triangle"""
         if len(self.priorityTris) > 0:
             for t in self.priorityTris:
                 t.inList = False
@@ -305,7 +308,7 @@ class Strippifier:
                     return
                 self.indexC2 = 0
 
-    def wbStrippify(self, indexList, concat = True):
+    def Strippify(self, indexList, doSwaps = False, concat = False):
         """creates a triangle strip from a triangle list.
         
         If concat is True, all strips will be combined into one.
@@ -340,139 +343,17 @@ class Strippifier:
             firstTri = self.priorityTris[0]
             currentTri = firstTri
             currentTri.used = True
+
             newTri = currentTri.getNextStripTri()
+            newTri.used = True   
+
+            secNewTri = newTri.getNextStripTri()                    
 
             # get the starting vert (the one which is not connected with the new tri)
             commonEdge = currentTri.getCommonAdjacency(newTri)
             prevVert = currentTri.getThirdVertex(commonEdge.vertices[0], commonEdge.vertices[1])
 
             # get the vertex which wouldnt be connected to the tri afterwards, to prevent swapping
-            newTri.used = True
-            secNewTri = newTri.getNextStripTri()
-
-            if secNewTri is None:
-                currentVert = commonEdge.vertices[0]
-                thirdVert = commonEdge.vertices[1]
-            elif secNewTri.hasVertex(commonEdge.vertices[0]):
-                currentVert = commonEdge.vertices[1]
-                thirdVert = commonEdge.vertices[0]
-            else:
-                currentVert = commonEdge.vertices[0]
-                thirdVert = commonEdge.vertices[1]
-
-            #mark the tri as written
-            self.written += 1
-
-            # initializing strip base
-            self.strip = list([prevVert.index, currentVert.index, thirdVert.index])
-
-            # shift verts one forward
-            prevVert = currentVert
-            currentVert = thirdVert
-            
-            # shift triangles one forward
-            currentTri = newTri
-            newTri = secNewTri
-            self.written += 1
-            
-            # creating a strip
-            reachedEnd = False
-            while not reachedEnd:
-                # ending the loop when the current tri is None (end of the strip)
-                if newTri is None:
-                    #writing the last index
-                    self.strip.append(currentTri.getThirdVertex(prevVert, currentVert).index)
-                    reachedEnd = True
-                    continue
-
-                #swapping if necessary
-                if not newTri.hasVertex(currentVert):
-                    self.strip.append(prevVert.index)
-
-                    #swapping the vertices
-                    t = prevVert
-                    prevVert = currentVert
-                    currentVert = t
-
-                # getting the new vertex to write
-                thirdVert = currentTri.getThirdVertex(prevVert, currentVert)
-                self.strip.append(thirdVert.index)
-                prevVert = currentVert
-                currentVert = thirdVert
-
-                currentTri = newTri
-                currentTri.used = True
-                self.written += 1
-
-                # getting the next tri
-                newTri = currentTri.getNextStripTri(prevVert, currentVert)
-
-            # if the first triangle has free neighbours, we can try continuing the strip at the start
-            #if len(firstTri.availableNeighbours()):
-            #    print("boi we going full in")
-            
-            self.strips.append(self.strip)
-
-            self.priorityFill()
-
-        # now that we got all strips, we need to concat them (if we want that)
-        if concat:
-            # stitching the strips together
-            result = self.strips[0]
-            if len(self.strips) > 1:
-                result.append(result[-1])
-                for i in range(1, len(self.strips)):
-                    result.append(self.strips[i][0])
-                    result.extend(self.strips[i])
-                    result.append(result[-1])
-                del result[-1]
-        else: # or we just return as is
-            result = self.strips
-
-        return result
-
-    def seqStrippify(self, indexList, concat = True):
-        self.strips = list()
-
-        # reading the index data into a mesh
-        self.mesh = Mesh(indexList)
-
-        # amount of written triangles
-        self.written = 0
-
-        # index to know where to append triangles with 2 neighbours (1 is start, 3 is end)
-        self.indexC2 = 0
-
-        # getting rid of lone triangles first
-        for t in self.mesh.triangles:
-            if len(t.availableNeighbours()) == 0:
-                self.addZTriangle(t)
-
-        # priority list of potential starting tris
-        self.priorityTris = list()
-        self.priorityFill()
-
-        # as long as some triangles remain to be written, keep the loop running
-        triCount = len(self.mesh.triangles)
-
-        while self.written != triCount:
-            
-            #print(self.written)
-            # getting the starting tris
-            firstTri = self.priorityTris[0]
-            currentTri = firstTri
-            currentTri.used = True
-
-
-            newTri = currentTri.getNextStripTri()
-            newTri.used = True
-
-            secNewTri = newTri.getNextStripTri()
-
-            #determining the starting vertices
-
-            commonEdge = currentTri.getCommonAdjacency(newTri)
-            prevVert = currentTri.getThirdVertex(commonEdge.vertices[0], commonEdge.vertices[1])    
 
             if secNewTri is None:
                 currentVert = commonEdge.vertices[0]
@@ -490,53 +371,64 @@ class Strippifier:
 
             # shift verts one forward
             prevVert = thirdVert
-            currentVert = newTri.getThirdVertex(currentVert, thirdVert)         
-
-            #print(self.strip)
-            #print("p:",prevVert.index,"c:",currentVert.index)
-
+            currentVert = newTri.getThirdVertex(currentVert, thirdVert)
+            
             # shift triangles one forward
             currentTri = newTri
             newTri = secNewTri
-            
+
             # creating a strip
-            reversedList = False
             reachedEnd = False
+            reversedList = False
             while not reachedEnd:
-
+            
+                #writing the next index
                 self.strip.append(currentVert.index) 
-                self.written += 1                   
+                self.written += 1     
 
+                # ending the loop when the current tri is None (end of the strip)
                 if newTri is None:
                     if len(firstTri.availableNeighbours()) > 0 and not reversedList:
                         reversedList = True
                         prevVert = self.mesh.vertices[self.strip[1]]
                         currentVert = self.mesh.vertices[self.strip[0]]
-                        newTri = firstTri.getNextStripTriSeq(prevVert, currentVert)
-                        if newTri is None:
-                            reachedEnd = True
-                            continue        
+                        if doSwaps:
+                            newTri = firstTri.getNextStripTri(prevVert, currentVert)
                         else:
-                            self.strip.reverse()
+                            newTri = firstTri.getNextStripTriSeq(prevVert, currentVert)
+                            if newTri is None:
+                                reachedEnd = True
+                                continue
+                        self.strip.reverse()
+
                     else:
                         reachedEnd = True
-                        continue        
+                        continue
 
+                #swapping if necessary
+                if doSwaps:
+                    secNewTri = newTri.getNextStripTri(prevVert, currentVert)
+                    if secNewTri is not None and not secNewTri.hasVertex(currentVert):
+                        self.strip.append(prevVert.index)
 
-                # getting the new vertex to write (we dont swap, so its always the same)
-                
-                thirdVert = newTri.getThirdVertex(prevVert, currentVert)  
+                        #swapping the vertices
+                        t = prevVert
+                        prevVert = currentVert
+                        currentVert = t          
+
+                # getting the new vertex to write
+                thirdVert = newTri.getThirdVertex(prevVert, currentVert)
 
                 prevVert = currentVert
-                currentVert = thirdVert 
+                currentVert = thirdVert
 
                 currentTri = newTri
                 currentTri.used = True
 
-                #checking if a tri is at the current edge
-                newTri = currentTri.getNextStripTriSeq(prevVert, currentVert)
-
-
+                if doSwaps:
+                    newTri = secNewTri
+                else:
+                    newTri = currentTri.getNextStripTriSeq(prevVert, currentVert)
 
 
             

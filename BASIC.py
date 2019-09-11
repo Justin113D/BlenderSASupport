@@ -179,13 +179,17 @@ class PolyVert:
 
         return [distinct, oIDtodID]
 
-    def toStrip(polyList):
+    def toStrips(polyList):
         distPoly = PolyVert.distinct(polyList)
-        stripIndices = Strippifier.strippify(distPoly[2]) #todo
-        polyStrip = [None] * len(stripIndices)
+        Stripf = Strippifier.Strippifier
+        stripIndices = Stripf.Strippify(polyList[1], doSwaps=False, concat=False)
+        polyStrips = [None] * len(stripIndices)
 
-        for i, index in enumerate(stripIndices):
-            polyStrip[i] = distPoly[index]
+        for i, strip in enumerate(stripIndices):
+            tStrip = [0] * len(strip)
+            for j, index in enumerate(strip):
+                tStrip[j] = distPoly[index]
+            polyStrips[i] = tStrip
 
         return polyStrip
 
@@ -378,14 +382,17 @@ def WriteCollision(mesh, exportMatrix, baseOffset, labels):
 
     # creating the loops (as an index list)
     polys = PolyVert.collisionFromLoops(Mesh, distVertNrm[1])
-    polys = PolyVert.toStrip(polys)
+    polyStrips = PolyVert.toStrips(polys)
 
     # writing the Mesh data (polys)
-    meshSet = PolyVert.write(tFile, mesh.name, 0, polys, baseOffset)    
+    MeshSets = [None] * len(polyStrips)
+    for i, s in enumerate(polyStrips):
+        MeshSets[i] = PolyVert.write(tFile, mesh.name, 0, s, baseOffset)    
 
     # writing the mesh properties (mesh set)
     meshSetAddress = tFile.tell() + baseOffset
-    meshSet.write(tFile)
+    for m in MeshSets:
+        m.write(tFile)
 
     #creating a bounding box and updating it while writing vertices
     bounds = BoundingBox()
@@ -410,7 +417,7 @@ def WriteCollision(mesh, exportMatrix, baseOffset, labels):
     tFile.wUInt(len(distVertNrm[0]))
     tFile.wUInt(meshSetAddress)
     tFile.wUint(materialaddress)
-    tFile.wUShort(1) # mesh count
+    tFile.wUShort(len(MeshSets))
     tFile.wUShort(1) # material count
     bounds.write(tFile)
 
