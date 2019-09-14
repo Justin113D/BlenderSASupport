@@ -1,10 +1,11 @@
+import bpy
 import os
 import mathutils
 import struct
 import tempfile
 
 
-class FileWriter:
+class FileWriter(object):
     """Handles file writing
     
     Contains methods to make binary writing easier
@@ -12,14 +13,14 @@ class FileWriter:
     Default endian: little
     """
 
-    __init__(self): # no filepath creates a temporary file
+    def __init__(self): # no filepath creates a temporary file
         self.oFile = tempfile.TemporaryFile(mode="wb+") # write and read, binary  
         self.filepath = oFile.name
         self.endian = "<"
 
-    __init__(self, filepath):
+    def __init__(self, filepath):
         self.filepath = filepath
-        self.oFile = open(filepath, "wb+") # write and read, binary        
+        self.oFile = open(filepath, "wb+") # write and read, binary
         self.endian = "<"
 
     # general methods
@@ -66,7 +67,7 @@ class FileWriter:
 
     def wByte(self, value):
         """Writes single byte"""
-        self.w(struct.pack( self.endian + "c", value))
+        self.w(struct.pack(self.endian + "B", value))
 
     def wShort(self, value):
         """Writes a signed Short"""
@@ -76,31 +77,31 @@ class FileWriter:
         """Writes an unsigned Short"""
         self.w(struct.pack(self.endian + "H", value))
 
-    def wHalf(self, value)
+    def wHalf(self, value):
         """Writes a Float"""
         self.w(struct.pack(self.endian + "e", value))  
 
     def wInt(self, value):
         """Writes a signed Integer"""
         self.w(struct.pack(self.endian + "i", value))
-
+      
     def wUInt(self, value):
         """Writes an unsigned Integer"""
         self.w(struct.pack(self.endian + "I", value))
 
-    def wFloat(self, value)
+    def wFloat(self, value):
         """Writes a Float"""
         self.w(struct.pack(self.endian + "f", value))        
 
     def wLong(self, value):
         """Writes a signed Long"""
-        self.w(struct.pack(self.endian + "l", value))
+        self.w(struct.pack(self.endian + "q", value))
 
     def wULong(self, value):
         """Writes an unsigned Long"""
-        self.w(struct.pack(self.endian + "L", value))
+        self.w(struct.pack(self.endian + "Q", value))
     
-    def wDouble(self, value)
+    def wDouble(self, value):
         """Writes a Double"""
         self.w(struct.pack(self.endian + "d", value))     
 
@@ -109,3 +110,5 @@ class FileWriter:
         self.w(string.encode('utf-8'))
         self.wByte(0x00)
     
+    def printsomething(self):
+        print(self.filepath)

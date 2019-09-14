@@ -4,15 +4,6 @@ import mathutils
 import struct
 import bpy_extras.io_utils
 
-if "bpy" in locals():
-    import importlib
-    if "enums" in locals():
-        importlib.reload(enums)
-    if "FileWriter" in locals():
-        importlib.reload(FileWriter)
-    if "Strippifier" in locals():
-        importlib.reload(Strippifier)
-
 from . import enums, FileWriter, Strippifier
 
 # note: In sa2's case, the BASIC model format is only used for collisions.
