@@ -25,6 +25,8 @@ if "bpy" in locals():
         importlib.reload(FileWriter)
     if "enums" in locals():
         importlib.reload(enums)
+    if "common" in locals():
+        importlib.reload(common)
 
 import bpy
 from bpy.props import (
@@ -34,7 +36,8 @@ from bpy.props import (
     FloatVectorProperty,
     IntProperty,
     IntVectorProperty,
-    EnumProperty
+    EnumProperty,
+    StringProperty
     )
 from bpy_extras.io_utils import (
     #ImportHelper,
@@ -682,7 +685,6 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
             ),
         default='DST'
         )    
-
 
 class SAMaterialPanel(bpy.types.Panel):
     bl_idname = "MATERIAL_PT_saProperties"

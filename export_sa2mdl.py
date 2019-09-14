@@ -1,26 +1,6 @@
 import bpy
 import os
 
-def mesh_triangulate(me):
-   import bmesh
-   bm = bmesh.new()
-   bm.from_mesh(me)
-   bmesh.ops.triangulate(bm, faces=bm.faces)
-   bm.to_mesh(me)
-   bm.free()
-
-def writeMeshData(meshes
-                  export_format,
-                  apply_modifs,
-                  global_matrix,
-                  labels):
-   
-   
-
-
-   return [meshData, meshPropertiesAddress]
-
-
 def write(context, 
          filepath, *, 
          export_format,
@@ -31,23 +11,23 @@ def write(context,
          global_matrix,
          console_debug_output
          ):
-   from . import FileWriter, enums
+   from . import FileWriter, enums, common
    
    os.system("cls")
 
    filepath = filepath.split('.')[0]
-   print(filepath)
 
+   fileVersion = 3
    #creating file and writing header
    if export_format == 'SA1MDL':
-      fileW = FileWriter.FileWriter(filepath + ".sa1mdl")
-      fileW.wULong(enums.MDLFormatIndicator.SA1MDL.value)
+      fileW = FileWriter.FileWriter(filepath= filepath + ".sa1mdl")
+      fileW.wULong(enums.MDLFormatIndicator.SA1MDL.value | (fileVersion << 56))
    elif export_format == 'SA2MDL':
-      fileW = FileWriter.FileWriter(filepath + ".sa2mdl")
-      fileW.wULong(enums.MDLFormatIndicator.SA2MDL.value)
+      fileW = FileWriter.FileWriter(filepath= filepath + ".sa2mdl")
+      fileW.wULong(enums.MDLFormatIndicator.SA2MDL.value | (fileVersion << 56))
    else: # SA2BMDL
-      fileW = FileWriter.FileWriter(filepath + ".sa2bmdl")
-      fileW.wULong(enums.MDLFormatIndicator.SA2BMDL.value)
+      fileW = FileWriter.FileWriter(filepath= filepath + ".sa2bmdl")
+      fileW.wULong(enums.MDLFormatIndicator.SA2BMDL.value | (fileVersion << 56))
 
    labels = dict()
 
@@ -67,9 +47,13 @@ def write(context,
 
    # getting all meshdata first, so that it cna be checked which is used multiple times
    tMeshes = []
+   materials = []
    for o in objects:
       if o.type == 'MESH' :
          tMeshes.append(o.data)
+         for m in o.data.materials:
+            if not m in materials:
+               materials.append(m)
 
    # filtering the actual mesh data
    meshes = []
@@ -80,11 +64,101 @@ def write(context,
          else:
                meshes.append(o)
 
-   meshData = writeMeshData(meshes,
-                            export_format,
-                            apply_modifs,
-                            global_matrix,
-                            labels )
+   # Writing starts here
+
+   fileW.wUInt(0) # placeholder for the model properties address
+   fileW.wUInt(0) # placeholder for the labels address
+
+   if export_format == 'SA1MDL':
+      materialAddress = fileW.tell()
+      common.writeBASICMaterialData(fileW, materials, labels) # writing material data first
+      common.writeBASICMeshData( fileW,
+                                 meshes,
+                                 apply_modifs,
+                                 global_matrix,
+                                 materialAddress,
+                                 materials,
+                                 labels )
+
+   # getting the objects for starting
+   noParents = list()
+   for o in objects:
+      if o.parent == None:
+         noParents.append(o)
+
+   saObjects = list()
+   common.saObject.getObjList(noParents[0], global_matrix, noParents, saObjects, labels)
+   mdlAddress = common.saObject.writeObjList(fileW, saObjects, labels)
+   print(mdlAddress)
+
+   labelsAddress = fileW.tell()
+   fileW.seek(8, 0) # go to the location of the model properties addrees
+   fileW.wUInt(mdlAddress) # and write the address
+   fileW.wUInt(labelsAddress)
+   fileW.seek(0,2) # then return back to the end
+
+   # === CHUNK DATA ===
+
+   #writing the labels
+   
+   fileW.wUInt(enums.Chunktypes.Label.value)
+   newLabels = dict()
+   sizeLoc = fileW.tell()
+   fileW.wUInt(0)
+
+   #placeholders
+   for k in labels:
+      fileW.wUInt(0)
+      fileW.wUInt(0)
+
+   fileW.wLong(-1)
+
+   # writing the strings
+   for key, val in labels.items():
+      newLabels[val] = fileW.tell() - sizeLoc - 4
+      fileW.wString(key)
+      fileW.align(4)
+
+   # returning to the dictionary start
+   size = fileW.tell() - sizeLoc - 4
+   fileW.seek(sizeLoc, 0)
+   fileW.wUInt(size)
+
+   # writing the dictionary
+   for key, val in newLabels.items():
+      fileW.wUInt(key)
+      fileW.wUInt(val)
+
+   #back to the end
+   fileW.seek(0,2)
+
+
+   # author
+   if not (author == ""):
+      fileW.wUInt(enums.Chunktypes.Author.value)
+      sizeLoc = fileW.tell()
+      fileW.wUInt(0)
+      fileW.wString(author)
+      fileW.align(4)
+      size = fileW.tell() - sizeLoc - 4
+      fileW.seek(sizeLoc, 0)
+      fileW.wUInt(size)
+      fileW.seek(0, 2)
+
+   # description
+   if not (description == ""):
+      fileW.wUInt(enums.Chunktypes.Description.value)
+      sizeLoc = fileW.tell()
+      fileW.wUInt(0)
+      fileW.wString(description)
+      fileW.align(4)
+      size = fileW.tell() - sizeLoc - 4
+      fileW.seek(sizeLoc, 0)
+      fileW.wUInt(size)
+      fileW.seek(0, 2)
+
+   fileW.wUInt(enums.Chunktypes.End.value)
+   fileW.wUInt(0)
 
    fileW.close()
    return {'FINISHED'}

@@ -14,7 +14,7 @@ class LVLFormatIndicator(Enum):
     SA2LVL = 0x00004C564C324153
     SA2BLVL = 0x004C564C42324153
 
-class Chuntypes(Enum):
+class Chunktypes(Enum):
     """Meta Data type"""
     Label = 0x4C42414C # LABl
     Animation = 0x4C42414C # ANIM
@@ -27,6 +27,7 @@ class Chuntypes(Enum):
 
 class ObjectFlags(Flag):
     """Object flags used in models"""
+    null = 0x00
     NoPosition = 0x01
     NoRotate = 0x02
     NoScale = 0x04
@@ -38,6 +39,7 @@ class ObjectFlags(Flag):
 
 class SurfaceFlags(Flag):
     """Surface interaction Flags for landtable COL"""
+    null = 0x00
     Solid = 0x01
     Water = 0x02
     Visible = 0x80000000
@@ -100,6 +102,7 @@ class ParameterType(Enum):
 
 class IndexAttributeFlags(Flag):
     """Flags for Index arrays in the mesh"""
+    null = 0x00
     Bit0 = 0x01 # unused
     Bit1 = 0x02 # unused
     Position16BitIndex = 0x04
@@ -130,6 +133,7 @@ class AlphaInstruction(Enum):
 
 class TileMode(Flag):
     """Tiling of Meshes' UVs"""
+    null = 0x00
     WrapU = 0x01
     MirrorU = 0x02
     WrapV = 0x04
@@ -221,6 +225,7 @@ class PrimitiveType(Enum):
 class MaterialFlags(Flag):
     """BASIC format material flags"""
     # unused or unknown
+    null = 0x00
     Bit0 = 0x01
     Bit1 = 0x02
     Bit2 = 0x04

@@ -14,29 +14,26 @@ class ColorARGB:
     takes values from 0.0 - 1.0 as input and converts them to 0 - 255
     """
 
-    alpha = 0
-    red = 0
-    green = 0
-    blue = 0
+    a = 0
+    r = 0
+    g = 0
+    b = 0
 
     def __init__(self, c = [0,0,0,0]):
-        self.alpha = round(c[0] * 255)
-        self.red = round(c[1] * 255)
-        self.green = round(c[2] * 255)
-        self.blue = round(c[3] * 255)
+        self.a = round(c[3] * 255)
+        self.r = round(c[0] * 255)
+        self.g = round(c[1] * 255)
+        self.b = round(c[2] * 255)
 
-    def __init__(self, a = 0, r = 0, g = 0, b = 0):
-        self.alpha = round(a * 255)
-        self.red = round(r * 255)
-        self.green = round(g * 255)
-        self.blue = round(b * 255)
+    def isIdentical(self, other):
+        return self.a == other.a and self.r == other.r and self.g == other.g and self.b == other.b
 
     def write(self, fileW):
         """writes data to file"""
-        fileW.wByte(self.alpha)
-        fileW.wByte(self.red)
-        fileW.wByte(self.green)
-        fileW.wByte(self.blue)
+        fileW.wByte(self.a)
+        fileW.wByte(self.r)
+        fileW.wByte(self.g)
+        fileW.wByte(self.b)
 
 class Vector3:
     """Point in 3D Space"""
@@ -49,6 +46,9 @@ class Vector3:
         self.x = x
         self.y = y
         self.z = z
+
+    def isIdentical(self, other):
+        return self.x == other.x and self.y == other.y and self.z == other.z
 
     def distanceFromCenter(self):
         return (self.x * self.x + self.y * self.y + self.z * self.z)**(0.5)
@@ -68,9 +68,12 @@ class UV:
     x = 0
     y = 0
 
-    def __init__(self, x = 0, y = 0):
-        self.x = round(x * 255)
-        self.y = round(y * 255)
+    def __init__(self, uv = [0,0]):
+        self.x = round(uv[0] * 255)
+        self.y = round(uv[1] * 255)
+
+    def isIdentical(self, other):
+        return self.x == other.x and self.y == other.y
 
     def write(self, fileW):
         """Writes data to file"""
@@ -91,13 +94,105 @@ class Material:
              specular = ColorARGB(),
              exponent = 0,
              textureID = 0,
-             materialFlags = 0,
+             materialFlags = enums.MaterialFlags.null,
+             material: bpy.types.Material = None
              ):
-        self.diffuse = diffuse
-        self.specular = specular
-        self.exponent = exponent
-        self.textureID = textureID
-        self.mFlags = materialFlags
+        if material is None:
+            self.diffuse = diffuse
+            self.specular = specular
+            self.exponent = exponent
+            self.textureID = textureID
+            self.mFlags = materialFlags
+        else:
+
+            matProps = material.saSettings
+            self.diffuse = ColorARGB(c = matProps.b_Diffuse)
+            self.specular = ColorARGB(c = matProps.b_Specular)
+            self.exponent = matProps.b_Exponent
+            self.textureID = matProps.b_TextureID
+            self.mFlags = enums.MaterialFlags.null
+
+            #translating the properties to flags
+            from .enums import MaterialFlags
+
+            #mipmap distance multiplicator
+            if matProps.b_d_025:
+                self.mFlags |= MaterialFlags.D_025
+            if matProps.b_d_050:
+                self.mFlags |= MaterialFlags.D_050
+            if matProps.b_d_100:
+                self.mFlags |= MaterialFlags.D_100
+            if matProps.b_d_200:
+                self.mFlags |= MaterialFlags.D_200
+
+            #texture filtering
+            if matProps.b_use_Anisotropy:
+                self.mFlags |= MaterialFlags.FLAG_USE_ANISOTROPIC
+            if matProps.b_texFilter == 'BILINEAR':
+                self.mFlags |= MaterialFlags.FILTER_BILINEAR
+            elif matProps.b_texFilter == 'TRILINEAR':
+                self.mFlags |= MaterialFlags.FILTER_TRILINEAR
+            elif matProps.b_texFilter == 'BLEND':
+                self.mFlags |= MaterialFlags.FILTER_BLEND
+            
+            # uv properties
+            if matProps.b_clampV:
+                self.mFlags |= MaterialFlags.FLAG_CLAMP_V
+            if matProps.b_clampU:
+                self.mFlags |= MaterialFlags.FLAG_CLAMP_U
+            if matProps.b_mirrorV:
+                self.mFlags |= MaterialFlags.FLAG_FLIP_U
+            if matProps.b_mirrorU:
+                self.mFlags |= MaterialFlags.FLAG_FLIP_V
+            
+            # general
+            if matProps.b_ignoreSpecular:
+                self.mFlags |= MaterialFlags.FLAG_IGNORE_SPECULAR
+            if matProps.b_useAlpha:
+                self.mFlags |= MaterialFlags.FLAG_USE_ALPHA
+            if matProps.b_useTexture:
+                self.mFlags |= MaterialFlags.FLAG_USE_TEXTURE
+            if matProps.b_useEnv:
+                self.mFlags |= MaterialFlags.FLAG_USE_ENV
+            if matProps.b_doubleSided:
+                self.mFlags |= MaterialFlags.FLAG_DOUBLE_SIDE
+            if matProps.b_flatShading:
+                self.mFlags |= MaterialFlags.FLAG_USE_FLAT
+            if matProps.b_ignoreLighting:
+                self.mFlags |= MaterialFlags.FLAG_IGNORE_LIGHT
+
+            # alpha instructions
+            src = matProps.b_srcAlpha
+            if src == 'ONE':
+                self.mFlags |= MaterialFlags.SA_ONE
+            elif src == 'OTHER':
+                self.mFlags |= MaterialFlags.SA_OTHER
+            elif src == 'INV_OTHER':
+                self.mFlags |= MaterialFlags.SA_INV_OTHER
+            elif src == 'SRC':
+                self.mFlags |= MaterialFlags.SA_SRC
+            elif src == 'INV_SRC':
+                self.mFlags |= MaterialFlags.SA_INV_SRC
+            elif src == 'DST':
+                self.mFlags |= MaterialFlags.SA_DST
+            elif src == 'INV_DST':
+                self.mFlags |= MaterialFlags.SA_INV_DST
+
+            dst = matProps.b_destAlpha
+            if dst == 'ONE':
+                self.mFlags |= MaterialFlags.DA_ONE
+            elif dst == 'OTHER':
+                self.mFlags |= MaterialFlags.DA_OTHER
+            elif dst == 'INV_OTHER':
+                self.mFlags |= MaterialFlags.DA_INV_OTHER
+            elif dst == 'SRC':
+                self.mFlags |= MaterialFlags.DA_SRC
+            elif dst == 'INV_SRC':
+                self.mFlags |= MaterialFlags.DA_INV_SRC
+            elif dst == 'DST':
+                self.mFlags |= MaterialFlags.DA_DST
+            elif dst == 'INV_DST':
+                self.mFlags |= MaterialFlags.DA_INV_DST
 
     def addFlag(self, flag):
         self.Flag |= flag
@@ -126,12 +221,9 @@ class PolyVert:
     def __init__(self, polyIndex, polyNormal = None, vColor = None, uv = None):
         self.polyIndex = polyIndex
         # polynormals are basically not needed 99% of the time
-        if polyNormal is not None:
-            self.polyNormal = polyNormal
-        if vColor is not None:
-            self.vColor = vColor
-        if uv is not None:
-            self.uv = vu
+        self.polyNormal = polyNormal
+        self.vColor = vColor
+        self.uv = uv
 
     def collisionFromLoops(mesh, IDTransl):
         """creates a poly list (triangle list) from a mesh"""
@@ -143,23 +235,51 @@ class PolyVert:
 
                 #creating a polyVert with only the poly index, since we only need that for collisions
                 polys[fi + i] = PolyVert(vIndex)
-
+                
         return polys
 
-    def fromLoops(mesh, IDTransl, matDict):
-        """Creates poly lists (triangle lists) from a mesh, requires material dictionary for translation"""
-        print("not implemented yet, sorry")
-        return collisionFromLoops(mesh, IDTransl)
+    def fromLoops(mesh: bpy.types.Mesh):
+        matCount = len(mesh.materials)
+        if matCount == 0:
+            matCount = 1
+        meshes = [list()] * matCount
+
+        hasColors = len(mesh.vertex_colors) > 0
+        hasUV = len(mesh.uv_layers) > 0
+
+        for f in mesh.polygons:
+            for lID in f.loop_indices:
+
+                loop = mesh.loops[lID]
+                vc = ColorARGB(mesh.vertex_colors[0].data[lID].color) if hasColors else None
+                uv = UV(mesh.uv_layers[0].data[lID].uv) if hasUV else None
+
+                poly = PolyVert(loop.vertex_index, vColor=vc, uv=uv)
+                meshes[f.material_index].append(poly)
+
+        return meshes
+
+    def isIdentical(self, checkPNRM, checkVC, checkUV, other):
+        sameIndexID = self.polyIndex == other.polyIndex
+        samePolyNRM = self.polyNormal.isIdentical(other.polyNormal) if checkPNRM else True
+        sameVC = self.vColor.isIdentical(other.vColor) if checkVC else True
+        sameUV = self.uv.isIdentical(other.uv) if checkUV else True
+
+        return sameIndexID and samePolyNRM and sameVC and sameUV
 
     def distinct(polyList):
         """Takes a list of PolyVerts and returns a distinct list"""
         distinct = list()
         oIDtodID = [0] * len(polyList)
 
+        checkPNRM = polyList[0].polyNormal is not None
+        checkVC = polyList[0].vColor is not None
+        checkUV = polyList[0].uv is not None
+
         for IDo, vo in enumerate(polyList):
             found = -1
             for IDd, vd in enumerate(distinct):
-                if vo == vd:
+                if vo.isIdentical(checkPNRM, checkVC, checkUV, vd):
                     found = IDd
                     break
             if found == -1:
@@ -170,51 +290,78 @@ class PolyVert:
 
         return [distinct, oIDtodID]
 
-    def toStrips(polyList):
-        distPoly = PolyVert.distinct(polyList)
-        Stripf = Strippifier.Strippifier
-        stripIndices = Stripf.Strippify(polyList[1], doSwaps=False, concat=False)
-        polyStrips = [None] * len(stripIndices)
+    def toStrips(polyList, multi):
 
-        for i, strip in enumerate(stripIndices):
-            tStrip = [0] * len(strip)
-            for j, index in enumerate(strip):
-                tStrip[j] = distPoly[index]
-            polyStrips[i] = tStrip
+        Stripf = Strippifier.Strippifier()
+        result = list()
 
-        return polyStrip
+        if multi:
+            for l in polyList:
+                distPoly = PolyVert.distinct(l)
+                stripIndices = Stripf.Strippify(distPoly[1], doSwaps=False, concat=False)
 
-    def write(fileW, meshName, materialID, polyList, baseOffset):
+                polyStrips = [None] * len(stripIndices)
+
+                for i, strip in enumerate(stripIndices):
+                    tStrip = [0] * len(strip)
+                    for j, index in enumerate(strip):
+                        tStrip[j] = distPoly[0][index]
+                    polyStrips[i] = tStrip
+
+                result.append(polyStrips)
+        else:
+
+            distPoly = PolyVert.distinct(polyList)
+            stripIndices = Stripf.Strippify(distPoly[1], doSwaps=False, concat=False)
+            result = [None] * len(stripIndices)
+
+            for i, strip in enumerate(stripIndices):
+                tStrip = [0] * len(strip)
+                for j, index in enumerate(strip):
+                    tStrip[j] = distPoly[0][index]
+                result[i] = tStrip
+                
+
+        return result
+
+    def write(fileW, materialID, polyList, baseOffset):
         """Writes a single mesh to the file
         
         returns a mesh set
         """
-        # poly indices
-        polyAddress = fileW.tell() + baseOffset
-        for p in polyList:
-            fileW.wUShort(p.polyIndex)
+        polyAddress = fileW.tell() + baseOffset     
+        # poly indices               
+        for s in polyList:
+            #the length of the strip
+            length = len(s) & 0x7FFF # the last bit determines whether its reversed, which isnt really necessary
+            fileW.wUShort(length)
+            for p in s:
+                fileW.wUShort(p.polyIndex)
         fileW.align(4)
 
         # poly normal address
         polyNormalAddress = 0
-        if hasattr(polyList[0], 'polyNormal'):
+        if polyList[0][0].polyNormal is not None:
             polyNormalAddress = fileW.tell() + baseOffset
-            for p in polyList:
-                p.polyNormal.write(fileW)
+            for s in polyList:
+                for p in s:
+                    p.polyNormal.write(fileW)
 
         #vertex color
         vColorAddress = 0
-        if hasattr(polyList[0], 'vColor'):
-            vColorAddress = fileW.tell() + baseOffset
-            for p in polyList:
-                p.vColor.write(fileW)
+        if polyList[0][0].vColor is not None:      
+            vColorAddress = fileW.tell() + baseOffset              
+            for s in polyList:
+                for p in s:
+                    p.vColor.write(fileW)
 
         #uv map
         UVAddress = 0
-        if hasattr(polyList[0], 'uv'):
-            UVAddress = fileW.tell() + baseOffset
-            for p in polyList:
-                p.uv.write(fileW)
+        if polyList[0][0].uv is not None:
+            UVAddress = fileW.tell() + baseOffset            
+            for s in polyList:
+                for p in s:
+                    p.uv.write(fileW)
 
         return MeshSet(materialID, enums.PolyType.Strips, len(polyList), polyAddress, 0, polyNormalAddress, vColorAddress, UVAddress)
 
@@ -222,7 +369,7 @@ class MeshSet:
     """A single mesh set in the model"""
 
     materialID = 0
-    polyType = enums.PolyType.Strips
+    polytype = enums.PolyType.Strips
     polyCount = 0
     polyAddress = 0
     polyAttribts = 0
@@ -253,7 +400,7 @@ class MeshSet:
         # combining material id and poly type into two bytes
         matPolytype = self.materialID & (~0xC000)
         matPolytype |= (self.polytype.value << 14)
-        fileW.wUShort(self.matPolytype)
+        fileW.wUShort(matPolytype)
         fileW.wUShort(self.polyCount)
 
         fileW.wUInt(self.polyAddress)
@@ -302,7 +449,9 @@ class BoundingBox:
 
     def getBoundingSphere(self):
         bs = [None] * 2
-        bs[0] = Vector3( center(self.x,self.xn), center(self.y,self.yn), center(self.z,self.zn) )
+        bs[0] = Vector3(BoundingBox.center(self.x,self.xn), 
+                        BoundingBox.center(self.y,self.yn), 
+                        BoundingBox.center(self.z,self.zn) )
         xd = abs(self.x - self.xn)
         yd = abs(self.y - self.yn)
         zd = abs(self.z - self.zn)
@@ -314,7 +463,7 @@ class BoundingBox:
         bs[0].write(fileW)
         fileW.wFloat(bs[1])
 
-def distinctVertNrm(vertices, exportMatrix):
+def VertNrmPairs(vertices, exportMatrix):
     """returns a list of the vertex-normal-pairs without duplicates
     
     vertices: mesh vertices as input
@@ -334,31 +483,83 @@ def distinctVertNrm(vertices, exportMatrix):
         e = [Vector3(pos.x, pos.y, pos.z), Vector3(nrm.x, nrm.y, nrm.z)]
         entries[i] = e
 
-    distinct = list()
-    oIDtodID = [0] * len(vertices)
+    return entries
 
-    for IDo, vo in enumerate(vertices):
-        found = -1
-        for IDd, vd in enumerate(distinct):
-            if vo == vd:
-                found = IDd
-                break
-        if found == -1:
-            distinct.append(vo)
-            oIDtodID[IDo] = len(distinct) - 1
-        else:
-            oIDtodID[IDo] = found
+def WriteMesh(mesh, name, exportMatrix, baseOffset, materialAddress, materials, labels):
 
-    return [distinct, oIDtodID]
+    from . import FileWriter, enums
 
-def WriteCollision(mesh, exportMatrix, baseOffset, labels):
+    # creating temporary file to write to
+    tFile = FileWriter.FileWriter()
+
+    # the verts and normals in pairs and a list that translates between original id and distinct id
+    distVertNrm = VertNrmPairs(mesh.vertices, exportMatrix) 
+
+    #creating a bounding box and updating it while writing vertices
+    bounds = BoundingBox()
+
+    #writing vertices
+    verticesAddress = tFile.tell() + baseOffset
+    for v in distVertNrm:
+        v[0].write(tFile)
+        bounds.checkUpdate(v[0])
+
+    #writing normals
+    normalsAddress = tFile.tell() + baseOffset
+    for v in distVertNrm:
+        v[1].write(tFile)
+
+    # creating the loops (as an index list)
+    polys = PolyVert.fromLoops(mesh)
+
+    # making them strips, each set is for one mesh set
+    polyStrips = PolyVert.toStrips(polys, True)
+
+    #writing the mesh data and getting the mesh sets
+    meshSets = [None] * len(polyStrips)
+    materialLength = len(materials) if len(materials) > 0 else 1
+
+    if materialLength == 1:
+        for i, p in enumerate(polyStrips):
+            meshSets[i] = PolyVert.write(tFile, 0, p, baseOffset)
+    else:
+        for i, p in enumerate(polyStrips):
+            matID = materials.index(mesh.materials[i])
+            meshSets[i] = PolyVert.write(tFile, matID, p, baseOffset)
+
+    # writing the mesh sets
+    meshSetAddress = tFile.tell() + baseOffset
+
+    for m in meshSets:
+        m.write(tFile)
+
+    #adding mesh address to the labels
+    labels["a_" + name] = tFile.tell() + baseOffset
+
+    #writing addresses
+    tFile.wUInt(verticesAddress)
+    tFile.wUInt(normalsAddress)
+    tFile.wUInt(len(distVertNrm))
+    tFile.wUInt(meshSetAddress)
+    tFile.wUInt(materialAddress)
+    tFile.wUShort(len(meshSets))
+    tFile.wUShort(materialLength) # material count
+    bounds.write(tFile)
+    tFile.wUInt(0) #sa1 gap
+
+    tFile.align(4)
+
+    return tFile.close() # returns all data and closes file
+
+def WriteCollision(mesh, name, exportMatrix, baseOffset, labels):
     """ Used for writing sa2 stage collision 
     
     mesh has to be triangulated
     """
+    from . import FileWriter, enums
 
     # creating temporary file to write to
-    tFile = FileWriter() 
+    tFile = FileWriter.FileWriter() 
 
     # creating dummy material, just to be sure
     if 'b_col_material' in labels:
@@ -369,21 +570,7 @@ def WriteCollision(mesh, exportMatrix, baseOffset, labels):
         dummyMat.write(tFile)
 
     # the verts and normals in pairs and a list that translates between original id and distinct id
-    distVertNrm = distinctVertNrm(mesh.vertices) 
-
-    # creating the loops (as an index list)
-    polys = PolyVert.collisionFromLoops(Mesh, distVertNrm[1])
-    polyStrips = PolyVert.toStrips(polys)
-
-    # writing the Mesh data (polys)
-    MeshSets = [None] * len(polyStrips)
-    for i, s in enumerate(polyStrips):
-        MeshSets[i] = PolyVert.write(tFile, mesh.name, 0, s, baseOffset)    
-
-    # writing the mesh properties (mesh set)
-    meshSetAddress = tFile.tell() + baseOffset
-    for m in MeshSets:
-        m.write(tFile)
+    distVertNrm = distinctVertNrm(mesh.vertices, exportMatrix)
 
     #creating a bounding box and updating it while writing vertices
     bounds = BoundingBox()
@@ -398,9 +585,26 @@ def WriteCollision(mesh, exportMatrix, baseOffset, labels):
     normalsAddress = tFile.tell() + baseOffset
     for v in distVertNrm[0]:
         v[1].write(tFile)
+    
+
+    # creating the loops (as an index list)
+    polys = PolyVert.collisionFromLoops(Mesh, distVertNrm[1])
+    polyStrips = PolyVert.toStrips(polys, False)
+
+    # writing the Mesh data (polys)
+    MeshSets = [None] * len(polyStrips)
+    for i, s in enumerate(polyStrips):
+        MeshSets[i] = PolyVert.write(tFile, 0, s, baseOffset)    
+
+    # writing the mesh properties (mesh set)
+    meshSetAddress = tFile.tell() + baseOffset
+    for m in MeshSets:
+        m.write(tFile)
+
+
 
     #adding mesh address to the labels
-    labels[mesh.name] = tFile.tell() + baseOffset
+    labels["a_" + name] = tFile.tell() + baseOffset
 
     #writing addresses
     tFile.wUInt(verticesAddress)

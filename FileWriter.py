@@ -13,14 +13,14 @@ class FileWriter(object):
     Default endian: little
     """
 
-    def __init__(self): # no filepath creates a temporary file
-        self.oFile = tempfile.TemporaryFile(mode="wb+") # write and read, binary  
-        self.filepath = oFile.name
-        self.endian = "<"
+    def __init__(self, filepath = None):
+        if filepath is None:
+            self.oFile = tempfile.TemporaryFile(mode="wb+") # write and read, binary  
+            self.filepath = self.oFile.name
+        else:
+            self.oFile = open(filepath, "wb+") # write and read, binary        
+            self.filepath = filepath
 
-    def __init__(self, filepath):
-        self.filepath = filepath
-        self.oFile = open(filepath, "wb+") # write and read, binary
         self.endian = "<"
 
     # general methods
@@ -48,16 +48,17 @@ class FileWriter(object):
 
     def close(self):
         """Closes File and returns bytes"""
+        self.oFile.seek(0,0)
         data = self.oFile.read()
         self.oFile.close()
-        self.oFile = None
-        self.oFile = ""
         return data
 
     def align(self, by):
         size = self.tell()
         remaining = by - (size % by)
-        self.w(bytes([remaining]))
+        if remaining == by:
+            return
+        self.w(bytes([0] * remaining))
 
     #Writer methods
 
