@@ -8,6 +8,8 @@ from . import enums, FileWriter, Strippifier
 
 # note: In sa2's case, the BASIC model format is only used for collisions.
 
+DO = False # debug out
+
 class ColorARGB:
     """4 Channel Color
 
@@ -27,6 +29,9 @@ class ColorARGB:
 
     def isIdentical(self, other):
         return self.a == other.a and self.r == other.r and self.g == other.g and self.b == other.b
+
+    def __str__(self):
+        return "(" + str(self.a) + ", " + str(self.r) + ", " + str(self.g) + ", " + str(self.b) + ")"
 
     def write(self, fileW):
         """writes data to file"""
@@ -83,13 +88,15 @@ class UV:
 class Material:
     """Material of a mesh"""
 
+    name = ""
     diffuse = ColorARGB()
     specular = ColorARGB()
     exponent = 0
     textureID = 0
-    materialFlags = 0
+    mFlags = enums.MaterialFlags.null
 
     def __init__(self,
+             name: str = "",
              diffuse = ColorARGB(), 
              specular = ColorARGB(),
              exponent = 0,
@@ -97,6 +104,7 @@ class Material:
              materialFlags = enums.MaterialFlags.null,
              material: bpy.types.Material = None
              ):
+        self.name = name
         if material is None:
             self.diffuse = diffuse
             self.specular = specular
@@ -104,7 +112,6 @@ class Material:
             self.textureID = textureID
             self.mFlags = materialFlags
         else:
-
             matProps = material.saSettings
             self.diffuse = ColorARGB(c = matProps.b_Diffuse)
             self.specular = ColorARGB(c = matProps.b_Specular)
@@ -488,6 +495,9 @@ def VertNrmPairs(vertices, exportMatrix):
 def WriteMesh(mesh, name, exportMatrix, baseOffset, materialAddress, materials, labels):
 
     from . import FileWriter, enums
+    global DO
+
+    debug(" Writing BASIC:", name)
 
     # creating temporary file to write to
     tFile = FileWriter.FileWriter()
@@ -510,10 +520,12 @@ def WriteMesh(mesh, name, exportMatrix, baseOffset, materialAddress, materials, 
         v[1].write(tFile)
 
     # creating the loops (as an index list)
-    polys = PolyVert.fromLoops(mesh)
+    polyVs = PolyVert.fromLoops(mesh)
 
     # making them strips, each set is for one mesh set
-    polyStrips = PolyVert.toStrips(polys, True)
+    polyStrips = PolyVert.toStrips(polyVs, True)
+    if DO:
+        print(" strips:", sum(len(x) for x in polyStrips))
 
     #writing the mesh data and getting the mesh sets
     meshSets = [None] * len(polyStrips)
@@ -537,6 +549,7 @@ def WriteMesh(mesh, name, exportMatrix, baseOffset, materialAddress, materials, 
     labels["a_" + name] = tFile.tell() + baseOffset
 
     #writing addresses
+
     tFile.wUInt(verticesAddress)
     tFile.wUInt(normalsAddress)
     tFile.wUInt(len(distVertNrm))
@@ -546,6 +559,17 @@ def WriteMesh(mesh, name, exportMatrix, baseOffset, materialAddress, materials, 
     tFile.wUShort(materialLength) # material count
     bounds.write(tFile)
     tFile.wUInt(0) #sa1 gap
+
+    if DO:
+        print("  vert addr:", '{:08x}'.format(verticesAddress))
+        print("  nrm addr:", '{:08x}'.format(normalsAddress))
+        print("  vertices:", len(distVertNrm))
+        print("  set addr:", '{:08x}'.format(meshSetAddress))
+        print("  mat addr:", '{:08x}'.format(materialAddress))
+        print("  sets:", len(meshSets))
+        print("  mats:", materialLength)
+        print(" BASIC length:", tFile.tell())
+        print("----- \n")
 
     tFile.align(4)
 
@@ -619,3 +643,8 @@ def WriteCollision(mesh, name, exportMatrix, baseOffset, labels):
     tFile.align(4)
 
     return tFile.close() # returns all data and closes file
+
+def debug(*string):
+    global DO
+    if DO:
+        print(*string)

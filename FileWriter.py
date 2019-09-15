@@ -110,6 +110,3 @@ class FileWriter(object):
         """Writes a String in utf-8"""
         self.w(string.encode('utf-8'))
         self.wByte(0x00)
-    
-    def printsomething(self):
-        print(self.filepath)

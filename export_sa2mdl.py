@@ -1,6 +1,13 @@
 import bpy
 import os
 
+DO = False
+
+def debug(*string):
+    global DO
+    if DO:
+        print(*string)
+
 def write(context, 
          filepath, *, 
          export_format,
@@ -14,6 +21,9 @@ def write(context,
    from . import FileWriter, enums, common
    
    os.system("cls")
+   global DO
+   DO = console_debug_output
+   common.DO = console_debug_output
 
    filepath = filepath.split('.')[0]
 
@@ -22,15 +32,19 @@ def write(context,
    if export_format == 'SA1MDL':
       fileW = FileWriter.FileWriter(filepath= filepath + ".sa1mdl")
       fileW.wULong(enums.MDLFormatIndicator.SA1MDL.value | (fileVersion << 56))
+      debug("Format: SA1MDL V", fileVersion)
    elif export_format == 'SA2MDL':
       fileW = FileWriter.FileWriter(filepath= filepath + ".sa2mdl")
       fileW.wULong(enums.MDLFormatIndicator.SA2MDL.value | (fileVersion << 56))
+      debug("Format: SA2MDL V", fileVersion)
    else: # SA2BMDL
       fileW = FileWriter.FileWriter(filepath= filepath + ".sa2bmdl")
       fileW.wULong(enums.MDLFormatIndicator.SA2BMDL.value | (fileVersion << 56))
+      debug("Format: SA1BMDL V", fileVersion)
+
+   debug("File:", fileW.filepath, "\n")
 
    labels = dict()
-
    scene = context.scene
 
    # getting the objects to export
@@ -64,15 +78,25 @@ def write(context,
          else:
                meshes.append(o)
 
+   if DO:
+      print(" Materials:", len(materials))
+      print(" Meshes:", len(meshes))
+      print(" Objects:", len(objects), "\n")
+
    # Writing starts here
 
    fileW.wUInt(0) # placeholder for the model properties address
    fileW.wUInt(0) # placeholder for the labels address
 
+   depsgraph = context.evaluated_depsgraph_get()
+
    if export_format == 'SA1MDL':
+      from . import BASIC
+      BASIC.DO = console_debug_output
       materialAddress = fileW.tell()
       common.writeBASICMaterialData(fileW, materials, labels) # writing material data first
       common.writeBASICMeshData( fileW,
+                                 depsgraph,
                                  meshes,
                                  apply_modifs,
                                  global_matrix,
@@ -82,20 +106,47 @@ def write(context,
 
    # getting the objects for starting
    noParents = list()
+   if isinstance(objects, list):
+      objList = objects
+   else:
+      objList = objects.values()
+
    for o in objects:
-      if o.parent == None:
+      if o.parent == None or not (o.parent in objList):
          noParents.append(o)
 
    saObjects = list()
-   common.saObject.getObjList(noParents[0], global_matrix, noParents, saObjects, labels)
+   common.saObject.getObjList(noParents[0], objList, 0, global_matrix, noParents, saObjects, labels)
+
+   #checking if the last object has siblings, if so add a root object
+   root = saObjects[-1]
+   if root.sibling is not None:
+      root = common.saObject("root", None, child = saObjects[-1])
+
+      if DO:
+         for o in saObjects:
+            o.hierarchyLvl += 1
+
+      saObjects.append(root)
+
+
    mdlAddress = common.saObject.writeObjList(fileW, saObjects, labels)
-   print(mdlAddress)
+
+   if DO:
+      for o in saObjects:
+         o.debugOut()
+
+      common.saObject.debugHierarchy(saObjects)
 
    labelsAddress = fileW.tell()
    fileW.seek(8, 0) # go to the location of the model properties addrees
    fileW.wUInt(mdlAddress) # and write the address
    fileW.wUInt(labelsAddress)
    fileW.seek(0,2) # then return back to the end
+
+   if DO:
+      print(" model address: ", '{:08x}'.format(mdlAddress))
+      print(" labels address:", '{:08x}'.format(labelsAddress), "\n") 
 
    # === CHUNK DATA ===
 
@@ -106,8 +157,14 @@ def write(context,
    sizeLoc = fileW.tell()
    fileW.wUInt(0)
 
+   if DO:
+      print(" Labels:")
+      for k,v in labels.items():
+         print("  ", k + ":", '{:08x}'.format(v))
+      print("")
+
    #placeholders
-   for k in labels:
+   for l in labels:
       fileW.wUInt(0)
       fileW.wUInt(0)
 
@@ -145,6 +202,8 @@ def write(context,
       fileW.wUInt(size)
       fileW.seek(0, 2)
 
+      debug(" Author:", author)
+
    # description
    if not (description == ""):
       fileW.wUInt(enums.Chunktypes.Description.value)
@@ -156,6 +215,8 @@ def write(context,
       fileW.seek(sizeLoc, 0)
       fileW.wUInt(size)
       fileW.seek(0, 2)
+
+      debug(" Description:", description)
 
    fileW.wUInt(enums.Chunktypes.End.value)
    fileW.wUInt(0)
