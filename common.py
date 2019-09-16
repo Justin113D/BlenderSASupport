@@ -141,6 +141,7 @@ class saObject:
                        labels=labels
                        )
         result.append(obj)
+        return obj
 
     def write(self, fileW, labels):
         labels["o_" + self.name] = fileW.tell()
@@ -178,6 +179,63 @@ class saObject:
             print(" --" * o.hierarchyLvl, o.name)
         print("\n---- \n")
 
+def evaluateObjectsToWrite(use_selection: bool,
+                           apply_modifs: bool,
+                           context: bpy.types.Context
+                           ):
+    # getting the objects to export
+    if use_selection:
+        if len(context.selected_objects) == 0:
+            print("No objects selected")
+            return {'FINISHED'}, None, None, None
+        objects = context.selected_objects
+    else:
+        if len(context.scene.objects) == 0:
+            print("No objects found")
+            return {'FINISHED'}, None, None, None
+        objects = context.scene.objects.values()
+
+    # getting all meshdata first, so that it cna be checked which is used multiple times
+    tMeshes = []
+    for o in objects:
+        if o.type == 'MESH' :
+            tMeshes.append(o.data)
+
+    # filtering the actual mesh data
+    meshes = []
+    for o in objects:
+        if o.type == 'MESH' :
+            if tMeshes.count(o.data) > 1 and meshes.count(o.data) == 0 :
+                meshes.append(o.data)
+            else:
+                meshes.append(o)
+
+    # convert them
+    outMeshes = []
+    materials = []
+    depsgraph = context.evaluated_depsgraph_get()
+    for m in meshes:
+        newMesh = convertMesh(m, depsgraph, apply_modifs)
+        outMeshes.append(newMesh)
+        for m in newMesh.materials:
+            if not (m in materials):
+                materials.append(m)
+
+    # getting the objects for starting
+    noParents = list()
+
+    for o in objects:
+        if o.parent == None or not (o.parent in objects):
+            noParents.append(o)
+
+    global DO
+    if DO:
+        print(" Materials:", len(materials))
+        print(" Meshes:", len(meshes))
+        print(" Objects:", len(objects), "\n")
+
+    return objects, noParents, outMeshes, materials
+
 def trianglulateMesh(me):
     import bmesh
     bm = bmesh.new()
@@ -188,16 +246,15 @@ def trianglulateMesh(me):
 
 def convertMesh(obj, depsgraph, apply_modifs):
 
-   if isinstance(obj, bpy.types.Object):
-      ob_for_convert = obj.evaluated_get(depsgraph) if apply_modifs else obj.original
-      me = ob_for_convert.to_mesh()
-      name = obj.data.name
-   else:
-      me = obj
-      name = me.name
+    if isinstance(obj, bpy.types.Object):
+        ob_for_convert = obj.evaluated_get(depsgraph) if apply_modifs else obj.original
+        me = ob_for_convert.to_mesh()
+        print(obj.data.name == me.name)
+    else:
+        me = obj
 
-   trianglulateMesh(me)
-   return [me, name]
+    trianglulateMesh(me)
+    return me
 
 def writeBASICMaterialData(fileW: FileWriter.FileWriter, materials, labels: dict):
     from . import BASIC
@@ -227,16 +284,115 @@ def writeBASICMaterialData(fileW: FileWriter.FileWriter, materials, labels: dict
             print("   flags:", m.mFlags, "\n---- \n")
 
 def writeBASICMeshData( fileW: FileWriter.FileWriter,
-                        depsgraph,
                         meshes,
-                        apply_modifs,
                         global_matrix,
-                        materialAddress,
                         materials,
                         labels: dict):
     from . import BASIC
     for m in meshes:
-        me = convertMesh(m, depsgraph, apply_modifs)
-        basicMesh = BASIC.WriteMesh(me[0], me[1], global_matrix, fileW.tell(), materialAddress, materials, labels)
-        fileW.w(basicMesh)
+        BASIC.WriteMesh(fileW, m, global_matrix, materials, labels)
 
+def getObjData(objects, noParents, global_matrix,  labels):
+    saObjects = list()
+    root = saObject.getObjList(noParents[0], objects, 0, global_matrix, noParents, saObjects, labels)
+
+    #checking if the last object has siblings, if so add a root object
+    if root.sibling is not None:
+        root = saObject("root", None, child = saObjects[-1])
+
+        global DO
+        if DO:
+            for o in saObjects:
+                o.hierarchyLvl += 1
+
+        saObjects.append(root)
+
+    if DO:
+        for o in saObjects:
+            o.debugOut()
+
+        saObject.debugHierarchy(saObjects)
+
+    return saObjects
+
+def writeMethaData(fileW: FileWriter.FileWriter,
+                   labels: dict,
+                   scene: bpy.types.Scene,
+                   ):
+    """Writes the meta data of the file"""
+
+    # === LABELS ===
+    fileW.wUInt(enums.Chunktypes.Label.value)
+    newLabels = dict()
+    sizeLoc = fileW.tell()
+    fileW.wUInt(0)
+
+    global DO
+    if DO:
+        print(" Labels:")
+        for k,v in labels.items():
+            print("  ", k + ":", '{:08x}'.format(v))
+        print("")
+
+    #placeholders
+    for l in labels:
+        fileW.wUInt(0)
+        fileW.wUInt(0)
+
+    fileW.wLong(-1)
+
+    # writing the strings
+    for key, val in labels.items():
+        newLabels[val] = fileW.tell() - sizeLoc - 4
+        fileW.wString(key)
+        fileW.align(4)
+
+    # returning to the dictionary start
+    size = fileW.tell() - sizeLoc - 4
+    fileW.seek(sizeLoc, 0)
+    fileW.wUInt(size)
+
+    # writing the dictionary
+    for key, val in newLabels.items():
+        fileW.wUInt(key)
+        fileW.wUInt(val)
+
+    #back to the end
+    fileW.seek(0,2)
+
+    #getting the file info
+    settings = scene.saSettings
+
+    # === AUTHOR ===
+    if not (settings.author == ""):
+        fileW.wUInt(enums.Chunktypes.Author.value)
+        sizeLoc = fileW.tell()
+        fileW.wUInt(0)
+        fileW.wString(settings.author)
+        fileW.align(4)
+        size = fileW.tell() - sizeLoc - 4
+        fileW.seek(sizeLoc, 0)
+        fileW.wUInt(size)
+        fileW.seek(0, 2)
+
+        if DO:
+            print(" Author:", settings.author)
+
+    # === DESCRIPTION ===
+    if not (settings.description == ""):
+        fileW.wUInt(enums.Chunktypes.Description.value)
+        sizeLoc = fileW.tell()
+        fileW.wUInt(0)
+        fileW.wString(settings.description)
+        fileW.align(4)
+        size = fileW.tell() - sizeLoc - 4
+        fileW.seek(sizeLoc, 0)
+        fileW.wUInt(size)
+        fileW.seek(0, 2)
+
+        if DO:
+            print(" Description:", settings.description)
+
+    fileW.wUInt(enums.Chunktypes.End.value)
+    fileW.wUInt(0)
+    

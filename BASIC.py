@@ -331,12 +331,12 @@ class PolyVert:
 
         return result
 
-    def write(fileW, materialID, polyList, baseOffset):
+    def write(fileW, materialID, polyList):
         """Writes a single mesh to the file
         
         returns a mesh set
         """
-        polyAddress = fileW.tell() + baseOffset     
+        polyAddress = fileW.tell()     
         # poly indices               
         for s in polyList:
             #the length of the strip
@@ -349,7 +349,7 @@ class PolyVert:
         # poly normal address
         polyNormalAddress = 0
         if polyList[0][0].polyNormal is not None:
-            polyNormalAddress = fileW.tell() + baseOffset
+            polyNormalAddress = fileW.tell()
             for s in polyList:
                 for p in s:
                     p.polyNormal.write(fileW)
@@ -357,7 +357,7 @@ class PolyVert:
         #vertex color
         vColorAddress = 0
         if polyList[0][0].vColor is not None:      
-            vColorAddress = fileW.tell() + baseOffset              
+            vColorAddress = fileW.tell()              
             for s in polyList:
                 for p in s:
                     p.vColor.write(fileW)
@@ -365,7 +365,7 @@ class PolyVert:
         #uv map
         UVAddress = 0
         if polyList[0][0].uv is not None:
-            UVAddress = fileW.tell() + baseOffset            
+            UVAddress = fileW.tell()            
             for s in polyList:
                 for p in s:
                     p.uv.write(fileW)
@@ -492,15 +492,13 @@ def VertNrmPairs(vertices, exportMatrix):
 
     return entries
 
-def WriteMesh(mesh, name, exportMatrix, baseOffset, materialAddress, materials, labels):
-
+def WriteMesh(fileW, mesh, exportMatrix, materials, labels):
+    """Writes a basic mesh into a temporary file and returns the result """
     from . import FileWriter, enums
     global DO
 
-    debug(" Writing BASIC:", name)
-
-    # creating temporary file to write to
-    tFile = FileWriter.FileWriter()
+    debug(" Writing BASIC:", mesh.name)
+    start = fileW.tell()
 
     # the verts and normals in pairs and a list that translates between original id and distinct id
     distVertNrm = VertNrmPairs(mesh.vertices, exportMatrix) 
@@ -509,15 +507,15 @@ def WriteMesh(mesh, name, exportMatrix, baseOffset, materialAddress, materials, 
     bounds = BoundingBox()
 
     #writing vertices
-    verticesAddress = tFile.tell() + baseOffset
+    verticesAddress = fileW.tell()
     for v in distVertNrm:
-        v[0].write(tFile)
+        v[0].write(fileW)
         bounds.checkUpdate(v[0])
 
     #writing normals
-    normalsAddress = tFile.tell() + baseOffset
+    normalsAddress = fileW.tell()
     for v in distVertNrm:
-        v[1].write(tFile)
+        v[1].write(fileW)
 
     # creating the loops (as an index list)
     polyVs = PolyVert.fromLoops(mesh)
@@ -533,116 +531,44 @@ def WriteMesh(mesh, name, exportMatrix, baseOffset, materialAddress, materials, 
 
     if materialLength == 1:
         for i, p in enumerate(polyStrips):
-            meshSets[i] = PolyVert.write(tFile, 0, p, baseOffset)
+            meshSets[i] = PolyVert.write(fileW, 0, p)
     else:
         for i, p in enumerate(polyStrips):
             matID = materials.index(mesh.materials[i])
-            meshSets[i] = PolyVert.write(tFile, matID, p, baseOffset)
+            meshSets[i] = PolyVert.write(fileW, matID, p)
 
     # writing the mesh sets
-    meshSetAddress = tFile.tell() + baseOffset
+    meshSetAddress = fileW.tell()
 
     for m in meshSets:
-        m.write(tFile)
+        m.write(fileW)
 
     #adding mesh address to the labels
-    labels["a_" + name] = tFile.tell() + baseOffset
+    labels["a_" + mesh.name] = fileW.tell()
 
     #writing addresses
 
-    tFile.wUInt(verticesAddress)
-    tFile.wUInt(normalsAddress)
-    tFile.wUInt(len(distVertNrm))
-    tFile.wUInt(meshSetAddress)
-    tFile.wUInt(materialAddress)
-    tFile.wUShort(len(meshSets))
-    tFile.wUShort(materialLength) # material count
-    bounds.write(tFile)
-    tFile.wUInt(0) #sa1 gap
+    fileW.wUInt(verticesAddress)
+    fileW.wUInt(normalsAddress)
+    fileW.wUInt(len(distVertNrm))
+    fileW.wUInt(meshSetAddress)
+    fileW.wUInt(0x00000010) # material address is always the same (at least the way this addon exports the format)
+    fileW.wUShort(len(meshSets))
+    fileW.wUShort(materialLength) # material count
+    bounds.write(fileW)
+    fileW.wUInt(0) #sa1 gap
 
     if DO:
         print("  vert addr:", '{:08x}'.format(verticesAddress))
         print("  nrm addr:", '{:08x}'.format(normalsAddress))
         print("  vertices:", len(distVertNrm))
         print("  set addr:", '{:08x}'.format(meshSetAddress))
-        print("  mat addr:", '{:08x}'.format(materialAddress))
         print("  sets:", len(meshSets))
         print("  mats:", materialLength)
-        print(" BASIC length:", tFile.tell())
+        print(" BASIC length:", (fileW.tell() - start))
         print("----- \n")
 
-    tFile.align(4)
-
-    return tFile.close() # returns all data and closes file
-
-def WriteCollision(mesh, name, exportMatrix, baseOffset, labels):
-    """ Used for writing sa2 stage collision 
-    
-    mesh has to be triangulated
-    """
-    from . import FileWriter, enums
-
-    # creating temporary file to write to
-    tFile = FileWriter.FileWriter() 
-
-    # creating dummy material, just to be sure
-    if 'b_col_material' in labels:
-        materialaddress = labels['b_col_material']
-    else:
-        labels["b_col_material"] = baseOffset
-        dummyMat = Material() 
-        dummyMat.write(tFile)
-
-    # the verts and normals in pairs and a list that translates between original id and distinct id
-    distVertNrm = distinctVertNrm(mesh.vertices, exportMatrix)
-
-    #creating a bounding box and updating it while writing vertices
-    bounds = BoundingBox()
-
-    #writing vertices
-    verticesAddress = tFile.tell() + baseOffset
-    for v in distVertNrm[0]:
-        v[0].write(tFile)
-        bounds.checkUpdate(v[0])
-
-    #writing normals
-    normalsAddress = tFile.tell() + baseOffset
-    for v in distVertNrm[0]:
-        v[1].write(tFile)
-    
-
-    # creating the loops (as an index list)
-    polys = PolyVert.collisionFromLoops(Mesh, distVertNrm[1])
-    polyStrips = PolyVert.toStrips(polys, False)
-
-    # writing the Mesh data (polys)
-    MeshSets = [None] * len(polyStrips)
-    for i, s in enumerate(polyStrips):
-        MeshSets[i] = PolyVert.write(tFile, 0, s, baseOffset)    
-
-    # writing the mesh properties (mesh set)
-    meshSetAddress = tFile.tell() + baseOffset
-    for m in MeshSets:
-        m.write(tFile)
-
-
-
-    #adding mesh address to the labels
-    labels["a_" + name] = tFile.tell() + baseOffset
-
-    #writing addresses
-    tFile.wUInt(verticesAddress)
-    tFile.wUInt(normalsAddress)
-    tFile.wUInt(len(distVertNrm[0]))
-    tFile.wUInt(meshSetAddress)
-    tFile.wUint(materialaddress)
-    tFile.wUShort(len(MeshSets))
-    tFile.wUShort(1) # material count
-    bounds.write(tFile)
-
-    tFile.align(4)
-
-    return tFile.close() # returns all data and closes file
+    fileW.align(4)
 
 def debug(*string):
     global DO

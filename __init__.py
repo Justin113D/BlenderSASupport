@@ -77,16 +77,6 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
         options={'HIDDEN'},
         )
 
-    #export_format: EnumProperty(
-    #    name="Format",
-    #    description="The Format in which the models should be exported",
-    #    items=( ('SA2BMDL', 'SA2BMDL', "The Gamecube SA2 Format (GC)"),
-    #            ('SA2MDL', 'SA2MDL', "The Default SA2 Format (Chunk)"),
-    #            ('SA1MDL', 'SA1MDL', "The SA1 Format (BASIC)"),
-    #        ),
-    #    default='SA2BMDL',        
-    #    )
-
     global_scale: FloatProperty(
         name="Scale",
         min=0.01, max=1000.0,
@@ -103,18 +93,6 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
         name="Apply Modifiers",
         description="Apply active viewport modifiers",
         default=True,
-        )
-
-    author: StringProperty(
-        name="Author",
-        description="The creator of this file",
-        default="",
-        )
-
-    description: StringProperty(
-        name="Description",
-        description="A Description of the file contents",
-        default="",
         )
 
     console_debug_output: BoolProperty(
@@ -174,18 +152,6 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         default=True,
         )
 
-    author: StringProperty(
-        name="Author",
-        description="The creator of this file",
-        default="",
-        )
-
-    description: StringProperty(
-        name="Description",
-        description="A Description of the file contents",
-        default="",
-        )
-
     console_debug_output: BoolProperty(
         name = "Console Output",
         description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
@@ -243,18 +209,6 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
         default=True,
         )
 
-    author: StringProperty(
-        name="Author",
-        description="The creator of this file",
-        default="",
-        )
-
-    description: StringProperty(
-        name="Description",
-        description="A Description of the file contents",
-        default="",
-        )
-
     console_debug_output: BoolProperty(
         name = "Console Output",
         description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
@@ -280,7 +234,6 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
         keywords["export_format"] = 'SA2BMDL'
         return export_sa2mdl.write(context, **keywords)
 
-
 @orientation_helper(axis_forward='Z', axis_up='Y')  
 class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
     """Export scene into an SA2B level file"""
@@ -303,7 +256,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         name="Apply Modifiers",
         description="Apply active viewport modifiers",
         default=True,
-    )
+        )
 
     console_debug_output: BoolProperty(
         name = "Console Output",
@@ -431,7 +384,21 @@ class StrippifyTest(bpy.types.Operator):
 
         return {'FINISHED'}
 
-class SAMaterialPanelSettings(bpy.types.PropertyGroup):
+class SASettings(bpy.types.PropertyGroup):
+
+    author: StringProperty(
+        name="Author",
+        description="The creator of this file",
+        default="",
+        )
+
+    description: StringProperty(
+        name="Description",
+        description="A Description of the file contents",
+        default="",
+        )
+
+
     expandedBASIC: BoolProperty( name="SA1 (BASIC) Material Properties", default=False )
     expandedBMipMap: BoolProperty( name="Mipmap Distance Multiplicator", default=False )
     expandedBTexFilter: BoolProperty( name="Texture Filtering", default=False )
@@ -848,7 +815,7 @@ class SAMaterialPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        menuProps = context.scene.saPMSettings
+        menuProps = context.scene.saSettings
         matProps = context.active_object.active_material.saSettings
 
         layout.prop(menuProps, "expandedBASIC",
@@ -1054,12 +1021,25 @@ class SAMaterialPanel(bpy.types.Panel):
                     icon="BLANK1", emboss = False
                     )
 
+class SAScenePanel(bpy.types.Panel):
+    bl_idname = "SCENE_PT_saProperties"
+    bl_label = "SA file info"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "scene"
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.saSettings
+
+        layout.prop(settings, "author")
+        layout.prop(settings, "description")
+
 def menu_func_strippifyTest(self, context):
     self.layout.operator(StrippifyTest.bl_idname)
 
 def menu_func_exportsa(self, context):
     self.layout.menu("TOPBAR_MT_SA_export")
-
 
 classes = (
     TOPBAR_MT_SA_export,
@@ -1068,31 +1048,28 @@ classes = (
     ExportSA2BMDL,
     ExportSA2BLVL,
     StrippifyTest,
-    SAMaterialPanelSettings,
+    SASettings,
     SAMaterialSettings,
-    SAMaterialPanel
+    SAMaterialPanel,
+    SAScenePanel
     )
 
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     
-    print(type(bpy.types.TOPBAR_MT_file_export))
-
     bpy.types.TOPBAR_MT_file_export.append(menu_func_exportsa)
     bpy.types.VIEW3D_MT_object.append(menu_func_strippifyTest)
 
-    bpy.types.Scene.saPMSettings = bpy.props.PointerProperty(type=SAMaterialPanelSettings)
+    bpy.types.Scene.saSettings = bpy.props.PointerProperty(type=SASettings)
     bpy.types.Material.saSettings = bpy.props.PointerProperty(type=SAMaterialSettings)
 
 def unregister():
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportsa)
     bpy.types.VIEW3D_MT_object.remove(menu_func_strippifyTest)
 
-    del bpy.types.Scene.saPMSettings
-    del bpy.types.Material.saSettings
-
-
+    #del bpy.types.Scene.saSettings
+    #del bpy.types.Material.saSettings
 
     for cls in classes:
         bpy.utils.unregister_class(cls)
