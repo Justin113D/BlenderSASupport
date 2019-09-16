@@ -1,7 +1,6 @@
 # BlenderSA2Support
-An addon for Blender 2.8, which adds exporting options for .sa2mdl, .sa2bmdl, .sa2lvl and .sa2blvl, so that entire SA2 stages can be created inside Blender without needing external stage editors
-
-Still in development, usage unadvised
+An addon for Blender 2.8, which adds exporting options for .sa1mdl, .sa2bmdl, and .sa2blvl, so that entire SA1/2 stages can be created inside Blender without needing external stage editors!
+so far only the sa1mdl exporter is working
 
 How to install:
   1. download the repo as a zip
@@ -11,3 +10,14 @@ How to install:
   5. if the addon didnt appear in the addon list, look up "SA2 Model formats support"
   6. enable the addon
   7. Enjoy!
+
+Usage Guide:
+
+Material editor:
+ Each material will now have an "SA Material Properties" menu, in which you can edit the material properties for the corresponding formats. Hovering above a property will display a description. (material previewing in blender not possible yet)
+ 
+Author and description:
+ In the scene tab of the properties panel, the menu "SA file menu" has been added, which holds the Author and Description, which will be written into the file at export
+ 
+How to export:
+ when ready, you can export 
