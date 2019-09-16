@@ -47,28 +47,113 @@ from bpy_extras.io_utils import (
     axis_conversion,
     )
 
+class TOPBAR_MT_SA_export(bpy.types.Menu):
+    bl_label = "SA Formats"
+    #bl_idname = "export_scene.samenu"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.label(text="Export as...")
+        layout.operator("export_scene.sa1mdl")
+        layout.label(text="SA2 model (.sa2mdl)")
+        #layout.operator("export_scene.sa2mdl")
+        layout.label(text="SA2B model (.sa2bmdl)")
+        #layout.operator("export_scene.sa2bmdl")
+        layout.label(text="SA2B level (.sa2blvl)")
+        #layout.operator("export_scene.sa2blvl")
+
 @orientation_helper(axis_forward='Z', axis_up='Y')    
-class ExportSA2MDL(bpy.types.Operator, ExportHelper):
-    """Export Objects into an SA2 model file"""
-    bl_idname = "export_scene.sa2mdl"
-    bl_label = "Export SA2MDL"
+class ExportSA1MDL(bpy.types.Operator, ExportHelper):
+    """Export Objects into an SA1 model file"""
+    bl_idname = "export_scene.sa1mdl"
+    bl_label = "SA1 model (.sa1mdl)"
     bl_options = {'PRESET', 'UNDO'}
 
-    filename_ext = ".samdl"
+    filename_ext = ".sa1mdl"
 
     filter_glob: StringProperty(
         default="*.sa1mdl;*.sa2mdl;*.sa2bmdl;",
         options={'HIDDEN'},
         )
 
-    export_format: EnumProperty(
-        name="Format",
-        description="The Format in which the models should be exported",
-        items=( ('SA2BMDL', 'SA2BMDL', "The Gamecube SA2 Format (GC)"),
-                ('SA2MDL', 'SA2MDL', "The Default SA2 Format (Chunk)"),
-                ('SA1MDL', 'SA1MDL', "The SA1 Format (BASIC)"),
-            ),
-        default='SA2BMDL',        
+    #export_format: EnumProperty(
+    #    name="Format",
+    #    description="The Format in which the models should be exported",
+    #    items=( ('SA2BMDL', 'SA2BMDL', "The Gamecube SA2 Format (GC)"),
+    #            ('SA2MDL', 'SA2MDL', "The Default SA2 Format (Chunk)"),
+    #            ('SA1MDL', 'SA1MDL', "The SA1 Format (BASIC)"),
+    #        ),
+    #    default='SA2BMDL',        
+    #    )
+
+    global_scale: FloatProperty(
+        name="Scale",
+        min=0.01, max=1000.0,
+        default=1.0,
+        )
+
+    use_selection: BoolProperty(
+        name="Selection Only",
+        description="Export selected objects only",
+        default=False,
+        )
+
+    apply_modifs: BoolProperty(
+        name="Apply Modifiers",
+        description="Apply active viewport modifiers",
+        default=True,
+        )
+
+    author: StringProperty(
+        name="Author",
+        description="The creator of this file",
+        default="",
+        )
+
+    description: StringProperty(
+        name="Description",
+        description="A Description of the file contents",
+        default="",
+        )
+
+    console_debug_output: BoolProperty(
+        name = "Console Output",
+        description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
+        default = True,
+        )
+
+    def execute(self, context):
+        from . import export_sa2mdl
+        from mathutils import Matrix
+        keywords = self.as_keywords(ignore=("global_scale",
+                                    "check_existing",
+                                    "filter_glob",
+                                    "axis_forward",
+                                    "axis_up"
+                                    ))
+        
+        global_matrix = (Matrix.Scale(self.global_scale, 4) @
+                         axis_conversion(to_forward=self.axis_forward,
+                                         to_up=self.axis_up,
+                                         ).to_4x4())
+        
+        keywords["global_matrix"] = global_matrix
+        keywords["export_format"] = 'SA1MDL'
+        return export_sa2mdl.write(context, **keywords)
+
+@orientation_helper(axis_forward='Z', axis_up='Y')    
+class ExportSA2MDL(bpy.types.Operator, ExportHelper):
+    """Export Objects into an SA2 model file"""
+    bl_idname = "export_scene.sa2mdl"
+    bl_label = "SA2 model (.sa2mdl)"
+    bl_options = {'PRESET', 'UNDO'}
+
+    filename_ext = ".sa2bmdl"
+
+    filter_glob: StringProperty(
+        default="*.sa1mdl;*.sa2mdl;*.sa2bmdl;",
+        options={'HIDDEN'},
         )
 
     global_scale: FloatProperty(
@@ -123,28 +208,90 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         
         keywords["global_matrix"] = global_matrix
+        keywords["export_format"] = 'SA2MDL'
         return export_sa2mdl.write(context, **keywords)
 
+@orientation_helper(axis_forward='Z', axis_up='Y')    
+class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
+    """Export Objects into an SA2B model file"""
+    bl_idname = "export_scene.sa2bmdl"
+    bl_label = "SA2B model (.sa2bmdl)"
+    bl_options = {'PRESET', 'UNDO'}
+
+    filename_ext = ".sa2bmdl"
+
+    filter_glob: StringProperty(
+        default="*.sa2bmdl;",
+        options={'HIDDEN'},
+        )
+
+    global_scale: FloatProperty(
+        name="Scale",
+        min=0.01, max=1000.0,
+        default=1.0,
+        )
+
+    use_selection: BoolProperty(
+        name="Selection Only",
+        description="Export selected objects only",
+        default=False,
+        )
+
+    apply_modifs: BoolProperty(
+        name="Apply Modifiers",
+        description="Apply active viewport modifiers",
+        default=True,
+        )
+
+    author: StringProperty(
+        name="Author",
+        description="The creator of this file",
+        default="",
+        )
+
+    description: StringProperty(
+        name="Description",
+        description="A Description of the file contents",
+        default="",
+        )
+
+    console_debug_output: BoolProperty(
+        name = "Console Output",
+        description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
+        default = True,
+        )
+
+    def execute(self, context):
+        from . import export_sa2mdl
+        from mathutils import Matrix
+        keywords = self.as_keywords(ignore=("global_scale",
+                                    "check_existing",
+                                    "filter_glob",
+                                    "axis_forward",
+                                    "axis_up"
+                                    ))
+        
+        global_matrix = (Matrix.Scale(self.global_scale, 4) @
+                         axis_conversion(to_forward=self.axis_forward,
+                                         to_up=self.axis_up,
+                                         ).to_4x4())
+        
+        keywords["global_matrix"] = global_matrix
+        keywords["export_format"] = 'SA2BMDL'
+        return export_sa2mdl.write(context, **keywords)
+
+
 @orientation_helper(axis_forward='Z', axis_up='Y')  
-class ExportSA2LVL(bpy.types.Operator, ExportHelper):
-    """Export scene into an SA2 level file"""
-    bl_idname = "export_scene.sa2lvl"
-    bl_label = "Export SA2MDL"
+class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
+    """Export scene into an SA2B level file"""
+    bl_idname = "export_scene.sa2blvl"
+    bl_label = "SA2B level (.sa2blvl)"
     bl_options = {'PRESET', 'UNDO'}
 
     filter_glob: StringProperty(
         default="*.sa2mdl; *.sa2bmdl;",
         options={'HIDDEN'},
         )
-
-    export_format: EnumProperty(
-        name="Format",
-        description="The Format in which the models should be exported",
-        items=( ('SA2BLVL', 'SA2BLVL', "The Gamecube SA2 Format (GC)"),
-                ('SA2LVL', 'SA2LVL', "The Default SA2 Format (Chunk)"),
-        ),
-        default='SA2BLVL',        
-    )
 
     global_scale: FloatProperty(
         name="Scale",
@@ -180,6 +327,7 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         
         keywords["global_matrix"] = global_matrix
+        keywords["export_format"] = 'SA2BLVL'
         return export_sa2lvl.load(context, **keywords)
 
 class StrippifyTest(bpy.types.Operator):
@@ -906,18 +1054,19 @@ class SAMaterialPanel(bpy.types.Panel):
                     icon="BLANK1", emboss = False
                     )
 
-def menu_func_exportmdl(self, context):
-    self.layout.operator(ExportSA2MDL.bl_idname, text ="SA2 Model format (.sa2mdl/.sa2bmdl)")
-
-def menu_func_exportlvl(self, context):
-    self.layout.operator(ExportSA2LVL.bl_idname, text ="SA2 Level format (.sa2lvl/.sa2blvl)")
-    
 def menu_func_strippifyTest(self, context):
     self.layout.operator(StrippifyTest.bl_idname)
 
+def menu_func_exportsa(self, context):
+    self.layout.menu("TOPBAR_MT_SA_export")
+
+
 classes = (
+    TOPBAR_MT_SA_export,
+    ExportSA1MDL,
     ExportSA2MDL,
-    ExportSA2LVL,
+    ExportSA2BMDL,
+    ExportSA2BLVL,
     StrippifyTest,
     SAMaterialPanelSettings,
     SAMaterialSettings,
@@ -928,16 +1077,16 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     
-    bpy.types.TOPBAR_MT_file_export.append(menu_func_exportmdl)
-    bpy.types.TOPBAR_MT_file_export.append(menu_func_exportlvl)
+    print(type(bpy.types.TOPBAR_MT_file_export))
+
+    bpy.types.TOPBAR_MT_file_export.append(menu_func_exportsa)
     bpy.types.VIEW3D_MT_object.append(menu_func_strippifyTest)
 
     bpy.types.Scene.saPMSettings = bpy.props.PointerProperty(type=SAMaterialPanelSettings)
     bpy.types.Material.saSettings = bpy.props.PointerProperty(type=SAMaterialSettings)
 
 def unregister():
-    bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportmdl)
-    bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportlvl)
+    bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportsa)
     bpy.types.VIEW3D_MT_object.remove(menu_func_strippifyTest)
 
     del bpy.types.Scene.saPMSettings

@@ -25,20 +25,18 @@ def write(context,
    DO = console_debug_output
    common.DO = console_debug_output
 
-   filepath = filepath.split('.')[0]
+   fileW = FileWriter.FileWriter(filepath=filepath)
 
+   #creating file and writing header   
    fileVersion = 3
-   #creating file and writing header
+
    if export_format == 'SA1MDL':
-      fileW = FileWriter.FileWriter(filepath= filepath + ".sa1mdl")
       fileW.wULong(enums.MDLFormatIndicator.SA1MDL.value | (fileVersion << 56))
       debug("Format: SA1MDL V", fileVersion)
    elif export_format == 'SA2MDL':
-      fileW = FileWriter.FileWriter(filepath= filepath + ".sa2mdl")
       fileW.wULong(enums.MDLFormatIndicator.SA2MDL.value | (fileVersion << 56))
       debug("Format: SA2MDL V", fileVersion)
    else: # SA2BMDL
-      fileW = FileWriter.FileWriter(filepath= filepath + ".sa2bmdl")
       fileW.wULong(enums.MDLFormatIndicator.SA2BMDL.value | (fileVersion << 56))
       debug("Format: SA1BMDL V", fileVersion)
 
