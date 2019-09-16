@@ -14,10 +14,10 @@ How to install:
 Usage Guide:
 
 Material editor:
- Each material will now have an "SA Material Properties" menu, in which you can edit the material properties for the corresponding formats. Hovering above a property will display a description. (material previewing in blender not possible yet)
+  Each material will now have an "SA Material Properties" menu, in which you can edit the material properties for the corresponding formats. Hovering above a property will display a description. (material previewing in blender not possible yet)
  
 Author and description:
- In the scene tab of the properties panel, the menu "SA file menu" has been added, which holds the Author and Description, which will be written into the file at export
+  In the scene tab of the properties panel, the menu "SA file menu" has been added, which holds the Author and Description, which will be written into the file at export
  
 How to export:
- when ready, you can export 
+  when ready, you can export through the export menu, in which there is a sub menu called "SA formats", which hosts all of the exportable formats. select one to export the scene
