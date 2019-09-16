@@ -70,7 +70,7 @@ def write(context,
    fileW.wUInt(mdlAddress) # and write the address
    fileW.wUInt(labelsAddress)
    fileW.seek(0,2) # then return back to the end
-
+   
    if DO:
       print(" model address: ", '{:08x}'.format(mdlAddress))
       print(" labels address:", '{:08x}'.format(labelsAddress), "\n") 

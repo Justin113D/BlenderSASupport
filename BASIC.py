@@ -35,10 +35,10 @@ class ColorARGB:
 
     def write(self, fileW):
         """writes data to file"""
-        fileW.wByte(self.a)
-        fileW.wByte(self.r)
-        fileW.wByte(self.g)
         fileW.wByte(self.b)
+        fileW.wByte(self.g)
+        fileW.wByte(self.r)
+        fileW.wByte(self.a)
 
 class Vector3:
     """Point in 3D Space"""
@@ -249,7 +249,9 @@ class PolyVert:
         matCount = len(mesh.materials)
         if matCount == 0:
             matCount = 1
-        meshes = [list()] * matCount
+        meshes = list()
+        for m in range(0, matCount):
+            meshes.append(list())
 
         hasColors = len(mesh.vertex_colors) > 0
         hasUV = len(mesh.uv_layers) > 0
@@ -415,7 +417,7 @@ class MeshSet:
         fileW.wUInt(self.polyNormalAddress)
         fileW.wUInt(self.vColorAddress)
         fileW.wUInt(self.UVAddress)
-        fileW.wUInt(0) # gap
+        #fileW.wUInt(0) # gap
 
 class BoundingBox:
     """Used to calculate the bounding sphere which the game uses"""
@@ -523,7 +525,8 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels):
     # making them strips, each set is for one mesh set
     polyStrips = PolyVert.toStrips(polyVs, True)
     if DO:
-        print(" strips:", sum(len(x) for x in polyStrips))
+        for i,s in enumerate(polyStrips):
+            print(" strip", i, ":", len(s))
 
     #writing the mesh data and getting the mesh sets
     meshSets = [None] * len(polyStrips)

@@ -249,7 +249,6 @@ def convertMesh(obj, depsgraph, apply_modifs):
     if isinstance(obj, bpy.types.Object):
         ob_for_convert = obj.evaluated_get(depsgraph) if apply_modifs else obj.original
         me = ob_for_convert.to_mesh()
-        print(obj.data.name == me.name)
     else:
         me = obj
 

@@ -56,7 +56,7 @@ class TOPBAR_MT_SA_export(bpy.types.Menu):
 
         layout.label(text="Export as...")
         layout.operator("export_scene.sa1mdl")
-        layout.label(text="SA2 model (.sa2mdl)")
+        #layout.label(text="SA2 model (.sa2mdl)")
         #layout.operator("export_scene.sa2mdl")
         layout.label(text="SA2B model (.sa2bmdl)")
         #layout.operator("export_scene.sa2bmdl")
@@ -419,7 +419,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
     b_Diffuse: FloatVectorProperty(
         name = "Diffuse Color",
         description="Color of the material",
-        subtype='COLOR',
+        subtype='COLOR_GAMMA',
         size=4,
         min=0.0, max=1.0,
         default=(1.0, 1.0, 1.0, 1.0),       
@@ -428,7 +428,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
     b_Specular: FloatVectorProperty(
         name = "Specular Color",
         description="Color of the Specular",
-        subtype='COLOR',
+        subtype='COLOR_GAMMA',
         size=4,
         min=0.0, max=1.0,
         default=(1.0, 1.0, 1.0, 1.0),       
@@ -618,7 +618,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
     gc_Diffuse: FloatVectorProperty(
         name = "Diffuse Color",
         description="Color of the material",
-        subtype='COLOR',
+        subtype='COLOR_GAMMA',
         size=4,
         min=0.0, max=1.0,
         default=(1.0, 1.0, 1.0, 1.0),       
