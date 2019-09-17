@@ -16,17 +16,17 @@ def write(context,
          global_matrix,
          console_debug_output
          ):
-   from . import FileWriter, enums, common, BASIC
+   from . import fileWriter, enums, common, format_BASIC
    
    # clear console and enable debug outputs
    os.system("cls")
    global DO
    DO = console_debug_output
    common.DO = DO
-   BASIC.DO = DO
+   format_BASIC.DO = DO
 
    # create the file
-   fileW = FileWriter.FileWriter(filepath=filepath)
+   fileW = fileWriter.FileWriter(filepath=filepath)
    debug("File:", fileW.filepath, "\n")
 
    # creating file and writing header   

@@ -4,7 +4,7 @@ import mathutils
 import struct
 import bpy_extras.io_utils
 
-from . import enums, FileWriter, Strippifier
+from . import enums, fileWriter, strippifier
 
 # note: In sa2's case, the BASIC model format is only used for collisions.
 
@@ -301,7 +301,7 @@ class PolyVert:
 
     def toStrips(polyList, multi):
 
-        Stripf = Strippifier.Strippifier()
+        Stripf = strippifier.Strippifier()
         result = list()
 
         if multi:
@@ -496,7 +496,7 @@ def VertNrmPairs(vertices, exportMatrix):
 
 def WriteMesh(fileW, mesh, exportMatrix, materials, labels):
     """Writes a basic mesh into a temporary file and returns the result """
-    from . import FileWriter, enums
+    from . import fileWriter, enums
     global DO
 
     debug(" Writing BASIC:", mesh.name)

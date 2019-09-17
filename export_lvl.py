@@ -5,8 +5,10 @@ def write(context,
          console_debug_output
          ):
 
-     labels["b_col_material"] = 0x00000010
-     dummyMat = BASIC.Material() 
-     dummyMat.write(tFile)
+    from . import format_BASIC, format_GC
+
+    labels["b_col_material"] = 0x00000010
+    dummyMat = format_BASIC.Material() 
+    dummyMat.write(tFile)
 
     return {'FINISHED'}

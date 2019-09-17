@@ -13,16 +13,18 @@ bl_info = {
 
 if "bpy" in locals():
     import importlib
-    if "export_sa2mdl" in locals():
-        importlib.reload(export_sa2mdl)
-    if "export_sa2lvl" in locals():
-        importlib.reload(export_sa2lvl)
-    if "Strippifier" in locals():
-        importlib.reload(Strippifier)
-    if "BASIC" in locals():
-        importlib.reload(BASIC)
-    if "FileWriter" in locals():
-        importlib.reload(FileWriter)
+    if "export_mdl" in locals():
+        importlib.reload(export_mdl)
+    if "export_lvl" in locals():
+        importlib.reload(export_lvl)
+    if "format_BASIC" in locals():
+        importlib.reload(format_BASIC)
+    if "format_GC" in locals():
+        importlib.reload(format_GC)
+    if "strippifier" in locals():
+        importlib.reload(strippifier)   
+    if "fileWriter" in locals():
+        importlib.reload(fileWriter)
     if "enums" in locals():
         importlib.reload(enums)
     if "common" in locals():
@@ -102,7 +104,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
         )
 
     def execute(self, context):
-        from . import export_sa2mdl
+        from . import export_mdl
         from mathutils import Matrix
         keywords = self.as_keywords(ignore=("global_scale",
                                     "check_existing",
@@ -118,7 +120,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
         
         keywords["global_matrix"] = global_matrix
         keywords["export_format"] = 'SA1MDL'
-        return export_sa2mdl.write(context, **keywords)
+        return export_mdl.write(context, **keywords)
 
 @orientation_helper(axis_forward='Z', axis_up='Y')    
 class ExportSA2MDL(bpy.types.Operator, ExportHelper):
@@ -159,7 +161,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         )
 
     def execute(self, context):
-        from . import export_sa2mdl
+        from . import export_mdl
         from mathutils import Matrix
         keywords = self.as_keywords(ignore=("global_scale",
                                     "check_existing",
@@ -175,7 +177,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         
         keywords["global_matrix"] = global_matrix
         keywords["export_format"] = 'SA2MDL'
-        return export_sa2mdl.write(context, **keywords)
+        return export_mdl.write(context, **keywords)
 
 @orientation_helper(axis_forward='Z', axis_up='Y')    
 class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
@@ -216,7 +218,7 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
         )
 
     def execute(self, context):
-        from . import export_sa2mdl
+        from . import export_mdl
         from mathutils import Matrix
         keywords = self.as_keywords(ignore=("global_scale",
                                     "check_existing",
@@ -232,7 +234,7 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
         
         keywords["global_matrix"] = global_matrix
         keywords["export_format"] = 'SA2BMDL'
-        return export_sa2mdl.write(context, **keywords)
+        return export_mdl.write(context, **keywords)
 
 @orientation_helper(axis_forward='Z', axis_up='Y')  
 class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
@@ -265,7 +267,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         )
     
     def execute(self, context):
-        from . import export_sa2lvl
+        from . import export_lvl
         from mathutils import Matrix
         keywords = self.as_keywords(ignore=("global_scale",
                                     "check_existing",
@@ -281,7 +283,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         
         keywords["global_matrix"] = global_matrix
         keywords["export_format"] = 'SA2BLVL'
-        return export_sa2lvl.load(context, **keywords)
+        return export_lvl.write(context, **keywords)
 
 class StrippifyTest(bpy.types.Operator):
     bl_idname = "object.strippifytest"
@@ -349,8 +351,8 @@ class StrippifyTest(bpy.types.Operator):
                 indexList[i * 3 + j] = oIDtodID[me.loops[li].vertex_index]
 
         # strippifying it
-        from . import Strippifier
-        stripf = Strippifier.Strippifier()
+        from . import strippifier
+        stripf = strippifier.Strippifier()
         indexStrips = stripf.Strippify(indexList, doSwaps = self.doSwaps, concat = self.doConcat)
 
 

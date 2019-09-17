@@ -1,5 +1,5 @@
 import bpy
-from . import FileWriter, enums
+from . import fileWriter, enums
 
 DO = False # Debug Out
 
@@ -255,20 +255,20 @@ def convertMesh(obj, depsgraph, apply_modifs):
     trianglulateMesh(me)
     return me
 
-def writeBASICMaterialData(fileW: FileWriter.FileWriter, materials, labels: dict):
-    from . import BASIC
+def writeBASICMaterialData(fileW: fileWriter.FileWriter, materials, labels: dict):
+    from . import format_BASIC
 
     mats = list()
 
     if len(materials) == 0:
         labels["mat_default"] = fileW.tell()
-        bMat = BASIC.Material()
+        bMat = format_BASIC.Material()
         bMat.write(fileW)
         mats.append(bMat)
     else:
         for m in materials:
             labels["mat_" + m.name] = fileW.tell()
-            bMat = BASIC.Material(name=m.name, material=m)
+            bMat = format_BASIC.Material(name=m.name, material=m)
             bMat.write(fileW)
             mats.append(bMat)
 
@@ -282,14 +282,14 @@ def writeBASICMaterialData(fileW: FileWriter.FileWriter, materials, labels: dict
             print("   texture ID:", m.textureID)
             print("   flags:", m.mFlags, "\n---- \n")
 
-def writeBASICMeshData( fileW: FileWriter.FileWriter,
+def writeBASICMeshData( fileW: fileWriter.FileWriter,
                         meshes,
                         global_matrix,
                         materials,
                         labels: dict):
-    from . import BASIC
+    from . import format_BASIC
     for m in meshes:
-        BASIC.WriteMesh(fileW, m, global_matrix, materials, labels)
+        format_BASIC.WriteMesh(fileW, m, global_matrix, materials, labels)
 
 def getObjData(objects, noParents, global_matrix,  labels):
     saObjects = list()
@@ -314,7 +314,7 @@ def getObjData(objects, noParents, global_matrix,  labels):
 
     return saObjects
 
-def writeMethaData(fileW: FileWriter.FileWriter,
+def writeMethaData(fileW: fileWriter.FileWriter,
                    labels: dict,
                    scene: bpy.types.Scene,
                    ):
