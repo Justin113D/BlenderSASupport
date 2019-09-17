@@ -62,6 +62,7 @@ class TOPBAR_MT_SA_export(bpy.types.Menu):
         #layout.operator("export_scene.sa2mdl")
         layout.label(text="SA2B model (.sa2bmdl)")
         #layout.operator("export_scene.sa2bmdl")
+        layout.operator("export_scene.sa1lvl")
         layout.label(text="SA2B level (.sa2blvl)")
         #layout.operator("export_scene.sa2blvl")
 
@@ -237,6 +238,64 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
         return export_mdl.write(context, **keywords)
 
 @orientation_helper(axis_forward='Z', axis_up='Y')  
+class ExportSA1LVL(bpy.types.Operator, ExportHelper):
+    """Export scene into an SA1 level file"""
+    bl_idname = "export_scene.sa1lvl"
+    bl_label = "SA1 level (.sa1lvl)"
+    bl_options = {'PRESET', 'UNDO'}
+
+    filename_ext = ".sa1lvl"
+
+    filter_glob: StringProperty(
+        default="*.sa2mdl; *.sa2bmdl;",
+        options={'HIDDEN'},
+        )
+
+    global_scale: FloatProperty(
+        name="Scale",
+        min=0.01, max=1000.0,
+        default=1.0,
+        )
+
+    use_selection: BoolProperty(
+        name="Selection Only",
+        description="Export selected objects only",
+        default=False,
+        )
+
+
+    apply_modifs: BoolProperty(
+        name="Apply Modifiers",
+        description="Apply active viewport modifiers",
+        default=True,
+        )
+
+    console_debug_output: BoolProperty(
+        name = "Console Output",
+        description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
+        default = True,
+        )
+    
+    def execute(self, context):
+        from . import export_lvl
+        from mathutils import Matrix
+        keywords = self.as_keywords(ignore=("global_scale",
+                                    "check_existing",
+                                    "filter_glob",
+                                    "axis_forward",
+                                    "axis_up",
+                                    ))
+        
+        global_matrix = (Matrix.Scale(self.global_scale, 4) @
+                         axis_conversion(to_forward=self.axis_forward,
+                                         to_up=self.axis_up,
+                                         ).to_4x4())
+        
+        keywords["global_matrix"] = global_matrix
+        keywords["export_format"] = 'SA1LVL'
+        return export_lvl.write(context, **keywords)
+
+@orientation_helper(axis_forward='Z', axis_up='Y')  
 class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
     """Export scene into an SA2B level file"""
     bl_idname = "export_scene.sa2blvl"
@@ -385,6 +444,87 @@ class StrippifyTest(bpy.types.Operator):
 
 
         return {'FINISHED'}
+
+#property groups
+class SAObjectSettings(bpy.types.PropertyGroup):
+    """Menu to edit the surface flags of a COL"""
+    isCollision: BoolProperty(
+        name="Is Collision",
+        description="Whether the object can be collided with at all. \n Also determines whether the mesh is invisible in sa2",
+        default=False
+        )
+
+    solid: BoolProperty(
+        name="Solid",
+        description="Whether the character can collide with the model",
+        default=True
+        )
+    
+    water: BoolProperty(
+        name="Water",
+        description="The model will act like water",
+        default=False
+        )
+    
+    noFriction: BoolProperty(
+        name="No friction",
+        description="Whether the model has friction",
+        default=False
+        )
+    
+    noAcceleration: BoolProperty(
+        name="no acceleration",
+        description="If the acceleration of the character should stay when interacting with the model",
+        default=False
+        )
+
+    cannotLand: BoolProperty(
+        name="Cannot land",
+        description="Whether you can stand on the model",
+        default=False
+        )
+
+    increasedAcceleration: BoolProperty(
+        name="Increased acceleration",
+        description="Whether the acceleration of the character should be raised when interacting with the model",
+        default=False
+        )        
+
+    diggable: BoolProperty(
+        name="Diggable",
+        description="Whether the treasure hunter characters can dig on the models surface",
+        default=False
+        )
+
+    unclimbable: BoolProperty(
+        name="Unclimbable",
+        description="Whether the treasure hunter characters can climb on the models surface",
+        default=False
+        )
+
+    hurt: BoolProperty(
+        name="Hurt",
+        description="The character will take damage when coming in contact with this model",
+        default=False
+        )
+
+    footprints: BoolProperty(
+        name="Footprints",
+        description="The character will leave footprints behind when walking on this models surface",
+        default=False
+        )
+
+    isVisible: BoolProperty(
+        name="isVisible",
+        description="Whether the model is Visible (only matters in sa1)",
+        default=False
+        )
+
+    userFlags: IntProperty(
+        name="User flags",
+        description="User determined flags (for experiments, otherwise usage is unadvised)",
+        default=0
+        )
 
 class SASettings(bpy.types.PropertyGroup):
 
@@ -803,6 +943,49 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         default='DST'
         )    
 
+#panels
+class SAObjectPanel(bpy.types.Panel):
+    bl_idname = "OBJECT_PT_saProperties"
+    bl_label = "SA Material Properties"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "object"
+
+    @classmethod
+    def poll(self, context):
+        return context.active_object.type == 'MESH'
+
+    def draw(self, context):
+        layout = self.layout
+        objProps = context.active_object.saSettings
+
+        layout.prop(objProps, "isCollision")
+
+        if objProps.isCollision:
+            box = layout.box()
+            box.label(text="Collision Surface Flags")
+
+            box.prop(objProps, "isVisible")
+            box.prop(objProps, "solid")
+            box.prop(objProps, "water")
+
+            box.separator(factor=0.5)
+            box.label(text="Working in sa1 only:")
+            box.prop(objProps, "noFriction")
+            box.prop(objProps, "noAcceleration")
+            box.prop(objProps, "cannotLand")
+            box.prop(objProps, "increasedAcceleration")
+            box.prop(objProps, "diggable")
+            box.prop(objProps, "unclimbable")
+            box.prop(objProps, "hurt")
+            box.prop(objProps, "footprints")
+        
+        layout.separator()
+        layout.label(text="Experimental")
+        split = layout.split()
+        split.label(text="User flags")
+        split.prop(objProps, "userFlags", text="")
+
 class SAMaterialPanel(bpy.types.Panel):
     bl_idname = "MATERIAL_PT_saProperties"
     bl_label = "SA Material Properties"
@@ -1048,10 +1231,13 @@ classes = (
     ExportSA1MDL,
     ExportSA2MDL,
     ExportSA2BMDL,
+    ExportSA1LVL,
     ExportSA2BLVL,
     StrippifyTest,
+    SAObjectSettings,
     SASettings,
     SAMaterialSettings,
+    SAObjectPanel,
     SAMaterialPanel,
     SAScenePanel
     )
@@ -1064,14 +1250,12 @@ def register():
     bpy.types.VIEW3D_MT_object.append(menu_func_strippifyTest)
 
     bpy.types.Scene.saSettings = bpy.props.PointerProperty(type=SASettings)
+    bpy.types.Object.saSettings = bpy.props.PointerProperty(type=SAObjectSettings)
     bpy.types.Material.saSettings = bpy.props.PointerProperty(type=SAMaterialSettings)
 
 def unregister():
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportsa)
     bpy.types.VIEW3D_MT_object.remove(menu_func_strippifyTest)
-
-    #del bpy.types.Scene.saSettings
-    #del bpy.types.Material.saSettings
 
     for cls in classes:
         bpy.utils.unregister_class(cls)

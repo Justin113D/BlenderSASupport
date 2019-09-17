@@ -56,14 +56,11 @@ def write(context,
       # writing material data first
       common.writeBASICMaterialData(fileW, materials, labels) 
       # then writing mesh data
-      common.writeBASICMeshData( fileW,
-                                 meshes,
-                                 global_matrix,
-                                 materials,
-                                 labels )
+      for m in meshes:
+         format_BASIC.WriteMesh(fileW, m, global_matrix, materials, labels)
 
    saObjects = common.getObjData(objects, noParents, global_matrix,  labels)
-   mdlAddress = common.saObject.writeObjList(fileW, saObjects, labels)
+   mdlAddress = common.saObject.writeObjList(fileW, saObjects, labels, False)
 
    labelsAddress = fileW.tell()
    fileW.seek(8, 0) # go to the location of the model properties addrees

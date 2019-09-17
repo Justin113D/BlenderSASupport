@@ -37,8 +37,23 @@ class ObjectFlags(Flag):
     NoAnimate = 0x40
     NoMorph = 0x80
 
-class SurfaceFlags(Flag):
-    """Surface interaction Flags for landtable COL"""
+class SA1SurfaceFlags(Flag):
+    """Surface interaction Flags for SA1 landtable COL"""
+    null = 0x0
+    Solid = 0x1
+    Water = 0x2
+    NoFriction = 0x4
+    NoAcceleration = 0x8
+    CannotLand = 0x40
+    IncreasedAcceleration = 0x80
+    Diggable = 0x100
+    Unclimbable = 0x1000
+    Hurt = 0x10000
+    Footprints = 0x100000
+    Visible = 0x80000000
+
+class SA2SurfaceFlags(Flag):
+    """Surface interaction Flags for SA2 landtable COL"""
     null = 0x00
     Solid = 0x01
     Water = 0x02

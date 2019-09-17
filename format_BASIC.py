@@ -232,7 +232,7 @@ class PolyVert:
         self.vColor = vColor
         self.uv = uv
 
-    def collisionFromLoops(mesh, IDTransl):
+    def collisionFromLoops(mesh):
         """creates a poly list (triangle list) from a mesh"""
         polys = [None] * len(mesh.polygons) * 3
         for fi, f in enumerate(mesh.polygons):
@@ -243,7 +243,7 @@ class PolyVert:
                 #creating a polyVert with only the poly index, since we only need that for collisions
                 polys[fi + i] = PolyVert(vIndex)
                 
-        return polys
+        return [ polys ]
 
     def fromLoops(mesh: bpy.types.Mesh):
         matCount = len(mesh.materials)
@@ -333,7 +333,7 @@ class PolyVert:
 
         return result
 
-    def write(fileW, materialID, polyList):
+    def write(fileW, materialID, polyList, isCollision = False):
         """Writes a single mesh to the file
         
         returns a mesh set
@@ -350,7 +350,7 @@ class PolyVert:
 
         # poly normal address
         polyNormalAddress = 0
-        if polyList[0][0].polyNormal is not None:
+        if polyList[0][0].polyNormal is not None and not isCollision:
             polyNormalAddress = fileW.tell()
             for s in polyList:
                 for p in s:
@@ -358,7 +358,7 @@ class PolyVert:
 
         #vertex color
         vColorAddress = 0
-        if polyList[0][0].vColor is not None:      
+        if polyList[0][0].vColor is not None and not isCollision:      
             vColorAddress = fileW.tell()              
             for s in polyList:
                 for p in s:
@@ -366,7 +366,7 @@ class PolyVert:
 
         #uv map
         UVAddress = 0
-        if polyList[0][0].uv is not None:
+        if polyList[0][0].uv is not None and not isCollision:
             UVAddress = fileW.tell()            
             for s in polyList:
                 for p in s:
@@ -494,7 +494,7 @@ def VertNrmPairs(vertices, exportMatrix):
 
     return entries
 
-def WriteMesh(fileW, mesh, exportMatrix, materials, labels):
+def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False):
     """Writes a basic mesh into a temporary file and returns the result """
     from . import fileWriter, enums
     global DO
@@ -520,9 +520,21 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels):
         v[1].write(fileW)
 
     # creating the loops (as an index list)
-    polyVs = PolyVert.fromLoops(mesh)
+
+    if isCollision:
+        polyVs = PolyVert.fromLoops(collisionFromLoops)
+    else:
+        polyVs = PolyVert.fromLoops(mesh)
 
     # making them strips, each set is for one mesh set
+    materialLength = len(materials)
+    if materialLength < 2:
+        polyT = list()
+        for p in polyVs:
+            polyT.extend(p)
+        polyVs = [polyT]
+
+
     polyStrips = PolyVert.toStrips(polyVs, True)
     if DO:
         for i,s in enumerate(polyStrips):
@@ -530,9 +542,8 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels):
 
     #writing the mesh data and getting the mesh sets
     meshSets = [None] * len(polyStrips)
-    materialLength = len(materials) if len(materials) > 0 else 1
 
-    if materialLength == 1:
+    if materialLength == 0:
         for i, p in enumerate(polyStrips):
             meshSets[i] = PolyVert.write(fileW, 0, p)
     else:

@@ -1,14 +1,143 @@
+DO = False # Debug out
+
+def debug(*string):
+    global DO
+    if DO:
+        print(*string)
+
 def write(context, 
          filepath, *, 
+         export_format,
+         use_selection,
          apply_modifs,
          global_matrix,
          console_debug_output
          ):
+     import os
+     from . import fileWriter, enums, common, format_BASIC, format_GC
+     
+     # clear console and enable debug outputs
+     os.system("cls")
+     global DO
+     DO = console_debug_output
+     common.DO = DO
+     format_BASIC.DO = DO
 
-    from . import format_BASIC, format_GC
+     # create the file
+     fileW = fileWriter.FileWriter(filepath=filepath)
+     debug("File:", fileW.filepath, "\n")
 
-    labels["b_col_material"] = 0x00000010
-    dummyMat = format_BASIC.Material() 
-    dummyMat.write(tFile)
+     # creating file and writing header   
+     fileVersion = 3
+     if export_format == 'SA1LVL':
+          fileW.wULong(enums.LVLFormatIndicator.SA1LVL.value | (fileVersion << 56))
+          debug("Format: SA1LVL V", fileVersion)
+     elif export_format == 'SA2LVL':
+          fileW.wULong(enums.LVLFormatIndicator.SA2LVL.value | (fileVersion << 56))
+          debug("Format: SA2LVL V", fileVersion)
+     else: # SA2BLVL
+          fileW.wULong(enums.LVLFormatIndicator.SA2BLVL.value | (fileVersion << 56))
+          debug("Format: SA2BLVL V", fileVersion)
 
-    return {'FINISHED'}
+     fileW.wUInt(0) # placeholder for the landtable address
+     fileW.wUInt(0) # placeholder for the labels address
+     
+     labels = dict()
+
+     # creating and getting variables to use in the export process
+     if export_format == 'SA1LVL':
+          #the sa1 format doesnt need to seperate between collision and visual meshes
+          objects, noParents, meshes, materials = common.evaluateObjectsToWrite(use_selection, apply_modifs, context)
+
+          common.writeBASICMaterialData(fileW, materials, labels) 
+          # then writing mesh data
+          for m in meshes:
+               format_BASIC.WriteMesh(fileW, m, global_matrix, materials, labels)     
+
+     else:
+          #writing the collision material, just to be sure
+          colMat = format_BASIC.Material()
+          labels["col_material"] = 0x00000010
+          colMat.write(fileW)
+
+          objects, noParents, cMeshes, vMeshes, materials, cObjects, vObjects = common.evaluateObjectsToWrite(use_selection, apply_modifs, context, lvlFmt='SA1')
+          if objects == {'FINISHED'}:
+               return {'FINISHED'}
+
+          #writing the collision meshes
+          for m in cMeshes:
+               format_BASIC.WriteMesh(fileW, cMeshes, global_matrix, [], labels, isCollision=True)
+
+          #writing visual meshes
+          if export_format == 'SA2LVL':
+               print("not supported rn")
+          else:
+               common.writeGCMeshData(fileW, vMeshes, global_matrix, labels)
+     
+
+
+     saObjects = common.getObjData(objects, noParents, global_matrix, labels, isLvl = True)
+     common.saObject.writeObjList(fileW, saObjects, labels, True)
+
+     #write COLs
+     COLaddress = fileW.tell()
+
+     if export_format == 'SA1LVL':
+          for o in objects:
+               labels["col_" + o.name] = fileW.tell()
+               col = common.COL(o, labels, True)
+               col.write(fileW, True)
+     else:
+          for o in vObjects:
+               labels["col_" + o.name] = fileW.tell()
+               col = common.COL(o, labels, False)
+               col.write(fileW, False)
+          for o in cObjects:
+               labels["col_" + o.name] = fileW.tell()
+               col = common.COL(o, labels, False)
+               col.write(fileW, False)
+
+     texFileNameAddr = fileW.tell()
+     #write texture filename
+     if export_format == 'SA1LVL':
+          texFileName =  os.path.splitext(filepath)[0] + ".gvm"
+     else:
+          texFileName =  os.path.splitext(filepath)[0] + ".pak"
+     fileW.wString(texFileName)
+
+     fileW.align(4)
+
+     landTableAddress = fileW.tell()
+
+     #landtable info
+     fileW.wUShort(len(objects)) # COL count
+     if export_format == 'SA1LVL':
+          fileW.wUShort(0) # anim count (unused rn)
+          fileW.wUInt(8) # landtable flags - 8 says that PVM/GVM's should be used
+          fileW.wFloat(0) # unknown1
+          fileW.wUInt(COLaddress) # geometry address
+          fileW.wUInt(0) # animation address (unused rn)
+          fileW.wUInt(texFileNameAddr) # texture file name address
+          fileW.wUInt(0) # texture list pointer, has to be handled by mod
+          fileW.wFloat(0) # unknown2
+          fileW.wFloat(0) # unknown3
+     else:
+          fileW.wUShort(len(vObjects)) # visual col count
+          fileW.wULong(0) # gap
+          fileW.wFloat(0) # unknown1
+          fileW.wUInt(COLaddress) # geometry address
+          fileW.wUInt(0) # animation address (unused rn)
+          fileW.wUInt(0) # (texFileNameAddr) texture file name address
+          fileW.wUInt(0) # texture list pointer, has to be handled by mod
+
+     labelsAddress = fileW.tell()
+     fileW.seek(8, 0) # go to the location of the model properties addrees
+     fileW.wUInt(landTableAddress) # and write the address
+     fileW.wUInt(labelsAddress)
+     fileW.seek(0,2) # then return back to the end      
+
+     common.writeMethaData(fileW, labels, context.scene)
+
+     fileW.close()
+
+     return {'FINISHED'}
