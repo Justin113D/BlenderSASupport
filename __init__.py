@@ -76,7 +76,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
     filename_ext = ".sa1mdl"
 
     filter_glob: StringProperty(
-        default="*.sa1mdl;*.sa2mdl;*.sa2bmdl;",
+        default="*.sa1mdl;",
         options={'HIDDEN'},
         )
 
@@ -133,7 +133,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
     filename_ext = ".sa2bmdl"
 
     filter_glob: StringProperty(
-        default="*.sa1mdl;*.sa2mdl;*.sa2bmdl;",
+        default="*.sa2mdl;",
         options={'HIDDEN'},
         )
 
@@ -247,7 +247,7 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
     filename_ext = ".sa1lvl"
 
     filter_glob: StringProperty(
-        default="*.sa2mdl; *.sa2bmdl;",
+        default="*.sa1lvl;",
         options={'HIDDEN'},
         )
 
@@ -303,7 +303,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
     bl_options = {'PRESET', 'UNDO'}
 
     filter_glob: StringProperty(
-        default="*.sa2mdl; *.sa2bmdl;",
+        default="*.sa2blvl;",
         options={'HIDDEN'},
         )
 
@@ -577,10 +577,10 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         )
 
     b_Exponent: FloatProperty(
-        name = "Specular Strength",
-        description= "Specular strength on the material",
-        default=1.0,
-        min = 0
+        name = "Specularity",
+        description= "Specular Precision on the material",
+        default=11.0,
+        min = 0, max = 11
         )
 
     b_TextureID: IntProperty(
@@ -632,7 +632,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
                 ('TRILINEAR', 'Trilinear', "Trilinear Filtering"),
                 ('BLEND', 'Blend', "Bi- and Trilinear Filtering blended together")
             ),
-        default='NONE'
+        default='BILINEAR'
         )
 
     # uv properties

@@ -280,7 +280,7 @@ class PolyVert:
         """Takes a list of PolyVerts and returns a distinct list"""
         distinct = list()
         oIDtodID = [0] * len(polyList)
-
+        
         checkPNRM = polyList[0].polyNormal is not None
         checkVC = polyList[0].vColor is not None
         checkUV = polyList[0].uv is not None
@@ -306,6 +306,9 @@ class PolyVert:
 
         if multi:
             for l in polyList:
+                if len(l) == 0:
+                    result.append(None)
+                    continue
                 distPoly = PolyVert.distinct(l)
                 stripIndices = Stripf.Strippify(distPoly[1], doSwaps=False, concat=False)
 
@@ -538,18 +541,23 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
     polyStrips = PolyVert.toStrips(polyVs, True)
     if DO:
         for i,s in enumerate(polyStrips):
-            print(" strip", i, ":", len(s))
+            if s is not None:
+                print(" strip", i, ":", len(s))
 
     #writing the mesh data and getting the mesh sets
-    meshSets = [None] * len(polyStrips)
+    meshSets = list() #[None] * len(polyStrips)
 
     if materialLength == 0:
-        for i, p in enumerate(polyStrips):
-            meshSets[i] = PolyVert.write(fileW, 0, p)
+        for p in polyStrips:
+            if p == None:
+                continue
+            meshSets.append(PolyVert.write(fileW, 0, p))
     else:
         for i, p in enumerate(polyStrips):
+            if p == None:
+                continue
             matID = materials.index(mesh.materials[i])
-            meshSets[i] = PolyVert.write(fileW, matID, p)
+            meshSets.append(PolyVert.write(fileW, matID, p))
 
     # writing the mesh sets
     meshSetAddress = fileW.tell()
