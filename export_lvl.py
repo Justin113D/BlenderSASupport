@@ -85,16 +85,16 @@ def write(context,
      if export_format == 'SA1LVL':
           for o in objects:
                labels["col_" + o.name] = fileW.tell()
-               col = common.COL(o, labels, True)
+               col = common.COL(o, global_matrix, labels, True)
                col.write(fileW, True)
      else:
           for o in vObjects:
                labels["col_" + o.name] = fileW.tell()
-               col = common.COL(o, labels, False)
+               col = common.COL(o, global_matrix, labels, False)
                col.write(fileW, False)
           for o in cObjects:
                labels["col_" + o.name] = fileW.tell()
-               col = common.COL(o, labels, False)
+               col = common.COL(o, global_matrix, labels, False)
                col.write(fileW, False)
 
      texFileNameAddr = fileW.tell()

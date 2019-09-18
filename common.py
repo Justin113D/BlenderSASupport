@@ -1,5 +1,7 @@
 import bpy
 from . import fileWriter, enums
+import math
+import mathutils
 
 DO = False # Debug Out
 
@@ -14,6 +16,10 @@ class Vector3:
         self.x = x
         self.y = y
         self.z = z
+
+    def toMathutils(self):
+        import mathutils
+        return mathutils.Vector((self.x, self.y, self.z))
 
     def distanceFromCenter(self):
         return (self.x * self.x + self.y * self.y + self.z * self.z)**(0.5)
@@ -33,16 +39,16 @@ class BAMSRotation:
     y = 0
     z = 0
 
-    def __init__(self, x: float = 0, y: float = 0, z: float = 0):
-        self.x = BAMSRotation.DegToBAMS(x)
-        self.y = BAMSRotation.DegToBAMS(y)
-        self.z = BAMSRotation.DegToBAMS(z)
+    def __init__(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        self.x = BAMSRotation.RadToBAMS(x)
+        self.y = BAMSRotation.RadToBAMS(y)
+        self.z = BAMSRotation.RadToBAMS(z)
 
 
-    def DegToBAMS(v):
-        return round(v * (65536 / 360.0))
+    def RadToBAMS(v):
+        return round((math.degrees(v) / 360.0) * 0xFFFF)
 
-    def BAMSToDeg(v):
+    def BAMSToRad(v):
         return v / (65536 / 360.0)
 
     def write(self, fileW):
@@ -52,7 +58,7 @@ class BAMSRotation:
         fileW.wInt(self.z)
 
     def __str__(self):
-        return "(" + str(self.x) + ", " + str(self.y) + ", " + str(self.z) + ")"
+        return "(" + '{:04x}'.format(self.x) + ", " + '{:04x}'.format(self.y) + ", " + '{:04x}'.format(self.z) + ")"
 
 class saObject:
 
@@ -123,8 +129,7 @@ class saObject:
         else:
             child = None
 
-        obj_mat = bObject.matrix_world @ global_matrix
-
+        obj_mat = global_matrix @ bObject.matrix_world
         meshname = None
         if bObject.type == 'MESH':
             meshname = bObject.data.name
@@ -133,7 +138,7 @@ class saObject:
                        meshname=meshname, 
                        # flags will be set later
                        pos= obj_mat.translation,
-                       rot= obj_mat.to_euler(),
+                       rot= obj_mat.to_euler('XYZ'),
                        scale= obj_mat.to_scale(),
                        child= child,
                        sibling= sibling,
@@ -179,6 +184,54 @@ class saObject:
             print(" --" * o.hierarchyLvl, o.name)
         print("\n---- \n")
 
+class BoundingBox:
+    """Used to calculate the bounding sphere which the game uses"""
+
+    x = 0
+    xn = 0
+    y = 0
+    yn = 0
+    z = 0
+    zn = 0
+
+    def __init__(self):
+        self.x = 0
+        self.xn = 0
+        self.y = 0
+        self.yn = 0
+        self.z = 0
+        self.zn = 0
+
+    def checkUpdate(self, point):
+        if self.x < point.x:
+            self.x = point.x
+        elif self.xn > point.x:
+            self.xn = point.x
+
+        if self.y < point.y:
+            self.y = point.y
+        elif self.yn > point.y:
+            self.yn = point.y
+
+        if self.z < point.z:
+            self.z = point.z
+        elif self.zn > point.z:
+            self.zn = point.z
+
+    def center(p1, p2):
+        return (p1 + p2) / 2.0
+
+    def getBoundingSphere(self):
+        bs = [None] * 2
+        bs[0] = Vector3(BoundingBox.center(self.x,self.xn), 
+                        BoundingBox.center(self.y,self.yn), 
+                        BoundingBox.center(self.z,self.zn) )
+        xd = abs(self.x - self.xn)
+        yd = abs(self.y - self.yn)
+        zd = abs(self.z - self.zn)
+        bs[1] = max(xd, yd, zd) / 2.0
+        return bs
+
 class COL:
     unknown1 = 0
     mdlAddress = 0
@@ -186,20 +239,26 @@ class COL:
     unknown3 = 0
     flags = enums.SA1SurfaceFlags.null
 
-    def __init__(self, bObject, labels, sa1):
+    def __init__(self, bObject, global_matrix, labels, sa1):
         self.name = bObject.name
         # placeholders to test
-        self.boundC = [0,0,0]
-        self.boundR = 1
+        self.bounds = BoundingBox()
         self.unknown1 = 0
-        if bObject.type == 'MESH':
-            self.mdlAddress = labels["o_" + bObject.name]
-        else:
-            self.mdlAddress = 0
         self.unknown2 = 0
         self.unknown3 = 0
 
-        
+        if bObject.type == 'MESH':
+            self.mdlAddress = labels["o_" + bObject.name]
+            self.bounds = getBounds(bObject.data)
+
+            bc = self.bounds[0].toMathutils()
+            bc += bObject.location
+            bc = global_matrix @ bc
+
+            self.bounds[0] = Vector3(bc.x, bc.y, bc.z)
+        else:
+            self.mdlAddress = 0
+
 
         if bObject.type == 'MESH':
             props = bObject.saSettings
@@ -241,13 +300,17 @@ class COL:
                     self.flags = enums.SA2SurfaceFlags.Visible
 
     def write(self, fileW, sa1):
-        fileW.wFloat(0)
-        fileW.wFloat(0)
-        fileW.wFloat(0)
-        fileW.wFloat(1)
+        if self.mdlAddress == 0:
+            fileW.wFloat(0)
+            fileW.wFloat(0)
+            fileW.wFloat(0)
+            fileW.wFloat(0)
+        else:
+            self.bounds[0].write(fileW)
+            fileW.wFloat(self.bounds[1])
         if sa1:
             fileW.wUInt(self.unknown1)
-            fileW.wUInt(self.unknown2)            
+            fileW.wUInt(self.unknown2)
             fileW.wUInt(self.mdlAddress)
         else:
             fileW.wUInt(self.mdlAddress)            
@@ -259,7 +322,17 @@ class COL:
             print(" COL:", self.name)
             print("   mdl address:", '{:08x}'.format(self.mdlAddress))
             print("   surface flags:", self.flags)
+            print("   Bounds:", str(self.bounds[0]), ", ", self.bounds[1])
             print("---- \n")
+
+def getBounds(mesh: bpy.types.Mesh):
+    """Calculates the bounds of a mesh"""
+    bounds = BoundingBox()
+
+    for v in mesh.vertices:
+        bounds.checkUpdate(v.co)
+    
+    return bounds.getBoundingSphere()
 
 def getMeshesFromObjects(objects, depsgraph, apply_modifs):
     #checking which meshes are in the objects at all

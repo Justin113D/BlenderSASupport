@@ -73,9 +73,9 @@ class UV:
     x = 0
     y = 0
 
-    def __init__(self, uv = [0,0]):
+    def __init__(self, uv = [0.0,0.0]):
         self.x = round(uv[0] * 255)
-        self.y = round(uv[1] * 255)
+        self.y = round((1-uv[1]) * 255)
 
     def isIdentical(self, other):
         return self.x == other.x and self.y == other.y
@@ -83,7 +83,7 @@ class UV:
     def write(self, fileW):
         """Writes data to file"""
         fileW.wShort(self.x)
-        fileW.wShort(self.x)
+        fileW.wShort(self.y)
 
 class Material:
     """Material of a mesh"""
@@ -487,8 +487,8 @@ def VertNrmPairs(vertices, exportMatrix):
 
     # putting them in pairs first, so that comparing is easier
     for i, v in enumerate(vertices):
-        pos = exportMatrix @ v.co
-        nrm = exportMatrix @ v.normal
+        pos = v.co #exportMatrix @ v.co
+        nrm = v.normal #exportMatrix @ v.normal
         e = [Vector3(pos.x, pos.y, pos.z), Vector3(nrm.x, nrm.y, nrm.z)]
         entries[i] = e
 
