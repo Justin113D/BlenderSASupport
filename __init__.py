@@ -540,6 +540,11 @@ class SASettings(bpy.types.PropertyGroup):
         default="",
         )
 
+    texListPointer: StringProperty(
+        name="Texture List Pointer (hex)",
+        description="Used for when replacing a stage and its textures",
+        default="0"
+        )
 
     expandedBASIC: BoolProperty( name="SA1 (BASIC) Material Properties", default=False )
     expandedBMipMap: BoolProperty( name="Mipmap Distance Multiplicator", default=False )
@@ -1219,6 +1224,13 @@ class SAScenePanel(bpy.types.Panel):
 
         layout.prop(settings, "author")
         layout.prop(settings, "description")
+
+        split = layout.split(factor=0.3)
+        split.label(text="TexListPtr (hex):")
+        split = split.split(factor=0.1)
+        split.alignment='RIGHT'
+        split.label(text="0x")
+        split.prop(settings, "texListPointer", text="")
 
 def menu_func_strippifyTest(self, context):
     self.layout.operator(StrippifyTest.bl_idname)

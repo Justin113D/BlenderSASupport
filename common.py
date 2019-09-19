@@ -187,14 +187,10 @@ class saObject:
 class BoundingBox:
     """Used to calculate the bounding sphere which the game uses"""
 
-    x = 0
-    xn = 0
-    y = 0
-    yn = 0
-    z = 0
-    zn = 0
+    boundCenter = Vector3
 
-    def __init__(self):
+
+    def __init__(self, vertices):
         self.x = 0
         self.xn = 0
         self.y = 0
@@ -202,35 +198,43 @@ class BoundingBox:
         self.z = 0
         self.zn = 0
 
-    def checkUpdate(self, point):
-        if self.x < point.x:
-            self.x = point.x
-        elif self.xn > point.x:
-            self.xn = point.x
+        for v in vertices:
+            if self.x < v.co.x:
+                self.x = v.co.x
+            elif self.xn > v.co.x:
+                self.xn = v.co.x
 
-        if self.y < point.y:
-            self.y = point.y
-        elif self.yn > point.y:
-            self.yn = point.y
+            if self.y < v.co.y:
+                self.y = v.co.y
+            elif self.yn > v.co.y:
+                self.yn = v.co.y
 
-        if self.z < point.z:
-            self.z = point.z
-        elif self.zn > point.z:
-            self.zn = point.z
+            if self.z < v.co.z:
+                self.z = v.co.z
+            elif self.zn > v.co.z:
+                self.zn = v.co.z
+        
+        self.boundCenter = Vector3( BoundingBox.center(self.x,self.xn), 
+                            BoundingBox.center(self.y,self.yn), 
+                            BoundingBox.center(self.z,self.zn) )
 
+        distance = 0
+        for v in vertices:
+            dif = Vector3(  self.boundCenter.x - v.co.x, 
+                            self.boundCenter.y - v.co.y, 
+                            self.boundCenter.z - v.co.z)
+            tDist = math.sqrt(pow(dif.x, 2) + pow(dif.y, 2) + pow(dif.z, 2))
+            if tDist > distance:
+                distance = tDist
+
+        self.radius = distance
+    
     def center(p1, p2):
         return (p1 + p2) / 2.0
 
-    def getBoundingSphere(self):
-        bs = [None] * 2
-        bs[0] = Vector3(BoundingBox.center(self.x,self.xn), 
-                        BoundingBox.center(self.y,self.yn), 
-                        BoundingBox.center(self.z,self.zn) )
-        xd = abs(self.x - self.xn)
-        yd = abs(self.y - self.yn)
-        zd = abs(self.z - self.zn)
-        bs[1] = max(xd, yd, zd) / 2.0
-        return bs
+    def write(self, fileW):
+        self.boundCenter.write(fileW)
+        fileW.wFloat(self.radius)
 
 class COL:
     unknown1 = 0
@@ -242,20 +246,20 @@ class COL:
     def __init__(self, bObject, global_matrix, labels, sa1):
         self.name = bObject.name
         # placeholders to test
-        self.bounds = BoundingBox()
+        self.bounds = None
         self.unknown1 = 0
         self.unknown2 = 0
         self.unknown3 = 0
 
         if bObject.type == 'MESH':
             self.mdlAddress = labels["o_" + bObject.name]
-            self.bounds = getBounds(bObject.data)
+            self.bounds = BoundingBox(bObject.data.vertices)
 
-            bc = self.bounds[0].toMathutils()
+            bc = self.bounds.boundCenter.toMathutils()
             bc += bObject.location
             bc = global_matrix @ bc
 
-            self.bounds[0] = Vector3(bc.x, bc.y, bc.z)
+            self.bounds.boundCenter = Vector3(bc.x, bc.y, bc.z)
         else:
             self.mdlAddress = 0
 
@@ -306,8 +310,7 @@ class COL:
             fileW.wFloat(0)
             fileW.wFloat(0)
         else:
-            self.bounds[0].write(fileW)
-            fileW.wFloat(self.bounds[1])
+            self.bounds.write(fileW)
         if sa1:
             fileW.wUInt(self.unknown1)
             fileW.wUInt(self.unknown2)
@@ -322,17 +325,8 @@ class COL:
             print(" COL:", self.name)
             print("   mdl address:", '{:08x}'.format(self.mdlAddress))
             print("   surface flags:", self.flags)
-            print("   Bounds:", str(self.bounds[0]), ", ", self.bounds[1])
+            print("   Bounds:", str(self.bounds.boundCenter), ", ", self.bounds.radius)
             print("---- \n")
-
-def getBounds(mesh: bpy.types.Mesh):
-    """Calculates the bounds of a mesh"""
-    bounds = BoundingBox()
-
-    for v in mesh.vertices:
-        bounds.checkUpdate(v.co)
-    
-    return bounds.getBoundingSphere()
 
 def getMeshesFromObjects(objects, depsgraph, apply_modifs):
     #checking which meshes are in the objects at all

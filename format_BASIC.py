@@ -3,6 +3,7 @@ import bpy
 import mathutils
 import struct
 import bpy_extras.io_utils
+import math
 
 from . import enums, fileWriter, strippifier
 
@@ -459,21 +460,26 @@ class BoundingBox:
     def center(p1, p2):
         return (p1 + p2) / 2.0
 
-    def getBoundingSphere(self):
-        bs = [None] * 2
-        bs[0] = Vector3(BoundingBox.center(self.x,self.xn), 
-                        BoundingBox.center(self.y,self.yn), 
-                        BoundingBox.center(self.z,self.zn) )
-        xd = abs(self.x - self.xn)
-        yd = abs(self.y - self.yn)
-        zd = abs(self.z - self.zn)
-        bs[1] = max(xd, yd, zd) / 2.0
-        return bs
+    def calcCenter(self):
+        self.boundCenter = Vector3( BoundingBox.center(self.x,self.xn), 
+                                    BoundingBox.center(self.y,self.yn), 
+                                    BoundingBox.center(self.z,self.zn) )
+
+    def calcRadius(self, vs):
+        distance = 0
+        for v in vs:
+            dif = Vector3(  self.boundCenter.x - v.co.x, 
+                            self.boundCenter.y - v.co.y, 
+                            self.boundCenter.z - v.co.z)
+            tDist = math.sqrt(pow(dif.x, 2) + pow(dif.y, 2) + pow(dif.z, 2))
+            if tDist > distance:
+                distance = tDist
+
+        self.radius = distance
 
     def write(self, fileW):
-        bs = self.getBoundingSphere()
-        bs[0].write(fileW)
-        fileW.wFloat(bs[1])
+        self.boundCenter.write(fileW)
+        fileW.wFloat(self.radius)
 
 def VertNrmPairs(vertices, exportMatrix):
     """returns a list of the vertex-normal-pairs without duplicates
@@ -516,6 +522,9 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
     for v in distVertNrm:
         v[0].write(fileW)
         bounds.checkUpdate(v[0])
+
+    bounds.calcCenter()
+    bounds.calcRadius(mesh.vertices)
 
     #writing normals
     normalsAddress = fileW.tell()

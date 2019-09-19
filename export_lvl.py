@@ -99,10 +99,10 @@ def write(context,
 
      texFileNameAddr = fileW.tell()
      #write texture filename
-     if export_format == 'SA1LVL':
-          texFileName =  os.path.splitext(filepath)[0] + ".gvm"
-     else:
-          texFileName =  os.path.splitext(filepath)[0] + ".pak"
+     texFileName =  os.path.splitext(os.path.basename(filepath))[0]
+     texListPointer = int("0x" + context.scene.saSettings.texListPointer, 0)
+     debug(" Texture file name:", texFileName)
+     debug(" Tex list pointer:", '{:08X}'.format(texListPointer))
      fileW.wString(texFileName)
 
      fileW.align(4)
@@ -113,12 +113,12 @@ def write(context,
      fileW.wUShort(len(objects)) # COL count
      if export_format == 'SA1LVL':
           fileW.wUShort(0) # anim count (unused rn)
-          fileW.wUInt(8) # landtable flags - 8 says that PVM/GVM's should be used
+          fileW.wUInt(0x8) # landtable flags - 8 determines that PVM/GVM's should be used
           fileW.wFloat(0) # unknown1
           fileW.wUInt(COLaddress) # geometry address
           fileW.wUInt(0) # animation address (unused rn)
           fileW.wUInt(texFileNameAddr) # texture file name address
-          fileW.wUInt(0) # texture list pointer, has to be handled by mod
+          fileW.wUInt(texListPointer) # texture list pointer (usually handled by mod)
           fileW.wFloat(0) # unknown2
           fileW.wFloat(0) # unknown3
      else:
@@ -127,8 +127,8 @@ def write(context,
           fileW.wFloat(0) # unknown1
           fileW.wUInt(COLaddress) # geometry address
           fileW.wUInt(0) # animation address (unused rn)
-          fileW.wUInt(0) # (texFileNameAddr) texture file name address
-          fileW.wUInt(0) # texture list pointer, has to be handled by mod
+          fileW.wUInt(texFileNameAddr) # (texFileNameAddr) texture file name address
+          fileW.wUInt(texListPointer) # texture list pointer (usually handled by mod)
 
      labelsAddress = fileW.tell()
      fileW.seek(8, 0) # go to the location of the model properties addrees
