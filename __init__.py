@@ -344,6 +344,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         keywords["export_format"] = 'SA2BLVL'
         return export_lvl.write(context, **keywords)
 
+#operators
 class StrippifyTest(bpy.types.Operator):
     bl_idname = "object.strippifytest"
     bl_label = "Strippify (testing)"
@@ -414,7 +415,6 @@ class StrippifyTest(bpy.types.Operator):
         stripf = strippifier.Strippifier()
         indexStrips = stripf.Strippify(indexList, doSwaps = self.doSwaps, concat = self.doConcat)
 
-
         if not self.doConcat:
             empty = bpy.data.objects.new(obj.data.name + "_str", None)
             context.collection.objects.link(empty)           
@@ -442,12 +442,147 @@ class StrippifyTest(bpy.types.Operator):
             meObj = bpy.data.objects.new(mesh.name, object_data = mesh)
             context.collection.objects.link(meObj)
 
+        return {'FINISHED'}
+
+def qmeUpdate(context, newValue):
+    
+    matQProps = context.scene.saSettings.matQProps
+    matQEditor = context.scene.saSettings.matQEditor
+
+    objects = context.selected_objects
+    mats = []
+    for o in objects:
+        if o.type == 'MESH':
+            for m in o.data.materials:
+                if m not in mats:
+                    mats.append(m)
+
+    for m in mats:
+        matProps = m.saSettings
+
+        if matQEditor.b_apply_diffuse and newValue:
+            matProps.b_Diffuse = matQProps.b_Diffuse
+        
+        if matQEditor.b_apply_specular and newValue:
+            matProps.b_Specular = matQProps.b_Specular
+        
+        if matQEditor.b_apply_specularity and newValue:
+            matProps.b_Exponent = matQProps.b_Exponent
+        
+        if matQEditor.b_apply_texID and newValue:
+            matProps.b_TextureID = matQProps.b_TextureID
+
+        if matQProps.b_d_025:
+            matProps.b_d_025 = newValue
+        
+        if matQProps.b_d_050:
+            matProps.b_d_050 = newValue
+
+        if matQProps.b_d_100:
+            matProps.b_d_100 = newValue
+
+        if matQProps.b_d_200:
+            matProps.b_d_200 = newValue
+
+        if matQProps.b_use_Anisotropy:
+            matProps.b_use_Anisotropy = newValue
+
+        if matQEditor.b_apply_filter and newValue:
+            matProps.b_texFilter = matQProps.b_texFilter
+
+        if matQProps.b_clampU:
+            matProps.b_clampU = newValue
+
+        if matQProps.b_clampV:
+            matProps.b_clampV = newValue
+
+        if matQProps.b_mirrorU:
+            matProps.b_mirrorU = newValue
+
+        if matQProps.b_mirrorV:
+            matProps.b_mirrorV = newValue
+
+        if matQProps.b_mirrorV:
+            matProps.b_mirrorV = newValue
+        
+        if matQProps.b_useTexture:
+            matProps.b_useTexture = newValue
+
+        if matQProps.b_useEnv:
+            matProps.b_useEnv = newValue
+
+        if matQProps.b_useAlpha:
+            matProps.b_useAlpha = newValue
+            matProps.b_destAlpha = matQProps.b_destAlpha
+            matProps.b_srcAlpha = matQProps.b_srcAlpha
+
+        if matQProps.b_doubleSided:
+            matProps.b_doubleSided = newValue
+
+        if matQProps.b_ignoreSpecular:
+            matProps.b_ignoreSpecular = newValue
+
+        if matQProps.b_ignoreLighting:
+            matProps.b_ignoreLighting = newValue
+
+        if matQProps.b_flatShading:
+            matProps.b_flatShading = newValue
+
+
+        
+
+
+class qmeUpdateSet(bpy.types.Operator):
+    """Quick Material Editor Updater for setting selected field to true"""
+    bl_idname = "object.qmeset"
+    bl_label = "SET properties"
+    bl_description = "Sets the selected QME properties in the materials of all selected objects to TRUE"
+
+    def execute(self, context):
+        qmeUpdate(context, True)
+        return {'FINISHED'}
+
+class qmeUpdateUnset(bpy.types.Operator):
+    """Quick Material Editor Updater for unsetting selected field to true"""
+    bl_idname = "object.qmeunset"
+    bl_label = "UNSET properties"
+    bl_description = "Sets the selected QME properties in the materials of all selected objects to FALSE"
+
+    def execute(self, context):
+        qmeUpdate(context, False)
+        return {'FINISHED'}
+
+class qmeReset(bpy.types.Operator):
+    """Quick Material Editor Resetter"""
+    bl_idname = "object.qmereset"
+    bl_label = "Reset QME Settings"
+    bl_description = "Resets quick material editor properties"
+
+    def execute(self, context):
+        matProps = context.scene.saSettings.matQProps
+        menuProps = context.scene.saSettings.matQEditor
+
+        for p in dir(matProps):
+            if not p.startswith("b_") and not p.startswith("gc_"):
+                continue
+
+            a = getattr(matProps, p)
+            if type(a) is bool:
+                setattr(matProps, p, False)
+
+        for p in dir(menuProps):
+            if not p.startswith("b_") and not p.startswith("gc_"):
+                continue
+
+            a = getattr(menuProps, p)
+            if type(a) is bool:
+                setattr(menuProps, p, False)
 
         return {'FINISHED'}
 
 #property groups
 class SAObjectSettings(bpy.types.PropertyGroup):
-    """Menu to edit the surface flags of a COL"""
+    """hosts all properties to edit the surface flags of a COL"""
     isCollision: BoolProperty(
         name="Is Collision",
         description="Whether the object can be collided with at all. \n Also determines whether the mesh is invisible in sa2",
@@ -527,6 +662,7 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         )
 
 class SASettings(bpy.types.PropertyGroup):
+    """Information global to the scene"""
 
     author: StringProperty(
         name="Author",
@@ -546,21 +682,10 @@ class SASettings(bpy.types.PropertyGroup):
         default="0"
         )
 
-    expandedBASIC: BoolProperty( name="SA1 (BASIC) Material Properties", default=False )
-    expandedBMipMap: BoolProperty( name="Mipmap Distance Multiplicator", default=False )
-    expandedBTexFilter: BoolProperty( name="Texture Filtering", default=False )
-    expandedBUV: BoolProperty( name = "UV Properties", default=False )
-    expandedBGeneral: BoolProperty( name = "General Properties", default=False )
-
-    expandedGC: BoolProperty( name="SA2B (GC) Material Properties", default=False )
-    expandedGCIndexAttr: BoolProperty( name = "Data to save", default=False )
-    expandedGCTex: BoolProperty( name = "Texture parameters", default=False )
-    expandedGCTexGen: BoolProperty( name = "Generate texture coords", default=False )
-    expandedGCAlpha: BoolProperty( name = "Use alpha", default=False )
-
-    expandedChunk: BoolProperty( default=False )  
+    expandedMatEdit: BoolProperty( name ="Material Quick Edit", default=False)
 
 class SAMaterialSettings(bpy.types.PropertyGroup):
+    """Hosts all of the material data necessary for exporting"""
     # sa1 properties
     
     b_Diffuse: FloatVectorProperty(
@@ -687,7 +812,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
                 ('OTHER', 'Other', ""),
                 ('INV_OTHER', 'Inverted other', ""),
                 ('SRC', 'Source', ""),
-                ('INV_SRC', 'Inverter source', ""),
+                ('INV_SRC', 'Inverted source', ""),
                 ('DST', 'Destination', ""),
                 ('INV_DST', 'Inverted destination', ""),
               ),
@@ -702,7 +827,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
                 ('OTHER', 'Other', ""),
                 ('INV_OTHER', 'Inverted other', ""),
                 ('SRC', 'Source', ""),
-                ('INV_SRC', 'Inverter source', ""),
+                ('INV_SRC', 'Inverted source', ""),
                 ('DST', 'Destination', ""),
                 ('INV_DST', 'Inverted destination', ""),
               ),
@@ -948,7 +1073,261 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         default='DST'
         )    
 
+class SAMaterialPanelSettings(bpy.types.PropertyGroup):
+    """Menu settings for the material edit menus determining which menu should be visible"""
+
+    expandedBASIC: BoolProperty( name="SA Material Properties", default=False )
+    expandedBMipMap: BoolProperty( name="Mipmap Distance Multiplicator", default=False )
+    expandedBTexFilter: BoolProperty( name="Texture Filtering", default=False )
+    expandedBUV: BoolProperty( name = "UV Properties", default=False )
+    expandedBGeneral: BoolProperty( name = "General Properties", default=False )
+
+    expandedGC: BoolProperty( name="SA2B (GC) Material Properties", default=False )
+    expandedGCIndexAttr: BoolProperty( name = "Data to save", default=False )
+    expandedGCTex: BoolProperty( name = "Texture parameters", default=False )
+    expandedGCTexGen: BoolProperty( name = "Generate texture coords", default=False )
+    expandedGCAlpha: BoolProperty( name = "Use alpha", default=False )
+
+    expandedChunk: BoolProperty( default=False ) 
+
+    # Quick material edit properties
+
+    b_apply_diffuse: BoolProperty( 
+        name = "Apply diffuse",
+        description="Sets the diffuse of all material when pressing 'Update'",
+        default=False
+        )
+
+    b_apply_specular: BoolProperty( 
+        name = "Apply specular",
+        description="Sets the specular of all material when pressing 'Update'",
+        default=False
+        )
+
+    b_apply_specularity: BoolProperty( 
+        name = "Apply specularity",
+        description="Sets the specularity of all material when pressing 'Update'",
+        default=False
+        )
+
+    b_apply_texID: BoolProperty( 
+        name = "Apply texture ID",
+        description="Sets the texture ID of all material when pressing 'Update'",
+        default=False
+        )
+
+    b_apply_filter: BoolProperty( 
+        name = "Apply filter type",
+        description="Sets the filter type of all material when pressing 'Update'",
+        default=False
+        )
+
 #panels
+
+def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, qe = False):
+    split = layout.split(factor=0.6)
+    row = split.row()
+    row.alignment='LEFT'
+    if qe:
+        row.prop(prop2, prop2Name, text="")
+    
+    row.label(text=label)
+    split.prop(prop1, prop1Name, text="")
+
+def drawMaterialPanel(layout, menuProps, matProps, qe = False):
+    layout.prop(menuProps, "expandedBASIC",
+    icon="TRIA_DOWN" if menuProps.expandedBASIC else "TRIA_RIGHT",
+    emboss = False
+    )
+
+    if menuProps.expandedBASIC:
+        menu = layout.column()
+        menu.alignment = 'RIGHT'
+
+        propAdv(menu, "Diffuse Color:", matProps, "b_Diffuse", menuProps, "b_apply_diffuse", qe)
+        propAdv(menu, "Specular Color:", matProps, "b_Specular", menuProps, "b_apply_specular", qe)
+        propAdv(menu, "Specular Strength:", matProps, "b_Exponent", menuProps, "b_apply_specularity", qe)
+        propAdv(menu, "Texture ID:", matProps, "b_TextureID", menuProps, "b_apply_texID", qe)
+        
+        #mipmap menu
+        box = menu.box()
+        box.prop(menuProps, "expandedBMipMap",
+            icon="TRIA_DOWN" if menuProps.expandedBMipMap else "TRIA_RIGHT",
+            emboss = False
+            )
+
+        if menuProps.expandedBMipMap:
+            box.prop(matProps, "b_d_025")
+            box.prop(matProps, "b_d_050")
+            box.prop(matProps, "b_d_100")
+            box.prop(matProps, "b_d_200")
+            mmdm = 0.25 if matProps.b_d_025 else 0
+            mmdm += 0.5 if matProps.b_d_050 else 0
+            mmdm += 1 if matProps.b_d_100 else 0
+            mmdm += 2 if matProps.b_d_200 else 0
+            box.label(text = "Total multiplicator: " + str(mmdm))
+
+        #texture filtering menu
+        box = menu.box()
+        box.prop(menuProps, "expandedBTexFilter",
+            icon="TRIA_DOWN" if menuProps.expandedBTexFilter else "TRIA_RIGHT",
+            emboss = False
+            )
+
+        if menuProps.expandedBTexFilter:
+            box.prop(matProps, "b_use_Anisotropy")
+            propAdv(box, "Filter Type:", matProps, "b_texFilter", menuProps, "b_apply_filter", qe)
+
+        # uv properties
+        box = menu.box()
+        box.prop(menuProps, "expandedBUV",
+            icon="TRIA_DOWN" if menuProps.expandedBUV else "TRIA_RIGHT",
+            emboss = False
+            )
+
+        if menuProps.expandedBUV:
+            box.prop(matProps, "b_clampU")
+            box.prop(matProps, "b_clampV")
+            box.prop(matProps, "b_mirrorV")
+            box.prop(matProps, "b_mirrorU")
+
+        box = menu.box()
+        box.prop(menuProps, "expandedBGeneral",
+            icon="TRIA_DOWN" if menuProps.expandedBGeneral else "TRIA_RIGHT",
+            emboss = False
+            )
+
+        if menuProps.expandedBGeneral:
+            
+            
+            box.prop(matProps, "b_useTexture")
+            box.prop(matProps, "b_useEnv")
+            box.prop(matProps, "b_useAlpha")
+            if matProps.b_useAlpha:
+                split = box.split(factor= 0.5)
+                split.label(text ="Source Alpha:")  
+                split.prop(matProps, "b_srcAlpha", text = "")
+
+                split = box.split(factor= 0.5)
+                split.label(text ="Destination Alpha:")
+                split.prop(matProps, "b_destAlpha", text = "")
+            box.prop(matProps, "b_doubleSided")
+            box.prop(matProps, "b_ignoreSpecular")
+            box.prop(matProps, "b_ignoreLighting")
+            box.prop(matProps, "b_flatShading")
+            
+
+    DISABLED = False
+
+    #layout.prop(menuProps, "expandedGC",
+    #    icon="TRIA_DOWN" if menuProps.expandedGC else "TRIA_RIGHT",
+    #    emboss = False
+    #    )
+
+    #if menuProps.expandedGC:
+    if DISABLED:
+        menu = layout.column()
+        menu.alignment = 'RIGHT'
+
+        row = menu.row()   
+        row.prop(matProps, "gc_Diffuse")
+
+        box = menu.box()
+        box.prop(menuProps, "expandedGCIndexAttr",
+            icon="TRIA_DOWN" if menuProps.expandedGCIndexAttr else "TRIA_RIGHT",
+            emboss = False
+            )
+
+        if menuProps.expandedGCIndexAttr:
+            box.prop(matProps, "gc_hasNormal")
+            box.prop(matProps, "gc_hasColor")
+            box.prop(matProps, "gc_hasUV")
+
+        box = menu.box()
+        row = box.row()
+        row.prop(matProps, "gc_UseTexture", text="")
+        if matProps.gc_UseTexture:
+            row.prop(menuProps, "expandedGCTex",
+                icon="TRIA_DOWN" if menuProps.expandedGCTex else "TRIA_RIGHT",
+                emboss = False
+                )
+
+            if menuProps.expandedGCTex:
+                split = box.split(factor=0.7)
+                split.label(text="Texture ID")
+                split.prop(matProps, "gc_TextureID", text="")
+                box.prop(matProps, "gc_clampV")
+                box.prop(matProps, "gc_clampU")
+                box.prop(matProps, "gc_mirrorV")
+                box.prop(matProps, "gc_mirrorU")
+        else:
+            row.prop(menuProps, "expandedGCTex",
+                icon="BLANK1", emboss = False
+                )
+        
+        box = menu.box()
+        row = box.row()
+        row.prop(matProps, "gc_genTexCoords", text="")
+        if matProps.gc_genTexCoords:
+            row.prop(menuProps, "expandedGCTexGen",
+                icon="TRIA_DOWN" if menuProps.expandedGCTexGen else "TRIA_RIGHT",
+                emboss = False
+                )
+
+            if menuProps.expandedGCTexGen:
+                split = box.split(factor=0.5)
+                split.label(text = "Texcoord ID (output slot)")
+                split.prop(matProps, "gc_texCoordID", text = "")
+
+                split = box.split(factor=0.5)
+                split.label(text = "Generation Type")
+                split.prop(matProps, "gc_texGenType", text="")
+                
+                if matProps.gc_texGenType[0] == 'M': #matrix
+                    split = box.split(factor=0.5)
+                    split.label(text = "Matrix ID")
+                    split.prop(matProps, "gc_texMatrixID", text="")
+
+                    split = box.split(factor=0.5)
+                    split.label(text = "Source")
+                    split.prop(matProps, "gc_texGenSourceMtx", text="")
+
+                elif matProps.gc_texGenType[0] == 'B': # Bump
+                    split = box.split(factor=0.5)
+                    split.label(text = "Source")
+                    split.prop(matProps, "gc_texGenSourceBmp", text="")
+
+                else: #SRTG
+                    split = box.split(factor=0.5)
+                    split.label(text = "Source")
+                    split.prop(matProps, "gc_texGenSourceSRTG", text="")
+        else:
+            row.prop(menuProps, "expandedGCTexGen",
+                icon="BLANK1", emboss = False
+                )
+
+        box = menu.box()
+        row = box.row()
+        row.prop(matProps, "gc_useAlpha", text="")
+        if matProps.gc_useAlpha:
+            row.prop(menuProps, "expandedGCAlpha",
+                icon="TRIA_DOWN" if menuProps.expandedGCAlpha else "TRIA_RIGHT",
+                emboss = False
+                )
+
+            if menuProps.expandedGCAlpha:
+                split = box.split(factor=0.5)
+                split.label(text = "Source Alpha")
+                split.prop(matProps, "gc_srcAlpha", text = "")
+
+                split = box.split(factor=0.5)
+                split.label(text = "Destination Alpha")
+                split.prop(matProps, "gc_destAlpha", text = "")
+        else:
+            row.prop(menuProps, "expandedGCAlpha",
+                icon="BLANK1", emboss = False
+                )
+
 class SAObjectPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_saProperties"
     bl_label = "SA Material Properties"
@@ -1005,211 +1384,10 @@ class SAMaterialPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        menuProps = context.scene.saSettings
+        menuProps = context.scene.saSettings.matEditor
         matProps = context.active_object.active_material.saSettings
 
-        layout.prop(menuProps, "expandedBASIC",
-            icon="TRIA_DOWN" if menuProps.expandedBASIC else "TRIA_RIGHT",
-            emboss = False
-            )
-
-        if menuProps.expandedBASIC:
-            menu = layout.column()
-            menu.alignment = 'RIGHT'
-
-            row = menu.row()   
-            row.prop(matProps, "b_Diffuse")
-
-            row = menu.row()   
-            row.prop(matProps, "b_Specular")
-            
-            row = menu.row()
-            row.label(text ="Specular Strength:")           
-            col = row.column()
-            col.alignment = 'RIGHT'
-            col.prop(matProps, "b_Exponent", text = "")
-
-            row = menu.row()
-            row.label(text ="Texture ID:")           
-            col = row.column()
-            col.alignment = 'RIGHT'
-            col.prop(matProps, "b_TextureID", text = "")
-            
-            #mipmap menu
-            box = menu.box()
-            box.prop(menuProps, "expandedBMipMap",
-                icon="TRIA_DOWN" if menuProps.expandedBMipMap else "TRIA_RIGHT",
-                emboss = False
-                )
-
-            if menuProps.expandedBMipMap:
-                box.prop(matProps, "b_d_025")
-                box.prop(matProps, "b_d_050")
-                box.prop(matProps, "b_d_100")
-                box.prop(matProps, "b_d_200")
-                mmdm = 0.25 if matProps.b_d_025 else 0
-                mmdm += 0.5 if matProps.b_d_050 else 0
-                mmdm += 1 if matProps.b_d_100 else 0
-                mmdm += 2 if matProps.b_d_200 else 0
-                box.label(text = "Total multiplicator: " + str(mmdm))
-
-            #texture filtering menu
-            box = menu.box()
-            box.prop(menuProps, "expandedBTexFilter",
-                icon="TRIA_DOWN" if menuProps.expandedBTexFilter else "TRIA_RIGHT",
-                emboss = False
-                )
-
-            if menuProps.expandedBTexFilter:
-                box.prop(matProps, "b_use_Anisotropy")
-                split = box.split(factor= 0.4)
-                split.label(text="Filter Type:")
-                split.prop(matProps, "b_texFilter", text="")
-
-            # uv properties
-            box = menu.box()
-            box.prop(menuProps, "expandedBUV",
-                icon="TRIA_DOWN" if menuProps.expandedBUV else "TRIA_RIGHT",
-                emboss = False
-                )
-
-            if menuProps.expandedBUV:
-                box.prop(matProps, "b_clampU")
-                box.prop(matProps, "b_clampV")
-                box.prop(matProps, "b_mirrorV")
-                box.prop(matProps, "b_mirrorU")
-
-            box = menu.box()
-            box.prop(menuProps, "expandedBGeneral",
-                icon="TRIA_DOWN" if menuProps.expandedBGeneral else "TRIA_RIGHT",
-                emboss = False
-                )
-
-            if menuProps.expandedBGeneral:
-                box.prop(matProps, "b_ignoreSpecular")
-                box.prop(matProps, "b_useAlpha")
-                if matProps.b_useAlpha:
-                    split = box.split(factor= 0.5)
-                    split.label(text ="Source Alpha:")  
-                    split.prop(matProps, "b_srcAlpha", text = "")
-
-                    split = box.split(factor= 0.5)
-                    split.label(text ="Destination Alpha:")
-                    split.prop(matProps, "b_destAlpha", text = "")
-
-                box.prop(matProps, "b_useTexture")
-                box.prop(matProps, "b_useEnv")
-                box.prop(matProps, "b_doubleSided")
-                box.prop(matProps, "b_flatShading")
-                box.prop(matProps, "b_ignoreLighting")
-
-        layout.prop(menuProps, "expandedGC",
-            icon="TRIA_DOWN" if menuProps.expandedGC else "TRIA_RIGHT",
-            emboss = False
-            )
-
-        if menuProps.expandedGC:
-            menu = layout.column()
-            menu.alignment = 'RIGHT'
-
-            row = menu.row()   
-            row.prop(matProps, "gc_Diffuse")
-
-            box = menu.box()
-            box.prop(menuProps, "expandedGCIndexAttr",
-                icon="TRIA_DOWN" if menuProps.expandedGCIndexAttr else "TRIA_RIGHT",
-                emboss = False
-                )
-
-            if menuProps.expandedGCIndexAttr:
-                box.prop(matProps, "gc_hasNormal")
-                box.prop(matProps, "gc_hasColor")
-                box.prop(matProps, "gc_hasUV")
-
-            box = menu.box()
-            row = box.row()
-            row.prop(matProps, "gc_UseTexture", text="")
-            if matProps.gc_UseTexture:
-                row.prop(menuProps, "expandedGCTex",
-                    icon="TRIA_DOWN" if menuProps.expandedGCTex else "TRIA_RIGHT",
-                    emboss = False
-                    )
-
-                if menuProps.expandedGCTex:
-                    split = box.split(factor=0.7)
-                    split.label(text="Texture ID")
-                    split.prop(matProps, "gc_TextureID", text="")
-                    box.prop(matProps, "gc_clampV")
-                    box.prop(matProps, "gc_clampU")
-                    box.prop(matProps, "gc_mirrorV")
-                    box.prop(matProps, "gc_mirrorU")
-            else:
-                row.prop(menuProps, "expandedGCTex",
-                    icon="BLANK1", emboss = False
-                    )
-            
-            box = menu.box()
-            row = box.row()
-            row.prop(matProps, "gc_genTexCoords", text="")
-            if matProps.gc_genTexCoords:
-                row.prop(menuProps, "expandedGCTexGen",
-                    icon="TRIA_DOWN" if menuProps.expandedGCTexGen else "TRIA_RIGHT",
-                    emboss = False
-                    )
-
-                if menuProps.expandedGCTexGen:
-                    split = box.split(factor=0.5)
-                    split.label(text = "Texcoord ID (output slot)")
-                    split.prop(matProps, "gc_texCoordID", text = "")
-
-                    split = box.split(factor=0.5)
-                    split.label(text = "Generation Type")
-                    split.prop(matProps, "gc_texGenType", text="")
-                    
-                    if matProps.gc_texGenType[0] == 'M': #matrix
-                        split = box.split(factor=0.5)
-                        split.label(text = "Matrix ID")
-                        split.prop(matProps, "gc_texMatrixID", text="")
-
-                        split = box.split(factor=0.5)
-                        split.label(text = "Source")
-                        split.prop(matProps, "gc_texGenSourceMtx", text="")
-
-                    elif matProps.gc_texGenType[0] == 'B': # Bump
-                        split = box.split(factor=0.5)
-                        split.label(text = "Source")
-                        split.prop(matProps, "gc_texGenSourceBmp", text="")
-
-                    else: #SRTG
-                        split = box.split(factor=0.5)
-                        split.label(text = "Source")
-                        split.prop(matProps, "gc_texGenSourceSRTG", text="")
-            else:
-                row.prop(menuProps, "expandedGCTexGen",
-                    icon="BLANK1", emboss = False
-                    )
-
-            box = menu.box()
-            row = box.row()
-            row.prop(matProps, "gc_useAlpha", text="")
-            if matProps.gc_useAlpha:
-                row.prop(menuProps, "expandedGCAlpha",
-                    icon="TRIA_DOWN" if menuProps.expandedGCAlpha else "TRIA_RIGHT",
-                    emboss = False
-                    )
-
-                if menuProps.expandedGCAlpha:
-                    split = box.split(factor=0.5)
-                    split.label(text = "Source Alpha")
-                    split.prop(matProps, "gc_srcAlpha", text = "")
-
-                    split = box.split(factor=0.5)
-                    split.label(text = "Destination Alpha")
-                    split.prop(matProps, "gc_destAlpha", text = "")
-            else:
-                row.prop(menuProps, "expandedGCAlpha",
-                    icon="BLANK1", emboss = False
-                    )
+        drawMaterialPanel(layout, menuProps, matProps)
 
 class SAScenePanel(bpy.types.Panel):
     bl_idname = "SCENE_PT_saProperties"
@@ -1232,8 +1410,36 @@ class SAScenePanel(bpy.types.Panel):
         split.label(text="0x")
         split.prop(settings, "texListPointer", text="")
 
-def menu_func_strippifyTest(self, context):
-    self.layout.operator(StrippifyTest.bl_idname)
+class SA3DPanel(bpy.types.Panel):
+    bl_idname = 'MESH_PT_satools'
+    bl_label = 'SA Tools'
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Tool'
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'OBJECT'
+
+    def draw(self, context):
+        layout = self.layout
+
+        settings = context.scene.saSettings
+        
+        box = layout.box()
+
+        box.prop(settings, "expandedMatEdit",
+            icon="TRIA_DOWN" if settings.expandedMatEdit else "TRIA_RIGHT",
+            emboss = False
+            )
+
+        if settings.expandedMatEdit:
+            box.operator(qmeUpdateSet.bl_idname)
+            box.operator(qmeUpdateUnset.bl_idname)
+            box.operator(qmeReset.bl_idname)
+            drawMaterialPanel(box, settings.matQEditor, settings.matQProps, qe=True)
+
+        layout.operator(StrippifyTest.bl_idname)
 
 def menu_func_exportsa(self, context):
     self.layout.menu("TOPBAR_MT_SA_export")
@@ -1245,29 +1451,39 @@ classes = (
     ExportSA2BMDL,
     ExportSA1LVL,
     ExportSA2BLVL,
+
     StrippifyTest,
+    qmeReset,
+    qmeUpdateSet,
+    qmeUpdateUnset,
+
     SAObjectSettings,
     SASettings,
     SAMaterialSettings,
+    SAMaterialPanelSettings,
+
     SAObjectPanel,
     SAMaterialPanel,
-    SAScenePanel
+    SAScenePanel,
+    SA3DPanel
     )
 
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-    
-    bpy.types.TOPBAR_MT_file_export.append(menu_func_exportsa)
-    bpy.types.VIEW3D_MT_object.append(menu_func_strippifyTest)
+
+    SASettings.matEditor = bpy.props.PointerProperty(type=SAMaterialPanelSettings)
+    SASettings.matQEditor = bpy.props.PointerProperty(type=SAMaterialPanelSettings)
+    SASettings.matQProps = bpy.props.PointerProperty(type=SAMaterialSettings)
 
     bpy.types.Scene.saSettings = bpy.props.PointerProperty(type=SASettings)
     bpy.types.Object.saSettings = bpy.props.PointerProperty(type=SAObjectSettings)
     bpy.types.Material.saSettings = bpy.props.PointerProperty(type=SAMaterialSettings)
 
+    bpy.types.TOPBAR_MT_file_export.append(menu_func_exportsa)
+
 def unregister():
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportsa)
-    bpy.types.VIEW3D_MT_object.remove(menu_func_strippifyTest)
 
     for cls in classes:
         bpy.utils.unregister_class(cls)

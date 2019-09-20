@@ -130,6 +130,10 @@ class saObject:
             child = None
 
         obj_mat = global_matrix @ bObject.matrix_world
+
+        rot = bObject.matrix_world.to_euler('XZY')
+        rot = global_matrix @ mathutils.Vector((rot.x, rot.y, rot.z))
+
         meshname = None
         if bObject.type == 'MESH':
             meshname = bObject.data.name
@@ -138,7 +142,7 @@ class saObject:
                        meshname=meshname, 
                        # flags will be set later
                        pos= obj_mat.translation,
-                       rot= obj_mat.to_euler('XYZ'),
+                       rot= rot,
                        scale= obj_mat.to_scale(),
                        child= child,
                        sibling= sibling,
@@ -328,33 +332,6 @@ class COL:
             print("   Bounds:", str(self.bounds.boundCenter), ", ", self.bounds.radius)
             print("---- \n")
 
-def getMeshesFromObjects(objects, depsgraph, apply_modifs):
-    #checking which meshes are in the objects at all
-    tMeshes = []
-    for o in objects:
-        if o.type == 'MESH':
-            tMeshes.append(o.data)
-
-    #checking whether there are any objects that share a mesh
-    meshes = []
-    for o in objects:
-        if o.type == 'MESH':
-            if tMeshes.count(o.data) > 1:
-                if meshes.count(o.data) == 0:
-                    meshes.append(o.data)
-            else:
-                meshes.append(o)
-
-    outMeshes = []
-    materials = []
-    for m in meshes:
-        newMesh = convertMesh(m, depsgraph, apply_modifs)
-        outMeshes.append(newMesh)
-        for m in newMesh.materials:
-            if not (m in materials):
-                materials.append(m)
-
-    return outMeshes, materials
 
 def evaluateObjectsToWrite(use_selection: bool,
                            apply_modifs: bool,
@@ -406,6 +383,47 @@ def evaluateObjectsToWrite(use_selection: bool,
     else:        
         return objects, noParents, cMeshes, vMeshes, materials, cObjects, vObjects
 
+def getMeshesFromObjects(objects, depsgraph, apply_modifs):
+    #checking which meshes are in the objects at all
+    tMeshes = []
+    for o in objects:
+        if o.type == 'MESH':
+            tMeshes.append(o.data)
+
+    #checking whether there are any objects that share a mesh
+    collectedMOMeshes = []
+    mObjects = []
+    meshesToConvert = []
+    for o in objects:
+        if o.type == 'MESH':
+            if tMeshes.count(o.data) > 1:
+                if collectedMOMeshes.count(o.data) == 0:
+                    mObjects.append(o)
+                    meshesToConvert.append(o)
+                    collectedMOMeshes.append(o.data)
+            else:
+                meshesToConvert.append(o)
+
+    outMeshes = []
+    materials = []
+    for o in meshesToConvert:
+        newMesh, mats = convertMesh(o, depsgraph, False if o in mObjects else apply_modifs)
+        outMeshes.append(newMesh)
+        if not o.saSettings.isCollision:
+            for m in mats:
+                if m not in materials:
+                    materials.append(m)
+
+    return outMeshes, materials
+
+def convertMesh(obj, depsgraph, apply_modifs):
+
+    ob_for_convert = obj.evaluated_get(depsgraph) if apply_modifs else obj.original
+    me = ob_for_convert.to_mesh()
+
+    trianglulateMesh(me)
+    return me, obj.data.materials
+
 def trianglulateMesh(me):
     import bmesh
     bm = bmesh.new()
@@ -413,17 +431,6 @@ def trianglulateMesh(me):
     bmesh.ops.triangulate(bm, faces=bm.faces, quad_method='FIXED', ngon_method='EAR_CLIP')
     bm.to_mesh(me)
     bm.free()
-
-def convertMesh(obj, depsgraph, apply_modifs):
-
-    if isinstance(obj, bpy.types.Object):
-        ob_for_convert = obj.evaluated_get(depsgraph) if apply_modifs else obj.original
-        me = ob_for_convert.to_mesh()
-    else:
-        me = obj
-
-    trianglulateMesh(me)
-    return me
 
 def writeBASICMaterialData(fileW: fileWriter.FileWriter, materials, labels: dict):
     from . import format_BASIC

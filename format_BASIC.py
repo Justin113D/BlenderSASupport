@@ -202,12 +202,6 @@ class Material:
             elif dst == 'INV_DST':
                 self.mFlags |= MaterialFlags.DA_INV_DST
 
-    def addFlag(self, flag):
-        self.Flag |= flag
-
-    def removeFlag(self, flag):
-        self.Flag &= (~flag)
-
     def write(self, fileW):
         self.diffuse.write(fileW)
         self.specular.write(fileW)
@@ -496,8 +490,8 @@ def VertNrmPairs(vertices, exportMatrix):
 
     # putting them in pairs first, so that comparing is easier
     for i, v in enumerate(vertices):
-        pos = v.co #exportMatrix @ v.co
-        nrm = v.normal #exportMatrix @ v.normal
+        pos = exportMatrix @ v.co
+        nrm = exportMatrix @ v.normal
         e = [Vector3(pos.x, pos.y, pos.z), Vector3(nrm.x, nrm.y, nrm.z)]
         entries[i] = e
 
@@ -534,7 +528,7 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
     # creating the loops (as an index list)
 
     if isCollision:
-        polyVs = PolyVert.fromLoops(collisionFromLoops)
+        polyVs = PolyVert.collisionFromLoops(mesh)
     else:
         polyVs = PolyVert.fromLoops(mesh)
 
@@ -556,7 +550,7 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
     #writing the mesh data and getting the mesh sets
     meshSets = list() #[None] * len(polyStrips)
 
-    if materialLength == 0:
+    if materialLength == 0 or isCollision:
         for p in polyStrips:
             if p == None:
                 continue
@@ -565,7 +559,14 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
         for i, p in enumerate(polyStrips):
             if p == None:
                 continue
-            matID = materials.index(mesh.materials[i])
+            matID = 0
+            try:
+                for mid, m in enumerate(materials):
+                    if m.name == mesh.materials[i].name:
+                        matID = mid
+                        break
+            except ValueError:
+                debug(" material", mesh.materials[i].name, "not found")
             meshSets.append(PolyVert.write(fileW, matID, p))
 
     # writing the mesh sets
