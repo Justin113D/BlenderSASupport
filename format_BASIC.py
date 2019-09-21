@@ -331,7 +331,7 @@ class PolyVert:
 
         return result
 
-    def write(fileW, materialID, polyList, isCollision = False):
+    def write(fileW, mesh, materialID, meshSetID, polyList, isCollision = False):
         """Writes a single mesh to the file
         
         returns a mesh set
@@ -370,12 +370,14 @@ class PolyVert:
                 for p in s:
                     p.uv.write(fileW)
 
-        return MeshSet(materialID, enums.PolyType.Strips, len(polyList), polyAddress, 0, polyNormalAddress, vColorAddress, UVAddress)
+        return MeshSet(mesh, meshSetID, materialID, enums.PolyType.Strips, len(polyList), polyAddress, 0, polyNormalAddress, vColorAddress, UVAddress)
 
 class MeshSet:
     """A single mesh set in the model"""
 
     materialID = 0
+    name = ""
+    meshSetID = 0
     polytype = enums.PolyType.Strips
     polyCount = 0
     polyAddress = 0
@@ -385,15 +387,19 @@ class MeshSet:
     UVAddress = 0
 
     def __init__(self,
-             materialID = 0,
-             polytype = enums.PolyType.Strips,
-             polyCount = 0,
-             polyAddress = 0,
-             polyAttribs = 0, # unused
-             polyNormalAddress = 0, # not needed 99% of the time
-             vColorAddress = 0,
-             UVAddress = 0,
-             ):
+                 mesh = None,
+                 meshSetID = 0,
+                 materialID = 0,
+                 polytype = enums.PolyType.Strips,
+                 polyCount = 0,
+                 polyAddress = 0,
+                 polyAttribs = 0, # unused
+                 polyNormalAddress = 0, # not needed 99% of the time
+                 vColorAddress = 0,
+                 UVAddress = 0,
+                 ):
+        self.mesh = mesh
+        self.meshSetID = meshSetID
         self.materialID = materialID
         self.polytype = polytype
         self.polyCount = polyCount
@@ -403,7 +409,7 @@ class MeshSet:
         self.vColorAddress = vColorAddress
         self.UVAddress = UVAddress
 
-    def write(self, fileW):
+    def write(self, fileW, labels):
         # combining material id and poly type into two bytes
         matPolytype = self.materialID & (~0xC000)
         matPolytype |= (self.polytype.value << 14)
@@ -415,7 +421,21 @@ class MeshSet:
         fileW.wUInt(self.polyNormalAddress)
         fileW.wUInt(self.vColorAddress)
         fileW.wUInt(self.UVAddress)
-        #fileW.wUInt(0) # gap
+
+        #setting the labels
+        name = self.mesh.name
+        if self.polyAddress > 0:
+            labels["b_" + name + "_p" + str(self.meshSetID)] = self.polyAddress
+            #labels["p" + str(self.meshSetID)] = self.polyAddress
+        if self.polyNormalAddress > 0:
+            labels["b_" + name + "_nrm" + str(self.meshSetID)] = self.polyNormalAddress
+            #labels["nrm" + str(self.meshSetID)] = self.polyNormalAddress
+        if self.vColorAddress > 0:
+            labels["b_" + name + "_vc" + str(self.meshSetID) + "_" + self.mesh.vertex_colors[0].name] = self.vColorAddress
+            #labels[self.mesh.vertex_colors[0].name] = self.vColorAddress
+        if self.UVAddress > 0:
+            labels["b_" + name + "_uv" + str(self.meshSetID) + "_" + self.mesh.uv_layers[0].name] = self.UVAddress
+            #labels[self.mesh.uv_layers[0].name] = self.UVAddress
 
 class BoundingBox:
     """Used to calculate the bounding sphere which the game uses"""
@@ -551,10 +571,10 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
     meshSets = list() #[None] * len(polyStrips)
 
     if materialLength == 0 or isCollision:
-        for p in polyStrips:
+        for i, p in enumerate(polyStrips):
             if p == None:
                 continue
-            meshSets.append(PolyVert.write(fileW, 0, p))
+            meshSets.append(PolyVert.write(fileW, mesh, 0, i, p))
     else:
         for i, p in enumerate(polyStrips):
             if p == None:
@@ -567,16 +587,17 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
                         break
             except ValueError:
                 debug(" material", mesh.materials[i].name, "not found")
-            meshSets.append(PolyVert.write(fileW, matID, p))
+            meshSets.append(PolyVert.write(fileW, mesh, matID, i, p))
 
     # writing the mesh sets
     meshSetAddress = fileW.tell()
 
     for m in meshSets:
-        m.write(fileW)
+        m.write(fileW, labels)
 
     #adding mesh address to the labels
     labels["a_" + mesh.name] = fileW.tell()
+    #labels[mesh.name] = fileW.tell()
 
     #writing addresses
 

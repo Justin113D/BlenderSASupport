@@ -92,6 +92,7 @@ class saObject:
             self.flags |= enums.ObjectFlags.NoDisplay
         else:
             self.meshAddress = labels["a_" + meshname]
+            #self.meshAddress = labels[meshname]
 
         self.position = Vector3(pos[0], pos[1], pos[2])
         self.rotation = BAMSRotation(rot[0], rot[1], rot[2])
@@ -154,6 +155,7 @@ class saObject:
 
     def write(self, fileW, labels, lvl):
         labels["o_" + self.name] = fileW.tell()
+        #labels[self.name] = fileW.tell()
         self.address = fileW.tell()
 
         fileW.wUInt(self.flags.value)
@@ -257,6 +259,7 @@ class COL:
 
         if bObject.type == 'MESH':
             self.mdlAddress = labels["o_" + bObject.name]
+            #self.mdlAddress = labels[bObject.name]
             self.bounds = BoundingBox(bObject.data.vertices)
 
             bc = self.bounds.boundCenter.toMathutils()
@@ -445,6 +448,7 @@ def writeBASICMaterialData(fileW: fileWriter.FileWriter, materials, labels: dict
     else:
         for m in materials:
             labels["mat_" + m.name] = fileW.tell()
+            #labels[m.name] = fileW.tell()
             bMat = format_BASIC.Material(name=m.name, material=m)
             bMat.write(fileW)
             mats.append(bMat)

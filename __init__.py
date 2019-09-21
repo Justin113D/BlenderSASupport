@@ -528,10 +528,6 @@ def qmeUpdate(context, newValue):
         if matQProps.b_flatShading:
             matProps.b_flatShading = newValue
 
-
-        
-
-
 class qmeUpdateSet(bpy.types.Operator):
     """Quick Material Editor Updater for setting selected field to true"""
     bl_idname = "object.qmeset"
