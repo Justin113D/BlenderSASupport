@@ -14,7 +14,7 @@ def write(context,
          console_debug_output
          ):
      import os
-     from . import fileWriter, enums, common, format_BASIC, format_GC
+     from . import fileWriter, enums, common, format_BASIC, format_GC, format_CHUNK
      
      # clear console and enable debug outputs
      os.system("cls")
@@ -22,6 +22,7 @@ def write(context,
      DO = console_debug_output
      common.DO = DO
      format_BASIC.DO = DO
+     format_CHUNK.DO = DO
 
      # create the file
      fileW = fileWriter.FileWriter(filepath=filepath)
@@ -60,19 +61,20 @@ def write(context,
           labels["col_material"] = 0x00000010
           colMat.write(fileW)
 
-          objects, noParents, cMeshes, vMeshes, materials, cObjects, vObjects = common.evaluateObjectsToWrite(use_selection, apply_modifs, context, lvlFmt='SA1')
+          objects, noParents, cMeshes, vMeshes, materials, cObjects, vObjects = common.evaluateObjectsToWrite(use_selection, apply_modifs, context, True)
           if objects == {'FINISHED'}:
                return {'FINISHED'}
 
           #writing the collision meshes
           for m in cMeshes:
-               format_BASIC.WriteMesh(fileW, cMeshes, global_matrix, [], labels, isCollision=True)
+               format_BASIC.WriteMesh(fileW, m, global_matrix, [], labels, isCollision=True)
 
           #writing visual meshes
           if export_format == 'SA2LVL':
-               print("not supported rn")
-          else:
-               common.writeGCMeshData(fileW, vMeshes, global_matrix, labels)
+               for m in vMeshes:
+                    format_CHUNK.write(fileW, m, global_matrix, materials, labels)
+          #else:
+          #     common.writeGCMeshData(fileW, vMeshes, global_matrix, labels)
      
 
 

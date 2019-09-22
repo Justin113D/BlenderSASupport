@@ -78,7 +78,7 @@ class Vertex:
     def writeVC(self, fileW):
         self.co.write(fileW)
         self.col.write(fileW)
-
+        
     def writeNRM(self, fileW):
         self.co.write(fileW)
         self.nrm.write(fileW)
@@ -106,9 +106,9 @@ class PolyVert:
 
     def updateUV(self, HD):
         if HD:
-            self.uv = (round(self.uv[0] * 1023), round(self.uv[1] * 1023))
+            self.uv = (round(self.uv[0] * 1023), round((1-self.uv[1]) * 1023))
         else:
-            self.uv = (round(self.uv[0] * 255), round(self.uv[1] * 255))
+            self.uv = (round(self.uv[0] * 255), round((1-self.uv[1]) * 255))
 
     def write(self, fileW):
         fileW.wUShort(self.vertexID)
@@ -254,7 +254,9 @@ def write(fileW: fileWriter.FileWriter,
                 p.vertexID = p.vertexID.index
     else:
         for i, v in enumerate(mesh.vertices):
-            vertices[i]([Vertex(i, i, v.co, v.normal)])
+            pos = exportMatrix @ v.co
+            nrm = exportMatrix @ v.normal
+            vertices[i] = [Vertex(i, i, pos, nrm)]
         for l in mesh.loops:
             if writeUVs:
                 uv = mesh.uv_layers[0].data[l.index].uv
@@ -264,7 +266,7 @@ def write(fileW: fileWriter.FileWriter,
             else:
                 polyVert = PolyVert(l.vertex_index)
 
-            polyVerts.append(PolyVert)
+            polyVerts.append(polyVert)
 
         # updating the uv's
         if writeUVs:
@@ -427,8 +429,6 @@ def write(fileW: fileWriter.FileWriter,
             if matProps.b_mirrorU:
                 textureFlags |= enums.TextureIDFlags.FLIP_V
 
-            fileW.wByte(textureFlags.value)
-
             texParams = min( matProps.b_TextureID, 0x1FFF)
 
             if matProps.b_use_Anisotropy:
@@ -529,9 +529,17 @@ def write(fileW: fileWriter.FileWriter,
         fileW.wUShort(size)
         fileW.wUShort(stripCount)
 
+        if DO:
+            print(" Strip", mID, "data:")
+            print("   type:", stripType)
+            print("   flags:", stripFlags)
+            print("   size:", size)
+            print("   stripCount:", stripCount)
+            
         #writing the polygons
-        for s in ms:
+        for i, s in enumerate(ms):
             fileW.wShort(min(len(s), 0x7FFF)) # strip length
+            #debug("   strip", i, "length:", len(s))
             if writeUVs:
                 for p in s:
                     p.writeUV(fileW)
@@ -543,8 +551,10 @@ def write(fileW: fileWriter.FileWriter,
 
     labels["a_" + mesh.name] = fileW.tell()
     fileW.wUInt(vertexAddress)
-    fileW.wUShort(polyAddress)
+    fileW.wUInt(polyAddress)
     
     bounds = BoundingBox(mesh.vertices)
     bounds.boundCenter = exportMatrix @ bounds.boundCenter
     bounds.write(fileW)
+
+    debug(" ---- \n")

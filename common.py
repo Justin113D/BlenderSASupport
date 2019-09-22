@@ -339,7 +339,7 @@ class COL:
 def evaluateObjectsToWrite(use_selection: bool,
                            apply_modifs: bool,
                            context: bpy.types.Context,
-                           lvlFmt = 'NONE' # only used for sa2 levels
+                           lvlFmt = False # only used for sa2 levels
                            ):
     # getting the objects to export
     if use_selection:
@@ -354,7 +354,7 @@ def evaluateObjectsToWrite(use_selection: bool,
         objects = context.scene.objects.values()
 
     depsgraph = context.evaluated_depsgraph_get()
-    if lvlFmt == 'NONE':
+    if not lvlFmt:
         meshes, materials = getMeshesFromObjects(objects, depsgraph, apply_modifs)
     else:
         cObjects = [] # collision objects
@@ -378,10 +378,14 @@ def evaluateObjectsToWrite(use_selection: bool,
     global DO
     if DO:
         print(" Materials:", len(materials))
-        print(" Meshes:", len(meshes))
+        if lvlFmt:
+            print(" Visual Meshes:", len(vMeshes))
+            print(" Collision Meshes:", len(cMeshes))
+        else:
+            print(" Meshes:", len(meshes))
         print(" Objects:", len(objects), "\n")
 
-    if lvlFmt:
+    if not lvlFmt:
         return objects, noParents, meshes, materials
     else:        
         return objects, noParents, cMeshes, vMeshes, materials, cObjects, vObjects

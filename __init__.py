@@ -204,7 +204,6 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
         default=False,
         )
 
-
     apply_modifs: BoolProperty(
         name="Apply Modifiers",
         description="Apply active viewport modifiers",
@@ -254,6 +253,12 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
         name="Scale",
         min=0.01, max=1000.0,
         default=1.0,
+        )
+
+    use_selection: BoolProperty(
+        name="Selection Only",
+        description="Export selected objects only",
+        default=False,
         )
 
     apply_modifs: BoolProperty(

@@ -229,14 +229,14 @@ class PolyVert:
 
     def collisionFromLoops(mesh):
         """creates a poly list (triangle list) from a mesh"""
-        polys = [None] * len(mesh.polygons) * 3
-        for fi, f in enumerate(mesh.polygons):
-            for i, lID in enumerate(f.loop_indices):
+        polys = list()
+        for f in mesh.polygons:
+            for lID in f.loop_indices:
                 loop = mesh.loops[lID]
-                vIndex = IDTransl[loop.vertex_index]
+                #vIndex = IDTransl[loop.vertex_index]
 
                 #creating a polyVert with only the poly index, since we only need that for collisions
-                polys[fi + i] = PolyVert(vIndex)
+                polys.append(PolyVert(loop.vertex_index))
                 
         return [ polys ]
 
@@ -320,13 +320,15 @@ class PolyVert:
 
             distPoly = PolyVert.distinct(polyList)
             stripIndices = Stripf.Strippify(distPoly[1], doSwaps=False, concat=False)
-            result = [None] * len(stripIndices)
+            polyStrips = [None] * len(stripIndices)
 
             for i, strip in enumerate(stripIndices):
                 tStrip = [0] * len(strip)
                 for j, index in enumerate(strip):
                     tStrip[j] = distPoly[0][index]
-                result[i] = tStrip
+                polyStrips[i] = tStrip
+
+            result.append(polyStrips)
                 
 
         return result
