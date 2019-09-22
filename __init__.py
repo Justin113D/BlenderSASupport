@@ -21,6 +21,8 @@ if "bpy" in locals():
         importlib.reload(format_BASIC)
     if "format_GC" in locals():
         importlib.reload(format_GC)
+    if "format_CHUNK" in locals():
+        importlib.reload(format_CHUNK)
     if "strippifier" in locals():
         importlib.reload(strippifier)   
     if "fileWriter" in locals():
@@ -58,13 +60,9 @@ class TOPBAR_MT_SA_export(bpy.types.Menu):
 
         layout.label(text="Export as...")
         layout.operator("export_scene.sa1mdl")
-        #layout.label(text="SA2 model (.sa2mdl)")
-        #layout.operator("export_scene.sa2mdl")
-        layout.label(text="SA2B model (.sa2bmdl)")
-        #layout.operator("export_scene.sa2bmdl")
+        layout.operator("export_scene.sa2mdl")        
         layout.operator("export_scene.sa1lvl")
-        layout.label(text="SA2B level (.sa2blvl)")
-        #layout.operator("export_scene.sa2blvl")
+        layout.operator("export_scene.sa2lvl")
 
 @orientation_helper(axis_forward='Z', axis_up='Y')    
 class ExportSA1MDL(bpy.types.Operator, ExportHelper):
@@ -130,7 +128,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
     bl_label = "SA2 model (.sa2mdl)"
     bl_options = {'PRESET', 'UNDO'}
 
-    filename_ext = ".sa2bmdl"
+    filename_ext = ".sa2mdl"
 
     filter_glob: StringProperty(
         default="*.sa2mdl;",
@@ -178,63 +176,6 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         
         keywords["global_matrix"] = global_matrix
         keywords["export_format"] = 'SA2MDL'
-        return export_mdl.write(context, **keywords)
-
-@orientation_helper(axis_forward='Z', axis_up='Y')    
-class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
-    """Export Objects into an SA2B model file"""
-    bl_idname = "export_scene.sa2bmdl"
-    bl_label = "SA2B model (.sa2bmdl)"
-    bl_options = {'PRESET', 'UNDO'}
-
-    filename_ext = ".sa2bmdl"
-
-    filter_glob: StringProperty(
-        default="*.sa2bmdl;",
-        options={'HIDDEN'},
-        )
-
-    global_scale: FloatProperty(
-        name="Scale",
-        min=0.01, max=1000.0,
-        default=1.0,
-        )
-
-    use_selection: BoolProperty(
-        name="Selection Only",
-        description="Export selected objects only",
-        default=False,
-        )
-
-    apply_modifs: BoolProperty(
-        name="Apply Modifiers",
-        description="Apply active viewport modifiers",
-        default=True,
-        )
-
-    console_debug_output: BoolProperty(
-        name = "Console Output",
-        description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-        default = True,
-        )
-
-    def execute(self, context):
-        from . import export_mdl
-        from mathutils import Matrix
-        keywords = self.as_keywords(ignore=("global_scale",
-                                    "check_existing",
-                                    "filter_glob",
-                                    "axis_forward",
-                                    "axis_up"
-                                    ))
-        
-        global_matrix = (Matrix.Scale(self.global_scale, 4) @
-                         axis_conversion(to_forward=self.axis_forward,
-                                         to_up=self.axis_up,
-                                         ).to_4x4())
-        
-        keywords["global_matrix"] = global_matrix
-        keywords["export_format"] = 'SA2BMDL'
         return export_mdl.write(context, **keywords)
 
 @orientation_helper(axis_forward='Z', axis_up='Y')  
@@ -296,11 +237,13 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
         return export_lvl.write(context, **keywords)
 
 @orientation_helper(axis_forward='Z', axis_up='Y')  
-class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
-    """Export scene into an SA2B level file"""
-    bl_idname = "export_scene.sa2blvl"
-    bl_label = "SA2B level (.sa2blvl)"
+class ExportSA2LVL(bpy.types.Operator, ExportHelper):
+    """Export scene into an SA2 level file"""
+    bl_idname = "export_scene.sa2lvl"
+    bl_label = "SA2 level (.sa2lvl)"
     bl_options = {'PRESET', 'UNDO'}
+
+    filename_ext = ".sa2lvl"
 
     filter_glob: StringProperty(
         default="*.sa2blvl;",
@@ -341,7 +284,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         
         keywords["global_matrix"] = global_matrix
-        keywords["export_format"] = 'SA2BLVL'
+        keywords["export_format"] = 'SA2LVL'
         return export_lvl.write(context, **keywords)
 
 #operators
@@ -465,6 +408,9 @@ def qmeUpdate(context, newValue):
         
         if matQEditor.b_apply_specular and newValue:
             matProps.b_Specular = matQProps.b_Specular
+
+        if matQEditor.b_apply_Ambient and newValue:
+            matProps.b_Ambient = matQProps.b_Ambient
         
         if matQEditor.b_apply_specularity and newValue:
             matProps.b_Exponent = matQProps.b_Exponent
@@ -524,6 +470,9 @@ def qmeUpdate(context, newValue):
 
         if matQProps.b_ignoreLighting:
             matProps.b_ignoreLighting = newValue
+
+        if matQProps.b_ignoreAmbient:
+            matProps.b_ignoreAmbient = newValue 
 
         if matQProps.b_flatShading:
             matProps.b_flatShading = newValue
@@ -702,11 +651,20 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         default=(1.0, 1.0, 1.0, 1.0),       
         )
 
+    b_Ambient : FloatVectorProperty(
+        name = "Ambient Color",
+        description="Ambient Color (SA2 only)",
+        subtype='COLOR_GAMMA',
+        size=4,
+        min=0.0, max=1.0,
+        default=(1.0, 1.0, 1.0, 1.0),       
+        )
+
     b_Exponent: FloatProperty(
         name = "Specularity",
         description= "Specular Precision on the material",
-        default=11.0,
-        min = 0, max = 11
+        default=1.0,
+        min = 0, max = 1
         )
 
     b_TextureID: IntProperty(
@@ -753,7 +711,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
     b_texFilter: EnumProperty(
         name="Filter Type",
         description="The texture filter",
-        items=( ('NONE', 'None', "No filtering"),
+        items=( ('POINT', 'Point', "no filtering"),
                 ('BILINEAR', 'Bilinear', "Bilinear Filtering"),
                 ('TRILINEAR', 'Trilinear', "Trilinear Filtering"),
                 ('BLEND', 'Blend', "Bi- and Trilinear Filtering blended together")
@@ -857,6 +815,12 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
     b_ignoreLighting: BoolProperty(
         name="Ignore Lighting",
         description="Ignores lighting as a whole when rendering",
+        default=False
+        )
+
+    b_ignoreAmbient: BoolProperty(
+        name="Ignore Ambient",
+        description="Ignores ambient as a whole when rendering (SA2 Only)",
         default=False
         )
 
@@ -1100,6 +1064,12 @@ class SAMaterialPanelSettings(bpy.types.PropertyGroup):
         default=False
         )
 
+    b_apply_Ambient: BoolProperty( 
+        name = "Apply ambient",
+        description="Sets the ambient of all material when pressing 'Update'",
+        default=False
+        )
+
     b_apply_specularity: BoolProperty( 
         name = "Apply specularity",
         description="Sets the specularity of all material when pressing 'Update'",
@@ -1116,6 +1086,19 @@ class SAMaterialPanelSettings(bpy.types.PropertyGroup):
         name = "Apply filter type",
         description="Sets the filter type of all material when pressing 'Update'",
         default=False
+        )
+
+class SAMeshSettings(bpy.types.PropertyGroup):
+
+    sa2ExportType: EnumProperty(
+        name = "SA2 Export Type",
+        description = "Determines which vertex data should be written for sa2",
+        items = ( ('VC', "Colors", "Only vertex colors are gonna be written"),
+                  ('NRM', "Normals", "Only normals are gonna be written"),
+                  ('NRMVC', "Normals and Colors", "Both normals and vertex colors are gonna be written"),
+                  ('NRMW', "Normals and Weights (WIP)", "Normals and weights are gonna be written (not supported at the moment)")
+                ),
+        default = 'NRMVC'
         )
 
 #panels
@@ -1142,6 +1125,7 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
 
         propAdv(menu, "Diffuse Color:", matProps, "b_Diffuse", menuProps, "b_apply_diffuse", qe)
         propAdv(menu, "Specular Color:", matProps, "b_Specular", menuProps, "b_apply_specular", qe)
+        propAdv(menu, "Ambient Color:", matProps, "b_Ambient", menuProps, "b_apply_Ambient", qe)
         propAdv(menu, "Specular Strength:", matProps, "b_Exponent", menuProps, "b_apply_specularity", qe)
         propAdv(menu, "Texture ID:", matProps, "b_TextureID", menuProps, "b_apply_texID", qe)
         
@@ -1210,6 +1194,7 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
             box.prop(matProps, "b_doubleSided")
             box.prop(matProps, "b_ignoreSpecular")
             box.prop(matProps, "b_ignoreLighting")
+            box.prop(matProps, "b_ignoreAmbient")
             box.prop(matProps, "b_flatShading")
             
 
@@ -1366,6 +1351,25 @@ class SAObjectPanel(bpy.types.Panel):
         split.label(text="User flags")
         split.prop(objProps, "userFlags", text="")
 
+class SAMeshPanel(bpy.types.Panel):
+    bl_idname = "MESH_PT_saProperties"
+    bl_label = "SA Mesh Properties"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+
+    @classmethod
+    def poll(self, context):
+        return context.active_object.type == 'MESH'
+
+    def draw(self, context):
+        layout = self.layout
+        meshprops = context.active_object.data.saSettings
+
+        split = layout.split(factor=0.4)
+        split.label(text="SA2 Export Type")
+        split.prop(meshprops, "sa2ExportType", text = "")
+
 class SAMaterialPanel(bpy.types.Panel):
     bl_idname = "MATERIAL_PT_saProperties"
     bl_label = "SA Material Properties"
@@ -1444,9 +1448,8 @@ classes = (
     TOPBAR_MT_SA_export,
     ExportSA1MDL,
     ExportSA2MDL,
-    ExportSA2BMDL,
     ExportSA1LVL,
-    ExportSA2BLVL,
+    ExportSA2LVL,
 
     StrippifyTest,
     qmeReset,
@@ -1457,11 +1460,13 @@ classes = (
     SASettings,
     SAMaterialSettings,
     SAMaterialPanelSettings,
+    SAMeshSettings,
 
     SAObjectPanel,
     SAMaterialPanel,
     SAScenePanel,
-    SA3DPanel
+    SA3DPanel,
+    SAMeshPanel
     )
 
 def register():
@@ -1475,6 +1480,7 @@ def register():
     bpy.types.Scene.saSettings = bpy.props.PointerProperty(type=SASettings)
     bpy.types.Object.saSettings = bpy.props.PointerProperty(type=SAObjectSettings)
     bpy.types.Material.saSettings = bpy.props.PointerProperty(type=SAMaterialSettings)
+    bpy.types.Mesh.saSettings = bpy.props.PointerProperty(type=SAMeshSettings)
 
     bpy.types.TOPBAR_MT_file_export.append(menu_func_exportsa)
 

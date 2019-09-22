@@ -100,7 +100,7 @@ class Material:
              name: str = "",
              diffuse = ColorARGB(), 
              specular = ColorARGB(),
-             exponent = 0,
+             exponent = 1,
              textureID = 0,
              materialFlags = enums.MaterialFlags.null,
              material: bpy.types.Material = None
@@ -116,7 +116,7 @@ class Material:
             matProps = material.saSettings
             self.diffuse = ColorARGB(c = matProps.b_Diffuse)
             self.specular = ColorARGB(c = matProps.b_Specular)
-            self.exponent = matProps.b_Exponent
+            self.exponent = matProps.b_Exponent * 11
             self.textureID = matProps.b_TextureID
             self.mFlags = enums.MaterialFlags.null
 

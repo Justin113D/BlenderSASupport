@@ -296,3 +296,131 @@ class PolyType(Enum):
     Quads = 1
     NPoly = 2
     Strips = 3
+
+# CHUNK format enums and flags:
+
+class ChunkType(Enum):
+    """Chunk format types"""
+    Null = 0
+    # Bits
+    Bits_BlendAlpha = 1
+    Bits_MipmapDAdjust = 2
+    Bits_SpecularExponent = 3
+    Bits_CachePolygonList = 4
+    Bits_DrawPolygonList = 5
+    # Tiny
+    Tiny_TextureID = 8
+    Tiny_TextureID2 = 9
+    # Material
+    Material = 16
+    Material_Diffuse = 17
+    Material_Ambient = 18
+    Material_DiffuseAmbient = 19
+    Material_Specular = 20
+    Material_DiffuseSpecular = 21
+    Material_AmbientSpecular = 22
+    Material_DiffuseAmbientSpecular = 23
+    Material_Bump = 24
+    Material_Diffuse2 = 25
+    Material_Ambient2 = 26
+    Material_DiffuseAmbient2 = 27
+    Material_Specular2 = 28
+    Material_DiffuseSpecular2 = 29
+    Material_AmbientSpecular2 = 30
+    Material_DiffuseAmbientSpecular2 = 31
+    # Vertex
+    Vertex_VertexSH = 32
+    Vertex_VertexNormalSH = 33
+    Vertex_Vertex = 34
+    Vertex_VertexDiffuse8 = 35
+    Vertex_VertexUserFlags = 36
+    Vertex_VertexNinjaFlags = 37
+    Vertex_VertexDiffuseSpecular5 = 38
+    Vertex_VertexDiffuseSpecular4 = 39
+    Vertex_VertexDiffuseSpecular16 = 40
+    Vertex_VertexNormal = 41
+    Vertex_VertexNormalDiffuse8 = 42
+    Vertex_VertexNormalUserFlags = 43
+    Vertex_VertexNormalNinjaFlags = 44
+    Vertex_VertexNormalDiffuseSpecular5 = 45
+    Vertex_VertexNormalDiffuseSpecular4 = 46
+    Vertex_VertexNormalDiffuseSpecular16 = 47
+    Vertex_VertexNormalX = 48
+    Vertex_VertexNormalXDiffuse8 = 49
+    Vertex_VertexNormalXUserFlags = 50
+    # Volume
+    Volume_Polygon3 = 56
+    Volume_Polygon4 = 57
+    Volume_Strip = 58
+    # Strip
+    Strip_Strip = 64
+    Strip_StripUVN = 65
+    Strip_StripUVH = 66
+    Strip_StripNormal = 67
+    Strip_StripUVNNormal = 68
+    Strip_StripUVHNormal = 69
+    Strip_StripColor = 70
+    Strip_StripUVNColor = 71
+    Strip_StripUVHColor = 72
+    Strip_Strip2 = 73
+    Strip_StripUVN2 = 74
+    Strip_StripUVH2 = 75
+    # End
+    End = 255
+
+class WeightStatus(Enum):
+    Start = 0
+    Middle = 1
+    End = 2
+
+class SA2AlphaInstructions(Flag):
+    null = 0x0
+    # Destination alpha blending
+    DA_ONE = 0x1
+    DA_OTHER = 0x2
+    DA_SRC = 0x4
+    DA_INV_OTHER = DA_ONE | DA_OTHER
+    DA_INV_SRC = DA_ONE | DA_SRC
+    DA_DST = DA_OTHER | DA_SRC
+    DA_INV_DST = DA_ONE | DA_OTHER | DA_SRC
+    # Source Alpha Blending
+    SA_ONE = 0x8
+    SA_OTHER = 0x10
+    SA_SRC = 0x20
+    SA_INV_OTHER = SA_ONE | SA_OTHER
+    SA_INV_SRC = SA_ONE | SA_SRC
+    SA_DST = SA_OTHER | SA_SRC
+    SA_INV_DST = SA_ONE | SA_OTHER | SA_SRC
+
+class MipMapDistanceAdjust(Flag):
+    D_025 = 0x1
+    D_050 = 0x2
+    D_100 = 0x4
+    D_200 = 0x8
+
+class TextureIDFlags(Flag):
+    null = 0x0
+    D_025 = 0x01
+    D_050 = 0x02
+    D_100 = 0x04
+    D_200 = 0x08
+    CLAMP_V = 0x10
+    CLAMP_U = 0x20
+    FLIP_V = 0x40
+    FLIP_U = 0x80
+
+class TextureFiltering(Enum):
+    Point = 0
+    Bilinear = 1
+    Trilinear = 2
+    Blend = 3
+
+class StripFlags(Flag):
+    null = 0x0
+    IGNORE_LIGHT = 0x01
+    INGORE_SPECULAR = 0x02
+    IGNORE_AMBIENT = 0x04
+    USE_ALPHA = 0x08
+    DOUBLE_SIDE = 0x10
+    FLAT_SHADING = 0x20
+    ENV_MAPPING = 0x40

@@ -16,7 +16,7 @@ def write(context,
          global_matrix,
          console_debug_output
          ):
-   from . import fileWriter, enums, common, format_BASIC
+   from . import fileWriter, enums, common, format_BASIC, format_CHUNK
    
    # clear console and enable debug outputs
    os.system("cls")
@@ -24,6 +24,7 @@ def write(context,
    DO = console_debug_output
    common.DO = DO
    format_BASIC.DO = DO
+   format_CHUNK.DO = DO
 
    # create the file
    fileW = fileWriter.FileWriter(filepath=filepath)
@@ -58,6 +59,12 @@ def write(context,
       # then writing mesh data
       for m in meshes:
          format_BASIC.WriteMesh(fileW, m, global_matrix, materials, labels)
+
+   elif export_format == 'SA2MDL':
+      #writing mes data
+      for m in meshes:
+         format_CHUNK.write(fileW, m, global_matrix, materials, labels)
+
 
    saObjects = common.getObjData(objects, noParents, global_matrix,  labels)
    mdlAddress = common.saObject.writeObjList(fileW, saObjects, labels, False)
