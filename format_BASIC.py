@@ -514,7 +514,7 @@ def VertNrmPairs(vertices, exportMatrix):
     for i, v in enumerate(vertices):
         pos = exportMatrix @ v.co
         nrm = exportMatrix @ v.normal
-        e = [Vector3(pos.x, pos.y, pos.z), Vector3(nrm.x, nrm.y, nrm.z)]
+        e = (Vector3(pos.x, pos.y, pos.z), Vector3(nrm.x, nrm.y, nrm.z))
         entries[i] = e
 
     return entries

@@ -95,7 +95,6 @@ def write(context,
                labels["col_" + o.name] = fileW.tell()
                #labels[o.name] = fileW.tell()
                col = common.COL(o, global_matrix, labels, False)
-               #col.bounds.radius += 1000
                col.write(fileW, False)
           for o in cObjects:
                labels["col_" + o.name] = fileW.tell()
@@ -120,7 +119,7 @@ def write(context,
      if export_format == 'SA1LVL':
           fileW.wUShort(0) # anim count (unused rn)
           fileW.wUInt(0x8) # landtable flags - 8 determines that PVM/GVM's should be used
-          fileW.wFloat(0) # unknown1
+          fileW.wFloat(context.scene.saSettings.drawDistance) # Draw Distance
           fileW.wUInt(COLaddress) # geometry address
           fileW.wUInt(0) # animation address (unused rn)
           fileW.wUInt(texFileNameAddr) # texture file name address
@@ -130,7 +129,7 @@ def write(context,
      else:
           fileW.wUShort(len(vObjects)) # visual col count
           fileW.wULong(0) # gap
-          fileW.wFloat(0) # unknown1
+          fileW.wFloat(context.scene.saSettings.drawDistance) # Draw Distance
           fileW.wUInt(COLaddress) # geometry address
           fileW.wUInt(0) # animation address (unused rn)
           fileW.wUInt(texFileNameAddr) # (texFileNameAddr) texture file name address

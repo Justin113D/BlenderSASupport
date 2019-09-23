@@ -632,6 +632,12 @@ class SASettings(bpy.types.PropertyGroup):
         default="0"
         )
 
+    drawDistance: FloatProperty(
+        name="Draw Distance",
+        description="How far the camera has to be away from an object to render (only sa2lvl)",
+        default=3000
+        )
+
     expandedMatEdit: BoolProperty( name ="Material Quick Edit", default=False)
 
 class SAMaterialSettings(bpy.types.PropertyGroup):
@@ -1408,12 +1414,17 @@ class SAScenePanel(bpy.types.Panel):
         layout.prop(settings, "author")
         layout.prop(settings, "description")
 
+        split = layout.split(factor=0.5)
+        split.label(text="Draw Distance:")
+        split.prop(settings, "drawDistance", text="")
+
         split = layout.split(factor=0.3)
         split.label(text="TexListPtr (hex):")
         split = split.split(factor=0.1)
         split.alignment='RIGHT'
         split.label(text="0x")
         split.prop(settings, "texListPointer", text="")
+
 
 class SA3DPanel(bpy.types.Panel):
     bl_idname = 'MESH_PT_satools'
