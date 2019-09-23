@@ -106,9 +106,9 @@ class PolyVert:
 
     def updateUV(self, HD):
         if HD:
-            self.uv = (round(self.uv[0] * 1023), round((1-self.uv[1]) * 1023))
+            self.uv = (round(self.uv[0] * 1024), round((1-self.uv[1]) * 1024))
         else:
-            self.uv = (round(self.uv[0] * 255), round((1-self.uv[1]) * 255))
+            self.uv = (round(self.uv[0] * 256), round((1-self.uv[1]) * 256))
 
     def write(self, fileW):
         fileW.wUShort(self.vertexID)
@@ -194,7 +194,7 @@ def write(fileW: fileWriter.FileWriter,
         vertexType = 'NRM'
 
     writeUVs = len(mesh.uv_layers) > 0
-    HDUV = True
+    HDUV = False
 
     # creating 2d vertex array
     vertices = list()
@@ -323,15 +323,22 @@ def write(fileW: fileWriter.FileWriter,
     # === WRITING TO THE FILE === #
 
     # writing the vertex chunks:
+    if vertexType == 'NRMVC':
+        if len(mesh.vertex_colors) > 0:
+            vertexType = 'VC'
+        else:
+            vertexType = 'NRM'
+        # nrm vc doesnt seem to be supported...
+        #vertexType = enums.ChunkType.Vertex_VertexNormalDiffuse8   
+        #vertexSize = 7
     if vertexType == 'VC':
         vertexType = enums.ChunkType.Vertex_VertexDiffuse8
         vertexSize = 4
     elif vertexType == 'NRM':
         vertexType = enums.ChunkType.Vertex_VertexNormal
         vertexSize = 6
-    elif vertexType == 'NRMVC':
-        vertexType = enums.ChunkType.Vertex_VertexNormalDiffuse8
-        vertexSize = 7
+
+       
     else: # 'NRMW'
         vertexType = enums.ChunkType.Vertex_VertexNormalNinjaFlags
         vertexSize = 7

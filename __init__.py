@@ -245,7 +245,7 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
     filename_ext = ".sa2lvl"
 
     filter_glob: StringProperty(
-        default="*.sa2blvl;",
+        default="*.sa2lvl;",
         options={'HIDDEN'},
         )
 

@@ -91,7 +91,12 @@ class saObject:
             self.meshAddress = 0
             self.flags |= enums.ObjectFlags.NoDisplay
         else:
-            self.meshAddress = labels["a_" + meshname]
+            meshKey = "a_" + meshname
+            if meshKey in labels.keys():
+                self.meshAddress = labels["a_" + meshname]
+            else:
+                self.meshAddress = 0
+                self.flags |= enums.ObjectFlags.NoDisplay
             #self.meshAddress = labels[meshname]
 
         self.position = Vector3(pos[0], pos[1], pos[2])
@@ -414,6 +419,9 @@ def getMeshesFromObjects(objects, depsgraph, apply_modifs):
     outMeshes = []
     materials = []
     for o in meshesToConvert:
+        if len(o.data.vertices) == 0:
+            continue
+
         newMesh, mats = convertMesh(o, depsgraph, False if o in mObjects else apply_modifs)
         outMeshes.append(newMesh)
         if not o.saSettings.isCollision:

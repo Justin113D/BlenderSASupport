@@ -95,6 +95,7 @@ def write(context,
                labels["col_" + o.name] = fileW.tell()
                #labels[o.name] = fileW.tell()
                col = common.COL(o, global_matrix, labels, False)
+               #col.bounds.radius += 1000
                col.write(fileW, False)
           for o in cObjects:
                labels["col_" + o.name] = fileW.tell()

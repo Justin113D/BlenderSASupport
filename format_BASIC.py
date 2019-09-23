@@ -75,8 +75,8 @@ class UV:
     y = 0
 
     def __init__(self, uv = [0.0,0.0]):
-        self.x = round(uv[0] * 255)
-        self.y = round((1-uv[1]) * 255)
+        self.x = round(uv[0] * 256)
+        self.y = round((1-uv[1]) * 256)
 
     def isIdentical(self, other):
         return self.x == other.x and self.y == other.y
