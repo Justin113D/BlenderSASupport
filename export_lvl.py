@@ -113,6 +113,7 @@ def write(context,
      fileW.align(4)
 
      landTableAddress = fileW.tell()
+     labels[texFileName + "_Table"] = landTableAddress
 
      #landtable info
      fileW.wUShort(len(objects)) # COL count

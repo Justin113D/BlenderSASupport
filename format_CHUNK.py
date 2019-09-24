@@ -558,7 +558,9 @@ def write(fileW: fileWriter.FileWriter,
 
     labels["a_" + mesh.name] = fileW.tell()
     fileW.wUInt(vertexAddress)
+    labels["c_" + mesh.name + "_v"] = vertexAddress
     fileW.wUInt(polyAddress)
+    labels["c_" + mesh.name + "_p"] = polyAddress
     
     bounds = BoundingBox(mesh.vertices)
     bounds.boundCenter = exportMatrix @ bounds.boundCenter

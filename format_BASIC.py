@@ -603,9 +603,12 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
 
     #writing addresses
 
+    labels["b_" + mesh.name + "_v"] = verticesAddress
     fileW.wUInt(verticesAddress)
+    labels["b_" + mesh.name + "_nrm"] = normalsAddress
     fileW.wUInt(normalsAddress)
     fileW.wUInt(len(distVertNrm))
+    labels["b_" + mesh.name + "_ml"] = meshSetAddress # ml = "mesh list"
     fileW.wUInt(meshSetAddress)
     fileW.wUInt(0x00000010) # material address is always the same (at least the way this addon exports the format)
     fileW.wUShort(len(meshSets))

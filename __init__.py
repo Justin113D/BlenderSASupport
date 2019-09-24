@@ -1425,7 +1425,6 @@ class SAScenePanel(bpy.types.Panel):
         split.label(text="0x")
         split.prop(settings, "texListPointer", text="")
 
-
 class SA3DPanel(bpy.types.Panel):
     bl_idname = 'MESH_PT_satools'
     bl_label = 'SA Tools'
