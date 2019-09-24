@@ -102,7 +102,7 @@ class Material:
              specular = ColorARGB(),
              exponent = 1,
              textureID = 0,
-             materialFlags = enums.MaterialFlags.null,
+             materialFlags = enums.MaterialFlags.FLAG_DOUBLE_SIDE,
              material: bpy.types.Material = None
              ):
         self.name = name
