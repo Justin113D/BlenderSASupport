@@ -424,7 +424,7 @@ def getMeshesFromObjects(objects, depsgraph, apply_modifs):
 
         newMesh, mats = convertMesh(o, depsgraph, False if o in mObjects else apply_modifs)
         outMeshes.append(newMesh)
-        if not o.saSettings.isCollision:
+        if not o.saSettings.isCollision or o.saSettings.isCollision and o.saSettings.isVisible:
             for m in mats:
                 if m not in materials:
                     materials.append(m)

@@ -294,32 +294,19 @@ class PolyVert:
 
         return [distinct, oIDtodID]
 
-    def toStrips(polyList, multi):
+    def toStrips(polyList):
 
         Stripf = strippifier.Strippifier()
         result = list()
 
-        if multi:
-            for l in polyList:
-                if len(l) == 0:
-                    result.append(None)
-                    continue
-                distPoly = PolyVert.distinct(l)
-                stripIndices = Stripf.Strippify(distPoly[1], doSwaps=False, concat=False)
+        for l in polyList:
+            if len(l) == 0:
+                result.append(None)
+                continue
 
-                polyStrips = [None] * len(stripIndices)
-
-                for i, strip in enumerate(stripIndices):
-                    tStrip = [0] * len(strip)
-                    for j, index in enumerate(strip):
-                        tStrip[j] = distPoly[0][index]
-                    polyStrips[i] = tStrip
-
-                result.append(polyStrips)
-        else:
-
-            distPoly = PolyVert.distinct(polyList)
+            distPoly = PolyVert.distinct(l)
             stripIndices = Stripf.Strippify(distPoly[1], doSwaps=False, concat=False)
+
             polyStrips = [None] * len(stripIndices)
 
             for i, strip in enumerate(stripIndices):
@@ -563,7 +550,8 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
         polyVs = [polyT]
 
 
-    polyStrips = PolyVert.toStrips(polyVs, True)
+    polyStrips = PolyVert.toStrips(polyVs)
+
     if DO:
         for i,s in enumerate(polyStrips):
             if s is not None:
@@ -576,7 +564,7 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
         for i, p in enumerate(polyStrips):
             if p == None:
                 continue
-            meshSets.append(PolyVert.write(fileW, mesh, 0, i, p))
+            meshSets.append(PolyVert.write(fileW, mesh, 0, i, p, isCollision))
     else:
         for i, p in enumerate(polyStrips):
             if p == None:

@@ -626,6 +626,12 @@ class SASettings(bpy.types.PropertyGroup):
         default="",
         )
 
+    texFileName: StringProperty(
+        name="Texture file name",
+        description="The name of the texture file specified in the landtable info (lvl format)",
+        default=""
+        )
+
     texListPointer: StringProperty(
         name="Texture List Pointer (hex)",
         description="Used for when replacing a stage and its textures",
@@ -1413,6 +1419,7 @@ class SAScenePanel(bpy.types.Panel):
 
         layout.prop(settings, "author")
         layout.prop(settings, "description")
+        layout.prop(settings, "texFileName")
 
         split = layout.split(factor=0.5)
         split.label(text="Draw Distance:")

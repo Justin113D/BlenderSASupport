@@ -50,10 +50,10 @@ def write(context,
           #the sa1 format doesnt need to seperate between collision and visual meshes
           objects, noParents, meshes, materials = common.evaluateObjectsToWrite(use_selection, apply_modifs, context)
 
-          common.writeBASICMaterialData(fileW, materials, labels) 
+          common.writeBASICMaterialData(fileW, materials, labels)
           # then writing mesh data
           for m in meshes:
-               format_BASIC.WriteMesh(fileW, m, global_matrix, materials, labels)     
+               format_BASIC.WriteMesh(fileW, m, global_matrix, materials, labels)
 
      else:
           #writing the collision material, just to be sure
@@ -104,7 +104,11 @@ def write(context,
 
      texFileNameAddr = fileW.tell()
      #write texture filename
-     texFileName =  os.path.splitext(os.path.basename(filepath))[0]
+     if context.scene.saSettings.texFileName == "":
+          texFileName =  os.path.splitext(os.path.basename(filepath))[0]
+     else: 
+          texFileName = context.scene.saSettings.texFileName
+     
      texListPointer = int("0x" + context.scene.saSettings.texListPointer, 0)
      debug(" Texture file name:", texFileName)
      debug(" Tex list pointer:", '{:08X}'.format(texListPointer))
