@@ -336,7 +336,7 @@ class COL:
             fileW.wUInt(self.unknown2)
         fileW.wUInt(self.unknown3)
         flags = int("0x" + self.userFlags, 0)
-        fileW.wUInt(self.flags.value & flags)
+        fileW.wUInt(self.flags.value | flags)
 
         if DO:
             print(" COL:", self.name)
