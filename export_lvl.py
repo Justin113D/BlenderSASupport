@@ -57,7 +57,10 @@ def write(context,
 
      else:
           #writing the collision material, just to be sure
-          colMat = format_BASIC.Material()
+          if context.scene.saSettings.doubleSidedCollision:
+               colMat = format_BASIC.Material(materialFlags=enums.MaterialFlags.FLAG_DOUBLE_SIDE)
+          else:
+               colMat = format_BASIC.Material()
           labels["col_material"] = 0x00000010
           colMat.write(fileW)
 

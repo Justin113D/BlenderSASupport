@@ -605,10 +605,10 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         default=False
         )
 
-    userFlags: IntProperty(
+    userFlags: StringProperty(
         name="User flags",
         description="User determined flags (for experiments, otherwise usage is unadvised)",
-        default=0
+        default="0"
         )
 
 class SASettings(bpy.types.PropertyGroup):
@@ -642,6 +642,12 @@ class SASettings(bpy.types.PropertyGroup):
         name="Draw Distance",
         description="How far the camera has to be away from an object to render (only sa2lvl)",
         default=3000
+        )
+
+    doubleSidedCollision: BoolProperty(
+        name="Double sided collision",
+        description="Enables double sided collision detection. This is supposed to be used as a failsafe for people unexperienced with how normals work",
+        default=True
         )
 
     expandedMatEdit: BoolProperty( name ="Material Quick Edit", default=False)
@@ -1365,7 +1371,12 @@ class SAObjectPanel(bpy.types.Panel):
         layout.separator()
         layout.label(text="Experimental")
         split = layout.split()
-        split.label(text="User flags")
+
+        split = layout.split(factor=0.3)
+        split.label(text="User flags (hex):")
+        split = split.split(factor=0.1)
+        split.alignment='RIGHT'
+        split.label(text="0x")
         split.prop(objProps, "userFlags", text="")
 
 class SAMeshPanel(bpy.types.Panel):
@@ -1431,6 +1442,8 @@ class SAScenePanel(bpy.types.Panel):
         split.alignment='RIGHT'
         split.label(text="0x")
         split.prop(settings, "texListPointer", text="")
+
+        layout.prop(settings, "doubleSidedCollision")
 
 class SA3DPanel(bpy.types.Panel):
     bl_idname = 'MESH_PT_satools'

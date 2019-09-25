@@ -253,6 +253,7 @@ class COL:
     unknown2 = 0
     unknown3 = 0
     flags = enums.SA1SurfaceFlags.null
+    userFlags = 0
 
     def __init__(self, bObject, global_matrix, labels, sa1):
         self.name = bObject.name
@@ -261,6 +262,7 @@ class COL:
         self.unknown1 = 0
         self.unknown2 = 0
         self.unknown3 = 0
+        self.userFlags = bObject.saSettings.userFlags
 
         if bObject.type == 'MESH':
             self.mdlAddress = labels["o_" + bObject.name]
@@ -274,7 +276,7 @@ class COL:
             self.bounds.boundCenter = Vector3(bc.x, bc.y, bc.z)
         else:
             self.mdlAddress = 0
-
+            
 
         if bObject.type == 'MESH':
             props = bObject.saSettings
@@ -315,6 +317,8 @@ class COL:
                 else:
                     self.flags = enums.SA2SurfaceFlags.Visible
 
+
+
     def write(self, fileW, sa1):
         if self.mdlAddress == 0:
             fileW.wFloat(0)
@@ -331,7 +335,8 @@ class COL:
             fileW.wUInt(self.mdlAddress)            
             fileW.wUInt(self.unknown2)
         fileW.wUInt(self.unknown3)
-        fileW.wUInt(self.flags.value)
+        flags = int("0x" + self.userFlags, 0)
+        fileW.wUInt(self.flags.value & flags)
 
         if DO:
             print(" COL:", self.name)
