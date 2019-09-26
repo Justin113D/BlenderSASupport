@@ -1,11 +1,11 @@
 # meta info
 bl_info = {
-    "name": "SA2 Model Formats support",
+    "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (0,0,1),
+    "version": (0,1,1),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
-    "description": "Import/Exporter for the SA2 Models Formats. For any questions, contact me via Discord: Justin113D#1927",
+    "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
     "warning": "",
     "wiki_url": "",
     "support": 'COMMUNITY',
@@ -533,6 +533,7 @@ class qmeReset(bpy.types.Operator):
 #property groups
 class SAObjectSettings(bpy.types.PropertyGroup):
     """hosts all properties to edit the surface flags of a COL"""
+    # used in both
     isCollision: BoolProperty(
         name="Is Collision",
         description="Whether the object can be collided with at all. \n Also determines whether the mesh is invisible in sa2",
@@ -551,29 +552,11 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         default=False
         )
     
-    noFriction: BoolProperty(
-        name="No friction",
-        description="Whether the model has friction",
-        default=False
-        )
-    
-    noAcceleration: BoolProperty(
-        name="no acceleration",
-        description="If the acceleration of the character should stay when interacting with the model",
-        default=False
-        )
-
     cannotLand: BoolProperty(
         name="Cannot land",
         description="Whether you can stand on the model",
         default=False
         )
-
-    increasedAcceleration: BoolProperty(
-        name="Increased acceleration",
-        description="Whether the acceleration of the character should be raised when interacting with the model",
-        default=False
-        )        
 
     diggable: BoolProperty(
         name="Diggable",
@@ -593,12 +576,6 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         default=False
         )
 
-    footprints: BoolProperty(
-        name="Footprints",
-        description="The character will leave footprints behind when walking on this models surface",
-        default=False
-        )
-
     isVisible: BoolProperty(
         name="isVisible",
         description="Whether the model is Visible (only matters in sa1)",
@@ -610,6 +587,79 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         description="User determined flags (for experiments, otherwise usage is unadvised)",
         default="0"
         )
+
+    # sa2 only
+
+    standOnSlope: BoolProperty(
+        name="Stand on slope",
+        description="Whether the character wont slide down when standing on stairs",
+        default=False
+        )
+
+    noShadows: BoolProperty(
+        name="No shadows",
+        description="No shadows will be displayed on mesh",
+        default=False
+        )
+
+    water2: BoolProperty(
+        name="Water 2",
+        description="The same as water, but different!",
+        default=False
+        )
+
+    unknown22: BoolProperty(
+        name="Unknown 22",
+        description="No idea what this does",
+        default=False
+        )
+
+    unknown24: BoolProperty(
+        name="Unknown 24",
+        description="No idea what this does",
+        default=False
+        )
+
+    unknown29: BoolProperty(
+        name="Unknown 29",
+        description="No idea what this does",
+        default=False
+        )
+
+    unknown30: BoolProperty(
+        name="Unknown 30",
+        description="No idea what this does",
+        default=False
+        )
+
+    # sa1 only
+
+    noFriction: BoolProperty(
+        name="No friction",
+        description="Whether the model has friction",
+        default=False
+        )
+    
+    noAcceleration: BoolProperty(
+        name="no acceleration",
+        description="If the acceleration of the character should stay when interacting with the model",
+        default=False
+        )
+
+    increasedAcceleration: BoolProperty(
+        name="Increased acceleration",
+        description="Whether the acceleration of the character should be raised when interacting with the model",
+        default=False
+        )        
+
+    footprints: BoolProperty(
+        name="Footprints",
+        description="The character will leave footprints behind when walking on this models surface",
+        default=False
+        )
+
+
+    #
 
 class SASettings(bpy.types.PropertyGroup):
     """Information global to the scene"""
@@ -651,6 +701,10 @@ class SASettings(bpy.types.PropertyGroup):
         )
 
     expandedMatEdit: BoolProperty( name ="Material Quick Edit", default=False)
+
+    expandedSA1obj: BoolProperty( name ="Object SA1 Properties", default=False)
+
+    expandedSA2obj: BoolProperty( name ="Object SA2 Properties", default=False)
 
 class SAMaterialSettings(bpy.types.PropertyGroup):
     """Hosts all of the material data necessary for exporting"""
@@ -1346,19 +1400,22 @@ class SAObjectPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         objProps = context.active_object.saSettings
+        menuProps = context.scene.saSettings
 
         layout.prop(objProps, "isCollision")
-
         if objProps.isCollision:
-            box = layout.box()
-            box.label(text="Collision Surface Flags")
+            layout.prop(objProps, "isVisible")
 
-            box.prop(objProps, "isVisible")
+        # sa1 flags
+        box = layout.box()
+        box.prop(menuProps, "expandedSA1obj",
+            icon="TRIA_DOWN" if menuProps.expandedSA1obj else "TRIA_RIGHT",
+            emboss = False
+            )
+
+        if menuProps.expandedSA1obj and objProps.isCollision:
             box.prop(objProps, "solid")
             box.prop(objProps, "water")
-
-            box.separator(factor=0.5)
-            box.label(text="Working in sa1 only:")
             box.prop(objProps, "noFriction")
             box.prop(objProps, "noAcceleration")
             box.prop(objProps, "cannotLand")
@@ -1367,6 +1424,35 @@ class SAObjectPanel(bpy.types.Panel):
             box.prop(objProps, "unclimbable")
             box.prop(objProps, "hurt")
             box.prop(objProps, "footprints")
+
+        # sa2 flags
+
+        box = layout.box()
+        box.prop(menuProps, "expandedSA2obj",
+            icon="TRIA_DOWN" if menuProps.expandedSA2obj else "TRIA_RIGHT",
+            emboss = False
+            )
+
+        if menuProps.expandedSA2obj and objProps.isCollision:
+            box.prop(objProps, "solid")
+            box.prop(objProps, "water")
+            box.prop(objProps, "standOnSlope")
+            box.prop(objProps, "diggable")
+            box.prop(objProps, "unclimbable")   
+            box.prop(objProps, "hurt")                     
+            box.prop(objProps, "cannotLand")
+            box.prop(objProps, "water2")
+
+        if menuProps.expandedSA2obj and (not objProps.isCollision or objProps.isCollision and objProps.isVisible):
+            box.prop(objProps, "noShadows")
+
+        if menuProps.expandedSA2obj and objProps.isCollision:
+            box.separator()
+            box.label(text="Experimental")
+            box.prop(objProps, "unknown22")
+            box.prop(objProps, "unknown24")
+            box.prop(objProps, "unknown29")
+            box.prop(objProps, "unknown30")
         
         layout.separator()
         layout.label(text="Experimental")

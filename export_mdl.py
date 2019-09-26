@@ -34,12 +34,15 @@ def write(context,
    fileVersion = 3
    if export_format == 'SA1MDL':
       fileW.wULong(enums.MDLFormatIndicator.SA1MDL.value | (fileVersion << 56))
+      fmt = 'SA1'
       debug("Format: SA1MDL V", fileVersion)
    elif export_format == 'SA2MDL':
       fileW.wULong(enums.MDLFormatIndicator.SA2MDL.value | (fileVersion << 56))
+      fmt = 'SA2'
       debug("Format: SA2MDL V", fileVersion)
    else: # SA2BMDL
       fileW.wULong(enums.MDLFormatIndicator.SA2BMDL.value | (fileVersion << 56))
+      fmt = 'SA2B'
       debug("Format: SA1BMDL V", fileVersion)
 
    # creating and getting variables to use in the export process
@@ -66,7 +69,7 @@ def write(context,
          format_CHUNK.write(fileW, m, global_matrix, materials, labels)
 
 
-   saObjects = common.getObjData(objects, noParents, global_matrix,  labels)
+   saObjects = common.getObjData(objects, noParents, global_matrix, labels, fmt)
    mdlAddress = common.saObject.writeObjList(fileW, saObjects, labels, False)
 
    labelsAddress = fileW.tell()

@@ -6,6 +6,7 @@ from . import fileWriter, enums, strippifier
 DO = False
 
 def debug(*string):
+    global DO
     if DO:
         print(*string)
 
@@ -290,8 +291,12 @@ def write(fileW: fileWriter.FileWriter,
             oIDtodID[IDo] = found
     
     #setting up the triangle lists
+    materialLength = len(materials)
+    
     tris = list()
     for m in mesh.materials:
+        tris.append(list())
+    if len(tris) == 0:
         tris.append(list())
 
     for p in mesh.polygons:
@@ -392,16 +397,20 @@ def write(fileW: fileWriter.FileWriter,
     for mID, ms in enumerate(strips):
         if ms is None:
             continue
+        
         #writing material chunks
         material = None
-        try:
-            for m in materials:
-                if m.name == mesh.materials[mID].name:
-                    material = m
-                    break
-        except ValueError:
-            debug(" material", mesh.materials[i].name, "not found")
-
+        if len(mesh.materials) > 0:
+            try:
+                for m in materials:
+                    if m.name == mesh.materials[mID].name:
+                        material = m
+                        break
+            except ValueError:
+                debug(" material", mesh.materials[i].name, "not found")
+        else:
+            debug(" mesh contains no material")
+            
         stripFlags = enums.StripFlags.null
 
         if material is not None:
@@ -513,9 +522,6 @@ def write(fileW: fileWriter.FileWriter,
             if matProps.b_useEnv:
                 stripFlags |= enums.StripFlags.ENV_MAPPING
 
-        else:
-            debug("error occured! no material found!")
-
         # writing strips
         if writeUVs:
             if HDUV:
@@ -556,11 +562,11 @@ def write(fileW: fileWriter.FileWriter,
 
     fileW.wUShort(enums.ChunkType.End.value)
 
-    labels["a_" + mesh.name] = fileW.tell()
+    labels["cnk_" + mesh.name] = fileW.tell()
     fileW.wUInt(vertexAddress)
-    labels["c_" + mesh.name + "_v"] = vertexAddress
+    labels["cnk_" + mesh.name + "_v"] = vertexAddress
     fileW.wUInt(polyAddress)
-    labels["c_" + mesh.name + "_p"] = polyAddress
+    labels["cnk_" + mesh.name + "_p"] = polyAddress
     
     bounds = BoundingBox(mesh.vertices)
     bounds.boundCenter = exportMatrix @ bounds.boundCenter

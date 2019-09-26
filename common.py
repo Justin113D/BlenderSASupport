@@ -83,6 +83,7 @@ class saObject:
                  child = None,
                  sibling = None,
                  hlvl = 0,
+                 formatType = "",
                  labels = None):
     
         self.name = name
@@ -91,13 +92,12 @@ class saObject:
             self.meshAddress = 0
             self.flags |= enums.ObjectFlags.NoDisplay
         else:
-            meshKey = "a_" + meshname
+            meshKey = formatType + "_" + meshname
             if meshKey in labels.keys():
-                self.meshAddress = labels["a_" + meshname]
+                self.meshAddress = labels[meshKey]
             else:
                 self.meshAddress = 0
                 self.flags |= enums.ObjectFlags.NoDisplay
-            #self.meshAddress = labels[meshname]
 
         self.position = Vector3(pos[0], pos[1], pos[2])
         self.rotation = BAMSRotation(rot[0], rot[1], rot[2])
@@ -109,7 +109,7 @@ class saObject:
         self.address = 0 # set when writing
         self.hierarchyLvl = hlvl
 
-    def getObjList(bObject: bpy.types.Object, objects, hlvl, global_matrix, siblings, result, labels):
+    def getObjList(bObject: bpy.types.Object, objects, hlvl, global_matrix, siblings, fmt, result, labels):
 
         sibling = None
         if len(siblings) > 1:
@@ -126,11 +126,11 @@ class saObject:
                         break
                     
                 if sibling is not None:
-                    saObject.getObjList(sibling, objects, hlvl, global_matrix, siblings, result, labels)
+                    saObject.getObjList(sibling, objects, hlvl, global_matrix, siblings, fmt, result, labels)
                     sibling = result[-1]
 
         if len(bObject.children) > 0 and bObject.children[0] in objects:
-            saObject.getObjList(bObject.children[0], objects, hlvl + 1, global_matrix, bObject.children, result, labels)
+            saObject.getObjList(bObject.children[0], objects, hlvl + 1, global_matrix, bObject.children, fmt, result, labels)
             child = result[-1]
         else:
             child = None
@@ -144,6 +144,13 @@ class saObject:
         if bObject.type == 'MESH':
             meshname = bObject.data.name
 
+        if fmt == 'SA1' or bObject.saSettings.isCollision:
+            formatType = "bsc"
+        elif 'SA2':
+            formatType = "cnk"
+        else: # 'SA2B
+            formatType = "gc"
+
         obj = saObject(name=bObject.name,
                        meshname=meshname, 
                        # flags will be set later
@@ -153,6 +160,7 @@ class saObject:
                        child= child,
                        sibling= sibling,
                        hlvl=hlvl,
+                       formatType=formatType,
                        labels=labels
                        )
         result.append(obj)
@@ -314,10 +322,31 @@ class COL:
                         self.flags |= enums.SA2SurfaceFlags.Solid
                     if props.water:
                         self.flags |= enums.SA2SurfaceFlags.Water
+                    if props.standOnSlope:
+                        self.flags |= enums.SA2SurfaceFlags.StandOnSlope
+                    if props.diggable:
+                        self.flags |= enums.SA2SurfaceFlags.Diggable
+                    if props.unclimbable:
+                        self.flags |= enums.SA2SurfaceFlags.Unclimbable
+                    if props.hurt:
+                        self.flags |= enums.SA2SurfaceFlags.Hurt
+                    if props.cannotLand:
+                        self.flags |= enums.SA2SurfaceFlags.CannotLand
+                    if props.water2:
+                        self.flags |= enums.SA2SurfaceFlags.Water2
+                    if props.unknown22:
+                        self.flags |= enums.SA2SurfaceFlags.Unknown22
+                    if props.unknown24:
+                        self.flags |= enums.SA2SurfaceFlags.Unknown24
+                    if props.unknown29:
+                        self.flags |= enums.SA2SurfaceFlags.Unknown29
+                    if props.unknown30:
+                        self.flags |= enums.SA2SurfaceFlags.Unknown30
+
                 else:
                     self.flags = enums.SA2SurfaceFlags.Visible
-
-
+                    if props.noShadows:
+                        self.flags = enums.SA2SurfaceFlags.NoShadows
 
     def write(self, fileW, sa1):
         if self.mdlAddress == 0:
@@ -345,7 +374,6 @@ class COL:
             print("   Bounds:", str(self.bounds.boundCenter), ", ", self.bounds.radius)
             print("---- \n")
 
-
 def evaluateObjectsToWrite(use_selection: bool,
                            apply_modifs: bool,
                            context: bpy.types.Context,
@@ -363,6 +391,23 @@ def evaluateObjectsToWrite(use_selection: bool,
             return {'FINISHED'}, None, None, None
         objects = context.scene.objects.values()
 
+    # getting the objects without parents
+    noParents = list()
+    for o in objects:
+        if o.parent == None or not (o.parent in objects):
+            noParents.append(o)
+
+    # correct object order
+    # sort top level objects first
+    noParents.sort(key=lambda x: x.name)
+
+    sortedObjects = list()
+    for o in noParents:
+        sortChildren(o, objects, sortedObjects)
+
+    objects = sortedObjects
+
+    # get meshes
     depsgraph = context.evaluated_depsgraph_get()
     if not lvlFmt:
         meshes, materials = getMeshesFromObjects(objects, depsgraph, apply_modifs)
@@ -379,12 +424,6 @@ def evaluateObjectsToWrite(use_selection: bool,
         cMeshes, dontUse = getMeshesFromObjects(cObjects, depsgraph, apply_modifs)
         vMeshes, materials = getMeshesFromObjects(vObjects, depsgraph, apply_modifs)
     
-    # getting the objects for starting
-    noParents = list()
-    for o in objects:
-        if o.parent == None or not (o.parent in objects):
-            noParents.append(o)
-
     global DO
     if DO:
         print(" Materials:", len(materials))
@@ -400,8 +439,14 @@ def evaluateObjectsToWrite(use_selection: bool,
     else:        
         return objects, noParents, cMeshes, vMeshes, materials, cObjects, vObjects
 
+def sortChildren(cObject, objects, result):
+    result.append(cObject)
+    for c in cObject.children:
+        if c in objects:
+            sortChildren(c, objects, result)
+
 def getMeshesFromObjects(objects, depsgraph, apply_modifs):
-    #checking which meshes are in the objects at all
+    """checking which meshes are in the objects at all"""
     tMeshes = []
     for o in objects:
         if o.type == 'MESH':
@@ -488,9 +533,9 @@ def writeGCMeshData(fileW: fileWriter.FileWriter,
     for m in meshes:
         print("to be done")
 
-def getObjData(objects, noParents, global_matrix,  labels, isLvl = False):
+def getObjData(objects, noParents, global_matrix, labels, fmt, isLvl = False):
     saObjects = list()
-    root = saObject.getObjList(noParents[0], objects, 0, global_matrix, noParents, saObjects, labels)
+    root = saObject.getObjList(noParents[0], objects, 0, global_matrix, noParents, fmt, saObjects, labels)
 
     #checking if the last object has siblings, if so add a root object
     if root.sibling is not None and not isLvl:
@@ -540,7 +585,10 @@ def writeMethaData(fileW: fileWriter.FileWriter,
     # writing the strings
     for key, val in labels.items():
         newLabels[val] = fileW.tell() - sizeLoc - 4
-        fileW.wString(key)
+        strKey = str(key)
+        strKey = strKey.replace('.', '_')
+        strKey = strKey.replace(' ', '_')
+        fileW.wString(strKey)
         fileW.align(4)
 
     # returning to the dictionary start

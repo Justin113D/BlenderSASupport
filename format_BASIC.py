@@ -307,15 +307,30 @@ class PolyVert:
             distPoly = PolyVert.distinct(l)
             stripIndices = Stripf.Strippify(distPoly[1], doSwaps=False, concat=False)
 
-            polyStrips = [None] * len(stripIndices)
+            
 
-            for i, strip in enumerate(stripIndices):
-                tStrip = [0] * len(strip)
-                for j, index in enumerate(strip):
-                    tStrip[j] = distPoly[0][index]
-                polyStrips[i] = tStrip
+            stripLength = 0
 
-            result.append(polyStrips)
+            for s in stripIndices:
+                stripLength += len(s) + 1 # +1 for the strip length in the poly data later on
+
+            if stripLength > len(distPoly[1]): 
+                stripType = enums.PolyType.Triangles
+                l.insert(0, stripType)
+                result.append(l)
+            else:
+                stripType = enums.PolyType.Strips
+                polyStrips = [0] * (len(stripIndices) + 1)
+                polyStrips[0] = stripType
+
+                for i, strip in enumerate(stripIndices):
+                    tStrip = [0] * len(strip)
+                    
+                    for j, index in enumerate(strip):
+                        tStrip[j] = distPoly[0][index]
+                    polyStrips[i+1] = tStrip
+                
+                result.append(polyStrips)
                 
 
         return result
@@ -325,41 +340,71 @@ class PolyVert:
         
         returns a mesh set
         """
-        polyAddress = fileW.tell()     
-        # poly indices               
-        for s in polyList:
-            #the length of the strip
-            length = len(s) & 0x7FFF # the last bit determines whether its reversed, which isnt really necessary
-            fileW.wUShort(length)
-            for p in s:
-                fileW.wUShort(p.polyIndex)
-        fileW.align(4)
-
-        # poly normal address
+        polyAddress = fileW.tell()   
         polyNormalAddress = 0
-        if polyList[0][0].polyNormal is not None and not isCollision:
-            polyNormalAddress = fileW.tell()
+        vColorAddress = 0
+        UVAddress = 0
+
+        polyType = polyList[0]
+        del polyList[0]
+
+        if  polyType == enums.PolyType.Strips:
+            # poly indices
+            polyCount = len(polyList)
+
             for s in polyList:
+                #the length of the strip
+                length = len(s) & 0x7FFF # the last bit determines whether its reversed, which isnt really necessary
+                fileW.wUShort(length)
                 for p in s:
+                    fileW.wUShort(p.polyIndex)
+            fileW.align(4)
+
+            # poly normal address
+            if polyList[0][0].polyNormal is not None and not isCollision:
+                polyNormalAddress = fileW.tell()
+                for s in polyList:
+                    for p in s:
+                        p.polyNormal.write(fileW)
+
+            #vertex color
+            if polyList[0][0].vColor is not None and not isCollision:      
+                vColorAddress = fileW.tell()              
+                for s in polyList:
+                    for p in s:
+                        p.vColor.write(fileW)
+
+            #uv map
+            if polyList[0][0].uv is not None and not isCollision:
+                UVAddress = fileW.tell()            
+                for s in polyList:
+                    for p in s:
+                        p.uv.write(fileW)
+        
+        else: # enums.PolyType.triangles
+            polyCount = round(len(polyList) / 3)
+            for p in polyList:
+                fileW.wUShort(p.polyIndex)
+
+            # poly normal address
+            if polyList[0].polyNormal is not None and not isCollision:
+                polyNormalAddress = fileW.tell()
+                for p in polyList:
                     p.polyNormal.write(fileW)
 
-        #vertex color
-        vColorAddress = 0
-        if polyList[0][0].vColor is not None and not isCollision:      
-            vColorAddress = fileW.tell()              
-            for s in polyList:
-                for p in s:
+            #vertex color
+            if polyList[0].vColor is not None and not isCollision:      
+                vColorAddress = fileW.tell()              
+                for p in polyList:
                     p.vColor.write(fileW)
 
-        #uv map
-        UVAddress = 0
-        if polyList[0][0].uv is not None and not isCollision:
-            UVAddress = fileW.tell()            
-            for s in polyList:
-                for p in s:
+            #uv map
+            if polyList[0].uv is not None and not isCollision:
+                UVAddress = fileW.tell()            
+                for p in polyList:
                     p.uv.write(fileW)
 
-        return MeshSet(mesh, meshSetID, materialID, enums.PolyType.Strips, len(polyList), polyAddress, 0, polyNormalAddress, vColorAddress, UVAddress)
+        return MeshSet(mesh, meshSetID, materialID, polyType, polyCount, polyAddress, 0, polyNormalAddress, vColorAddress, UVAddress)
 
 class MeshSet:
     """A single mesh set in the model"""
@@ -391,6 +436,7 @@ class MeshSet:
         self.meshSetID = meshSetID
         self.materialID = materialID
         self.polytype = polytype
+        debug("  PolyType", meshSetID, ":", polytype)
         self.polyCount = polyCount
         self.polyAddress = polyAddress
         self.polyAttribs = polyAttribs
@@ -412,18 +458,18 @@ class MeshSet:
         fileW.wUInt(self.UVAddress)
 
         #setting the labels
-        name = self.mesh.name
+        name = "bsc_" + self.mesh.name + "_"
         if self.polyAddress > 0:
-            labels["b_" + name + "_p" + str(self.meshSetID)] = self.polyAddress
+            labels[name + "p" + str(self.meshSetID)] = self.polyAddress
             #labels["p" + str(self.meshSetID)] = self.polyAddress
         if self.polyNormalAddress > 0:
-            labels["b_" + name + "_nrm" + str(self.meshSetID)] = self.polyNormalAddress
+            labels[name + "nrm" + str(self.meshSetID)] = self.polyNormalAddress
             #labels["nrm" + str(self.meshSetID)] = self.polyNormalAddress
         if self.vColorAddress > 0:
-            labels["b_" + name + "_vc" + str(self.meshSetID) + "_" + self.mesh.vertex_colors[0].name] = self.vColorAddress
+            labels[name + "vc" + str(self.meshSetID) + "_" + self.mesh.vertex_colors[0].name] = self.vColorAddress
             #labels[self.mesh.vertex_colors[0].name] = self.vColorAddress
         if self.UVAddress > 0:
-            labels["b_" + name + "_uv" + str(self.meshSetID) + "_" + self.mesh.uv_layers[0].name] = self.UVAddress
+            labels[name + "uv" + str(self.meshSetID) + "_" + self.mesh.uv_layers[0].name] = self.UVAddress
             #labels[self.mesh.uv_layers[0].name] = self.UVAddress
 
 class BoundingBox:
@@ -555,7 +601,10 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
     if DO:
         for i,s in enumerate(polyStrips):
             if s is not None:
-                print(" strip", i, ":", len(s))
+                if s[0] == enums.PolyType.Strips:
+                    print(" strips", str(i)+":", len(s) - 1)
+                else:
+                    print(" tris", str(i)+":", (len(s) - 1) / 3)
 
     #writing the mesh data and getting the mesh sets
     meshSets = list() #[None] * len(polyStrips)
@@ -586,17 +635,17 @@ def WriteMesh(fileW, mesh, exportMatrix, materials, labels, isCollision = False)
         m.write(fileW, labels)
 
     #adding mesh address to the labels
-    labels["a_" + mesh.name] = fileW.tell()
+    labels["bsc_" + mesh.name] = fileW.tell()
     #labels[mesh.name] = fileW.tell()
 
     #writing addresses
 
-    labels["b_" + mesh.name + "_v"] = verticesAddress
+    labels["bsc_" + mesh.name + "_v"] = verticesAddress
     fileW.wUInt(verticesAddress)
-    labels["b_" + mesh.name + "_nrm"] = normalsAddress
+    labels["bsc_" + mesh.name + "_nrm"] = normalsAddress
     fileW.wUInt(normalsAddress)
     fileW.wUInt(len(distVertNrm))
-    labels["b_" + mesh.name + "_ml"] = meshSetAddress # ml = "mesh list"
+    labels["bsc_" + mesh.name + "_ml"] = meshSetAddress # ml = "mesh list"
     fileW.wUInt(meshSetAddress)
     fileW.wUInt(0x00000010) # material address is always the same (at least the way this addon exports the format)
     fileW.wUShort(len(meshSets))

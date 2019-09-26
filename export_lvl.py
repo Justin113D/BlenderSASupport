@@ -32,12 +32,15 @@ def write(context,
      fileVersion = 3
      if export_format == 'SA1LVL':
           fileW.wULong(enums.LVLFormatIndicator.SA1LVL.value | (fileVersion << 56))
+          fmt = 'SA1'
           debug("Format: SA1LVL V", fileVersion)
      elif export_format == 'SA2LVL':
           fileW.wULong(enums.LVLFormatIndicator.SA2LVL.value | (fileVersion << 56))
+          fmt = 'SA2'
           debug("Format: SA2LVL V", fileVersion)
      else: # SA2BLVL
           fileW.wULong(enums.LVLFormatIndicator.SA2BLVL.value | (fileVersion << 56))
+          fmt = 'SA2B'
           debug("Format: SA2BLVL V", fileVersion)
 
      fileW.wUInt(0) # placeholder for the landtable address
@@ -81,7 +84,7 @@ def write(context,
      
 
 
-     saObjects = common.getObjData(objects, noParents, global_matrix, labels, isLvl = True)
+     saObjects = common.getObjData(objects, noParents, global_matrix, labels, fmt, isLvl = True)
      common.saObject.writeObjList(fileW, saObjects, labels, True)
 
      #write COLs
@@ -147,7 +150,7 @@ def write(context,
      fileW.seek(8, 0) # go to the location of the model properties addrees
      fileW.wUInt(landTableAddress) # and write the address
      fileW.wUInt(labelsAddress)
-     fileW.seek(0,2) # then return back to the end      
+     fileW.seek(0,2) # then return back to the end
 
      common.writeMethaData(fileW, labels, context.scene)
 

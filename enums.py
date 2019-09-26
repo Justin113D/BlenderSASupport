@@ -57,6 +57,17 @@ class SA2SurfaceFlags(Flag):
     null = 0x00
     Solid = 0x01
     Water = 0x02
+    StandOnSlope = 0x10
+    Diggable = 0x20
+    Unclimbable = 0x80
+    Hurt = 0x0400
+    CannotLand = 0x1000
+    Water2 = 0x2000
+    NoShadows = 0x8000
+    Unknown22 = 0x400000
+    Unknown24 = 0x01000000
+    Unknown29 = 0x20000000
+    Unknown30 = 0x40000000
     Visible = 0x80000000
 
 # GC format Enums and Flags
