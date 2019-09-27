@@ -178,8 +178,8 @@ def write(fileW: fileWriter.FileWriter,
           materials,
           labels: dict
           ):
-
-    debug("Writing CHUNK mesh:", mesh.name) 
+    global DO
+    debug(" Writing CHUNK:", mesh.name) 
 
     #getting vertex data
 
@@ -191,7 +191,7 @@ def write(fileW: fileWriter.FileWriter,
 
     # if type includes colors, but the mesh doesnt contain any colors, write normals only
     if (vertexType == 'NRMVC' or vertexType == 'VC') and len(mesh.vertex_colors) == 0:
-        debug("Mesh doesnt contain any colors, writing normals only...")
+        debug("  No colors founds, writing normals...")
         vertexType = 'NRM'
 
     writeUVs = len(mesh.uv_layers) > 0

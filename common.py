@@ -109,7 +109,14 @@ class saObject:
         self.address = 0 # set when writing
         self.hierarchyLvl = hlvl
 
-    def getObjList(bObject: bpy.types.Object, objects, hlvl, global_matrix, siblings, fmt, result, labels):
+    def getObjList( bObject: bpy.types.Object, 
+                    objects,
+                    hlvl, 
+                    global_matrix, 
+                    siblings, 
+                    fmt, 
+                    result, 
+                    labels):
 
         sibling = None
         if len(siblings) > 1:
@@ -346,7 +353,7 @@ class COL:
                 else:
                     self.flags = enums.SA2SurfaceFlags.Visible
                     if props.noShadows:
-                        self.flags = enums.SA2SurfaceFlags.NoShadows
+                        self.flags |= enums.SA2SurfaceFlags.NoShadows
 
     def write(self, fileW, sa1):
         if self.mdlAddress == 0:
@@ -379,6 +386,7 @@ def evaluateObjectsToWrite(use_selection: bool,
                            context: bpy.types.Context,
                            lvlFmt = False # only used for sa2 levels
                            ):
+    global DO
     # getting the objects to export
     if use_selection:
         if len(context.selected_objects) == 0:
@@ -390,6 +398,57 @@ def evaluateObjectsToWrite(use_selection: bool,
             print("No objects found")
             return {'FINISHED'}, None, None, None
         objects = context.scene.objects.values()
+
+    if lvlFmt:
+        # if we are exporting to sa2, and there is an object marked as collision and
+        # visual, then we duplicate that object and put it in a temporary list, while the 
+        # original object gets ignored at export. later the objects in the temporary list get deleted
+        if DO:
+            print(" Objects that receive duplicate for collision and visual:")
+        temp = list()
+        newObjects = list()
+        for o in objects:
+            if o.type == 'MESH' and o.saSettings.isCollision and  o.saSettings.isVisible:
+                if DO:
+                    print("  ", o.name)
+                name = o.name
+                oC = bpy.data.objects.new("cls_" + name, o.data)
+                oC.matrix_world = o.matrix_world
+                oC.parent = o.parent
+
+                oC.saSettings.isCollision = True
+                oC.saSettings.solid = o.saSettings.solid
+                oC.saSettings.water = o.saSettings.water
+                oC.saSettings.cannotLand = o.saSettings.cannotLand
+                oC.saSettings.diggable = o.saSettings.diggable
+                oC.saSettings.unclimbable = o.saSettings.unclimbable
+                oC.saSettings.hurt = o.saSettings.hurt
+                oC.saSettings.standOnSlope = o.saSettings.standOnSlope
+                oC.saSettings.water2 = o.saSettings.water2
+                oC.saSettings.unknown22 = o.saSettings.unknown22
+                oC.saSettings.unknown24 = o.saSettings.unknown24
+                oC.saSettings.unknown29 = o.saSettings.unknown29
+                oC.saSettings.unknown30 = o.saSettings.unknown30
+
+                temp.append(oC)
+                newObjects.append(oC)
+
+                oV = bpy.data.objects.new("vsl_" + name, o.data)
+                oV.matrix_world = o.matrix_world
+                oV.parent = o.parent
+                #idk how to handle the children if im honest. i would put them into the oV, but how do i revert that later?
+
+                oV.saSettings.noShadows = o.saSettings.noShadows
+                oV.saSettings.userFlags = o.saSettings.userFlags
+
+                temp.append(oV)
+                newObjects.append(oV)
+            else:
+                newObjects.append(o)
+        objects = newObjects
+        if DO:
+            print(" --- \n")
+
 
     # getting the objects without parents
     noParents = list()
@@ -414,17 +473,20 @@ def evaluateObjectsToWrite(use_selection: bool,
     else:
         cObjects = [] # collision objects
         vObjects = [] # visual objects
+        nObjects = [] # None of the both (they dont get a col)
 
         for o in objects:
-            if o.type == 'MESH' and o.saSettings.isCollision:
-                cObjects.append(o)
+            if o.type == 'MESH':
+                if o.saSettings.isCollision:
+                    cObjects.append(o)
+                else:
+                    vObjects.append(o)
             else:
-                vObjects.append(o)
+                nObjects.append(o)
 
         cMeshes, dontUse = getMeshesFromObjects(cObjects, depsgraph, apply_modifs)
         vMeshes, materials = getMeshesFromObjects(vObjects, depsgraph, apply_modifs)
     
-    global DO
     if DO:
         print(" Materials:", len(materials))
         if lvlFmt:
@@ -437,7 +499,7 @@ def evaluateObjectsToWrite(use_selection: bool,
     if not lvlFmt:
         return objects, noParents, meshes, materials
     else:        
-        return objects, noParents, cMeshes, vMeshes, materials, cObjects, vObjects
+        return objects, noParents, cMeshes, vMeshes, materials, cObjects, vObjects, nObjects, temp
 
 def sortChildren(cObject, objects, result):
     result.append(cObject)

@@ -1,3 +1,5 @@
+import bpy
+
 DO = False # Debug out
 
 def debug(*string):
@@ -67,7 +69,7 @@ def write(context,
           labels["col_material"] = 0x00000010
           colMat.write(fileW)
 
-          objects, noParents, cMeshes, vMeshes, materials, cObjects, vObjects = common.evaluateObjectsToWrite(use_selection, apply_modifs, context, True)
+          objects, noParents, cMeshes, vMeshes, materials, cObjects, vObjects, nObjects, temp = common.evaluateObjectsToWrite(use_selection, apply_modifs, context, True)
           if objects == {'FINISHED'}:
                return {'FINISHED'}
 
@@ -107,6 +109,7 @@ def write(context,
                #labels[o.name] = fileW.tell()
                col = common.COL(o, global_matrix, labels, False)
                col.write(fileW, False)
+          #nObjects dont receive a COL, since they are no level geometry, but they exist as an empty object
 
      texFileNameAddr = fileW.tell()
      #write texture filename
@@ -155,5 +158,11 @@ def write(context,
      common.writeMethaData(fileW, labels, context.scene)
 
      fileW.close()
+
+     # remove the temporary objects
+     if not export_format == 'SA1LVL':
+          for o in temp:
+               bpy.data.objects.remove(o)
+
 
      return {'FINISHED'}
