@@ -144,7 +144,7 @@ def write(context,
           fileW.wFloat(0) # unknown3
      else:
           fileW.wUShort(len(vObjects)) # visual col count
-          fileW.wULong(0) # gap
+          fileW.wULong(0)
           fileW.wFloat(context.scene.saSettings.drawDistance) # Draw Distance
           fileW.wUInt(COLaddress) # geometry address
           fileW.wUInt(0) # animation address (unused rn)
