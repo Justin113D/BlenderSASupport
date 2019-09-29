@@ -16,7 +16,7 @@ def write(context,
          global_matrix,
          console_debug_output
          ):
-   from . import fileWriter, enums, common, format_BASIC, format_CHUNK
+   from . import fileWriter, enums, common, format_BASIC, format_CHUNK, format_GC
    
    # clear console and enable debug outputs
    os.system("cls")
@@ -25,6 +25,7 @@ def write(context,
    common.DO = DO
    format_BASIC.DO = DO
    format_CHUNK.DO = DO
+   format_GC.DO = DO
 
    # create the file
    fileW = fileWriter.FileWriter(filepath=filepath)
@@ -67,6 +68,11 @@ def write(context,
       #writing mes data
       for m in meshes:
          format_CHUNK.write(fileW, m, global_matrix, materials, labels)
+
+   else:
+      #writing mes data
+      for m in meshes:
+         format_GC.write(fileW, m, global_matrix, materials, labels)
 
 
    saObjects = common.getObjData(objects, noParents, global_matrix, labels, fmt)

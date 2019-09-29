@@ -87,7 +87,7 @@ class VertexAttribute(Enum):
     Tex5 = 10
     Tex6 = 11
     Tex7 = 12
-    Null = 13
+    Null = 255
 
 class DataType(Enum):
     """Type in which the attibute data gets saved"""
@@ -225,17 +225,17 @@ class TexGenSrc(Enum):
 
 class TexGenMtx(Enum):
     """Which matrix to use for generated texture coordinates"""
-    Matrix0 = 30
-    Matrix1 = 33
-    Matrix2 = 36
-    Matrix3 = 39
-    Matrix4 = 42
-    Matrix5 = 45
-    Matrix6 = 48
-    Matrix7 = 51
-    Matrix8 = 54
-    Matrix9 = 57
-    Identity = 60
+    Matrix0 = 0
+    Matrix1 = 1
+    Matrix2 = 2
+    Matrix3 = 3
+    Matrix4 = 4
+    Matrix5 = 5
+    Matrix6 = 6
+    Matrix7 = 7
+    Matrix8 = 8
+    Matrix9 = 9
+    Identity = 10
 
 class PrimitiveType(Enum):
     """Determines the arrangement of poly indices"""

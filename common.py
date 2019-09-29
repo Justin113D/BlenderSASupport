@@ -153,10 +153,11 @@ class saObject:
 
         if fmt == 'SA1' or bObject.saSettings.isCollision:
             formatType = "bsc"
-        elif 'SA2':
+        elif fmt == 'SA2':
             formatType = "cnk"
         else: # 'SA2B
             formatType = "gc"
+
 
         obj = saObject(name=bObject.name,
                        meshname=meshname, 

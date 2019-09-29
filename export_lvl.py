@@ -25,6 +25,7 @@ def write(context,
      common.DO = DO
      format_BASIC.DO = DO
      format_CHUNK.DO = DO
+     format_GC.DO = DO
 
      # create the file
      fileW = fileWriter.FileWriter(filepath=filepath)
@@ -81,8 +82,9 @@ def write(context,
           if export_format == 'SA2LVL':
                for m in vMeshes:
                     format_CHUNK.write(fileW, m, global_matrix, materials, labels)
-          #else:
-          #     common.writeGCMeshData(fileW, vMeshes, global_matrix, labels)
+          else:
+               for m in vMeshes:
+                    format_GC.write(fileW, m, global_matrix, materials, labels)
      
 
 

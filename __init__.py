@@ -60,9 +60,12 @@ class TOPBAR_MT_SA_export(bpy.types.Menu):
 
         layout.label(text="Export as...")
         layout.operator("export_scene.sa1mdl")
-        layout.operator("export_scene.sa2mdl")        
+        layout.operator("export_scene.sa2mdl")
+        layout.operator("export_scene.sa2bmdl")
+        layout.separator()
         layout.operator("export_scene.sa1lvl")
         layout.operator("export_scene.sa2lvl")
+        layout.operator("export_scene.sa2blvl")
 
 @orientation_helper(axis_forward='Z', axis_up='Y')    
 class ExportSA1MDL(bpy.types.Operator, ExportHelper):
@@ -178,6 +181,63 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         keywords["export_format"] = 'SA2MDL'
         return export_mdl.write(context, **keywords)
 
+@orientation_helper(axis_forward='Z', axis_up='Y')    
+class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
+    """Export Objects into an SA2B model file"""
+    bl_idname = "export_scene.sa2bmdl"
+    bl_label = "SA2B model (.sa2bmdl)"
+    bl_options = {'PRESET', 'UNDO'}
+
+    filename_ext = ".sa2bmdl"
+
+    filter_glob: StringProperty(
+        default="*.sa2bmdl;",
+        options={'HIDDEN'},
+        )
+
+    global_scale: FloatProperty(
+        name="Scale",
+        min=0.01, max=1000.0,
+        default=1.0,
+        )
+
+    use_selection: BoolProperty(
+        name="Selection Only",
+        description="Export selected objects only",
+        default=False,
+        )
+
+    apply_modifs: BoolProperty(
+        name="Apply Modifiers",
+        description="Apply active viewport modifiers",
+        default=True,
+        )
+
+    console_debug_output: BoolProperty(
+        name = "Console Output",
+        description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
+        default = True,
+        )
+
+    def execute(self, context):
+        from . import export_mdl
+        from mathutils import Matrix
+        keywords = self.as_keywords(ignore=("global_scale",
+                                    "check_existing",
+                                    "filter_glob",
+                                    "axis_forward",
+                                    "axis_up"
+                                    ))
+        
+        global_matrix = (Matrix.Scale(self.global_scale, 4) @
+                         axis_conversion(to_forward=self.axis_forward,
+                                         to_up=self.axis_up,
+                                         ).to_4x4())
+        
+        keywords["global_matrix"] = global_matrix
+        keywords["export_format"] = 'SA2BMDL'
+        return export_mdl.write(context, **keywords)
+
 @orientation_helper(axis_forward='Z', axis_up='Y')  
 class ExportSA1LVL(bpy.types.Operator, ExportHelper):
     """Export scene into an SA1 level file"""
@@ -290,6 +350,63 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
         
         keywords["global_matrix"] = global_matrix
         keywords["export_format"] = 'SA2LVL'
+        return export_lvl.write(context, **keywords)
+
+@orientation_helper(axis_forward='Z', axis_up='Y')  
+class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
+    """Export scene into an SA2B level file"""
+    bl_idname = "export_scene.sa2blvl"
+    bl_label = "SA2B level (.sa2blvl)"
+    bl_options = {'PRESET', 'UNDO'}
+
+    filename_ext = ".sa2blvl"
+
+    filter_glob: StringProperty(
+        default="*.sa2blvl;",
+        options={'HIDDEN'},
+        )
+
+    global_scale: FloatProperty(
+        name="Scale",
+        min=0.01, max=1000.0,
+        default=1.0,
+        )
+
+    use_selection: BoolProperty(
+        name="Selection Only",
+        description="Export selected objects only",
+        default=False,
+        )
+
+    apply_modifs: BoolProperty(
+        name="Apply Modifiers",
+        description="Apply active viewport modifiers",
+        default=True,
+        )
+
+    console_debug_output: BoolProperty(
+        name = "Console Output",
+        description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
+        default = True,
+        )
+    
+    def execute(self, context):
+        from . import export_lvl
+        from mathutils import Matrix
+        keywords = self.as_keywords(ignore=("global_scale",
+                                    "check_existing",
+                                    "filter_glob",
+                                    "axis_forward",
+                                    "axis_up",
+                                    ))
+        
+        global_matrix = (Matrix.Scale(self.global_scale, 4) @
+                         axis_conversion(to_forward=self.axis_forward,
+                                         to_up=self.axis_up,
+                                         ).to_4x4())
+        
+        keywords["global_matrix"] = global_matrix
+        keywords["export_format"] = 'SA2BLVL'
         return export_lvl.write(context, **keywords)
 
 #operators
@@ -901,82 +1018,16 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         default=False
         )
 
-    # GC material settings (parameters)
+    # GC features (parameters)
 
-    # Index attribute parameters (enabling certain data for export)
-    gc_hasNormal: BoolProperty(
-        name = "Export normals",
-        description="If ticked, the normals of the mesh will be saved into the file",
-        default= False
-        )
-    
-    gc_hasColor: BoolProperty(
-        name = "Export vertex colors",
-        description="If ticked, the vertex colors of the mesh will be saved into the file",
-        default= True
-        )
-
-    gc_hasUV: BoolProperty(
-        name = "Export uv maps",
-        description="If ticked, the uv maps of the mesh will be saved into the file",
-        default= True
-        )
-
-    # ambient color
-
-    gc_Diffuse: FloatVectorProperty(
-        name = "Diffuse Color",
-        description="Color of the material",
-        subtype='COLOR_GAMMA',
-        size=4,
-        min=0.0, max=1.0,
-        default=(1.0, 1.0, 1.0, 1.0),       
-        )
-    
-    # texture properties
-    gc_UseTexture: BoolProperty(
-        name = "Use texture",
-        description="Whether a texture should be used",
-        default=True
-        )
-    
-    gc_TextureID: IntProperty(
-        name = "Texture ID",
-        description="ID of the texture in the PAK to use",
-        default=0
-        )
-    
-    gc_clampV: BoolProperty(
-        name="Clamp V",
-        description="The V channel of the mesh UVs always stays between 0 and 1",
-        default=False
-        )
-
-    gc_clampU: BoolProperty(
-        name="Clamp U",
-        description="The U channel of the mesh UVs always stays between 0 and 1",
-        default=False
-        )
-
-    gc_mirrorV: BoolProperty(
-        name="Mirror V",
-        description="The V channel of the mesh UVs mirrors every time it reaches a multiple of 1",
-        default=False
-        )
-
-    gc_mirrorU: BoolProperty(
-        name="Mirror U",
-        description="The V channel of the mesh UVs mirrors every time it reaches a multiple of 1",
-        default=False
+    gc_shadowStencil: IntProperty(
+        name="Shadow Stencil",
+        description="shadow stencil",
+        min=0, max=63,
+        default=1
         )
 
     # texcoord gen
-
-    gc_genTexCoords: BoolProperty(
-        name="Generate Texture Coordinates",
-        description="Whether texture coordinates should be generated using specific parameters",
-        default=False
-        )
 
     gc_texMatrixID: EnumProperty(
         name = "Matrix ID",
@@ -1012,7 +1063,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
                 ('TEX6', 'Tex6', ""),
                 ('TEX7', 'Tex7', ""),
             ),
-        default='POSITION'
+        default='TEX0'
         )
 
     gc_texGenSourceBmp: EnumProperty(
@@ -1053,7 +1104,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
                 ('BUMP7', 'Bump 7', ""),
                 ('SRTG', 'SRTG', ""),
             ),
-        default='MTX3X4'
+        default='MTX2X4'
         )
 
     gc_texCoordID: EnumProperty(
@@ -1073,61 +1124,20 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         default='TEXCOORD0'
         )
 
-    #alpha blending
-
-    gc_useAlpha: BoolProperty(
-        name = "Use alpha",
-        default=False
-        )
-
-    gc_srcAlpha: EnumProperty(
-        name = "Source alpha",
-        description= "Source alpha",
-        items=( ('ZERO', 'Zero', ""),
-                ('ONE', 'One', ""),
-                ('SRC_COL', 'Source Color', ""),
-                ('INV_SRC_COL', 'Invertex Source Color', ""),
-                ('SRC', 'Source', ""),
-                ('INV_SRC', 'Inverter source', ""),
-                ('DST', 'Destination', ""),
-                ('INV_DST', 'Inverted destination', "")
-            ),
-        default='SRC'
-        )
-
-    gc_destAlpha: EnumProperty(
-        name = "Destination alpha",
-        description= "Destination alpha",
-        items=( ('ZERO', 'Zero', ""),
-                ('ONE', 'One', ""),
-                ('SRC_COL', 'Source Color', ""),
-                ('INV_SRC_COL', 'Invertex Source Color', ""),
-                ('SRC', 'Source', ""),
-                ('INV_SRC', 'Inverter source', ""),
-                ('DST', 'Destination', ""),
-                ('INV_DST', 'Inverted destination', "")
-            ),
-        default='DST'
-        )    
-
 class SAMaterialPanelSettings(bpy.types.PropertyGroup):
     """Menu settings for the material edit menus determining which menu should be visible"""
 
-    expandedBASIC: BoolProperty( name="SA Material Properties", default=False )
     expandedBMipMap: BoolProperty( name="Mipmap Distance Multiplicator", default=False )
     expandedBTexFilter: BoolProperty( name="Texture Filtering", default=False )
     expandedBUV: BoolProperty( name = "UV Properties", default=False )
     expandedBGeneral: BoolProperty( name = "General Properties", default=False )
 
-    expandedGC: BoolProperty( name="SA2B (GC) Material Properties", default=False )
-    expandedGCIndexAttr: BoolProperty( name = "Data to save", default=False )
-    expandedGCTex: BoolProperty( name = "Texture parameters", default=False )
+    expandedGC: BoolProperty( name="SA2B specific", default=False )
     expandedGCTexGen: BoolProperty( name = "Generate texture coords", default=False )
-    expandedGCAlpha: BoolProperty( name = "Use alpha", default=False )
-
-    expandedChunk: BoolProperty( default=False ) 
 
     # Quick material edit properties
+
+    expandedPanel: BoolProperty( name="Material Properties", default=False )  
 
     b_apply_diffuse: BoolProperty( 
         name = "Apply diffuse",
@@ -1191,13 +1201,15 @@ def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, qe = False):
     split.prop(prop1, prop1Name, text="")
 
 def drawMaterialPanel(layout, menuProps, matProps, qe = False):
-    layout.prop(menuProps, "expandedBASIC",
-    icon="TRIA_DOWN" if menuProps.expandedBASIC else "TRIA_RIGHT",
-    emboss = False
-    )
 
-    if menuProps.expandedBASIC:
-        menu = layout.column()
+    if qe:
+        layout.prop(menuProps, "expandedPanel",
+        icon="TRIA_DOWN" if menuProps.expandedPanel else "TRIA_RIGHT",
+        emboss = False
+        )
+
+    if menuProps.expandedPanel and qe or not qe:
+        menu = layout
         menu.alignment = 'RIGHT'
 
         propAdv(menu, "Diffuse Color:", matProps, "b_Diffuse", menuProps, "b_apply_diffuse", qe)
@@ -1274,117 +1286,50 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
             box.prop(matProps, "b_ignoreAmbient")
             box.prop(matProps, "b_flatShading")
             
-
-    DISABLED = False
-
-    #layout.prop(menuProps, "expandedGC",
-    #    icon="TRIA_DOWN" if menuProps.expandedGC else "TRIA_RIGHT",
-    #    emboss = False
-    #    )
-
-    #if menuProps.expandedGC:
-    if DISABLED:
-        menu = layout.column()
-        menu.alignment = 'RIGHT'
-
-        row = menu.row()   
-        row.prop(matProps, "gc_Diffuse")
-
         box = menu.box()
-        box.prop(menuProps, "expandedGCIndexAttr",
-            icon="TRIA_DOWN" if menuProps.expandedGCIndexAttr else "TRIA_RIGHT",
+        box.prop(menuProps, "expandedGC",
+            icon="TRIA_DOWN" if menuProps.expandedGC else "TRIA_RIGHT",
             emboss = False
             )
 
-        if menuProps.expandedGCIndexAttr:
-            box.prop(matProps, "gc_hasNormal")
-            box.prop(matProps, "gc_hasColor")
-            box.prop(matProps, "gc_hasUV")
+        if menuProps.expandedGC:
 
-        box = menu.box()
-        row = box.row()
-        row.prop(matProps, "gc_UseTexture", text="")
-        if matProps.gc_UseTexture:
-            row.prop(menuProps, "expandedGCTex",
-                icon="TRIA_DOWN" if menuProps.expandedGCTex else "TRIA_RIGHT",
-                emboss = False
-                )
+            #split = box.split(factor=0.6)
+            #split.label(text = "Shadow Stencil:")
+            #split.prop(matProps, "gc_shadowStencil", text="")
 
-            if menuProps.expandedGCTex:
-                split = box.split(factor=0.7)
-                split.label(text="Texture ID")
-                split.prop(matProps, "gc_TextureID", text="")
-                box.prop(matProps, "gc_clampV")
-                box.prop(matProps, "gc_clampU")
-                box.prop(matProps, "gc_mirrorV")
-                box.prop(matProps, "gc_mirrorU")
-        else:
-            row.prop(menuProps, "expandedGCTex",
-                icon="BLANK1", emboss = False
-                )
-        
-        box = menu.box()
-        row = box.row()
-        row.prop(matProps, "gc_genTexCoords", text="")
-        if matProps.gc_genTexCoords:
-            row.prop(menuProps, "expandedGCTexGen",
+            box.prop(menuProps, "expandedGCTexGen",
                 icon="TRIA_DOWN" if menuProps.expandedGCTexGen else "TRIA_RIGHT",
                 emboss = False
                 )
-
             if menuProps.expandedGCTexGen:
-                split = box.split(factor=0.5)
-                split.label(text = "Texcoord ID (output slot)")
-                split.prop(matProps, "gc_texCoordID", text = "")
-
-                split = box.split(factor=0.5)
-                split.label(text = "Generation Type")
-                split.prop(matProps, "gc_texGenType", text="")
-                
-                if matProps.gc_texGenType[0] == 'M': #matrix
                     split = box.split(factor=0.5)
-                    split.label(text = "Matrix ID")
-                    split.prop(matProps, "gc_texMatrixID", text="")
+                    split.label(text = "Texcoord ID (output slot)")
+                    split.prop(matProps, "gc_texCoordID", text = "")
 
                     split = box.split(factor=0.5)
-                    split.label(text = "Source")
-                    split.prop(matProps, "gc_texGenSourceMtx", text="")
+                    split.label(text = "Generation Type")
+                    split.prop(matProps, "gc_texGenType", text="")
+                    
+                    if matProps.gc_texGenType[0] == 'M': #matrix
+                        split = box.split(factor=0.5)
+                        split.label(text = "Matrix ID")
+                        split.prop(matProps, "gc_texMatrixID", text="")
 
-                elif matProps.gc_texGenType[0] == 'B': # Bump
-                    split = box.split(factor=0.5)
-                    split.label(text = "Source")
-                    split.prop(matProps, "gc_texGenSourceBmp", text="")
+                        split = box.split(factor=0.5)
+                        split.label(text = "Source")
+                        split.prop(matProps, "gc_texGenSourceMtx", text="")
 
-                else: #SRTG
-                    split = box.split(factor=0.5)
-                    split.label(text = "Source")
-                    split.prop(matProps, "gc_texGenSourceSRTG", text="")
-        else:
-            row.prop(menuProps, "expandedGCTexGen",
-                icon="BLANK1", emboss = False
-                )
+                    elif matProps.gc_texGenType[0] == 'B': # Bump
+                        split = box.split(factor=0.5)
+                        split.label(text = "Source")
+                        split.prop(matProps, "gc_texGenSourceBmp", text="")
 
-        box = menu.box()
-        row = box.row()
-        row.prop(matProps, "gc_useAlpha", text="")
-        if matProps.gc_useAlpha:
-            row.prop(menuProps, "expandedGCAlpha",
-                icon="TRIA_DOWN" if menuProps.expandedGCAlpha else "TRIA_RIGHT",
-                emboss = False
-                )
-
-            if menuProps.expandedGCAlpha:
-                split = box.split(factor=0.5)
-                split.label(text = "Source Alpha")
-                split.prop(matProps, "gc_srcAlpha", text = "")
-
-                split = box.split(factor=0.5)
-                split.label(text = "Destination Alpha")
-                split.prop(matProps, "gc_destAlpha", text = "")
-        else:
-            row.prop(menuProps, "expandedGCAlpha",
-                icon="BLANK1", emboss = False
-                )
+                    else: #SRTG
+                        split = box.split(factor=0.5)
+                        split.label(text = "Source")
+                        split.prop(matProps, "gc_texGenSourceSRTG", text="")
+            
 
 class SAObjectPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_saProperties"
@@ -1569,8 +1514,10 @@ classes = (
     TOPBAR_MT_SA_export,
     ExportSA1MDL,
     ExportSA2MDL,
+    ExportSA2BMDL,
     ExportSA1LVL,
     ExportSA2LVL,
+    ExportSA2BLVL,
 
     StrippifyTest,
     qmeReset,
