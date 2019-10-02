@@ -60,6 +60,12 @@ class FileWriter(object):
             return
         self.w(bytes([0] * remaining))
 
+    def pad(self, start, padding):
+        length = self.tell() - start
+        newlength = length + (padding - 1) & ~(0x1F)
+        addLength = newlength - length
+        self.w(bytes([0] * addLength))
+
     #Writer methods
 
     def w(self, value):

@@ -87,7 +87,7 @@ class PolyVert:
     def __eq__(self, other):
         return self.posID == other.posID and self.nrmID == other.nrmID and self.vcID == other.vcID and self.uvID == other.uvID
 
-    def writeData(fileW, polyList, idFlags: enums.IndexAttributeFlags, material):
+    def writeData(fileW, polyList, idFlags: enums.IndexAttributeFlags, material, defaultVC):
         
         # writing parameters
         paramAddress = fileW.tell()
@@ -99,6 +99,13 @@ class PolyVert:
         fileW.wUShort(enums.VertexAttribute.Position.value)
         paramCount += 1
 
+        if idFlags & enums.IndexAttributeFlags.HasNormal:
+            # vertex format attribute parameter (col)
+            fileW.wUInt(enums.ParameterType.VtxAttrFmt.value)
+            fileW.wUShort(9216)
+            fileW.wUShort(enums.VertexAttribute.Normal.value)
+            paramCount += 1
+
         if idFlags & enums.IndexAttributeFlags.HasColor:
             # vertex format attribute parameter (col)
             fileW.wUInt(enums.ParameterType.VtxAttrFmt.value)
@@ -106,46 +113,89 @@ class PolyVert:
             fileW.wUShort(enums.VertexAttribute.Color0.value)
             paramCount += 1
 
-        # index attribute parameter
-        fileW.wUInt(enums.ParameterType.IndexAttributeFlags.value)
-        fileW.wUInt(idFlags.value)
-        paramCount += 1
-
         if idFlags & enums.IndexAttributeFlags.HasUV:
             # vertex format attribute parameter (uv)
             fileW.wUInt(enums.ParameterType.VtxAttrFmt.value)
             fileW.wUShort(33544)
             fileW.wUShort(enums.VertexAttribute.Tex0.value)
-            paramCount += 1
+            paramCount += 1           
+
+        # index attribute parameter
+        fileW.wUInt(enums.ParameterType.IndexAttributeFlags.value)
+        fileW.wUInt(idFlags.value)
+        paramCount += 1
+
+        # alpha instructions
+        fileW.wUInt(enums.ParameterType.BlendAlpha.value)
+        dstInst = enums.AlphaInstruction.InverseSrcAlpha
+        srcInst = enums.AlphaInstruction.SrcAlpha
+        useTransparency = 0
+
+        if material is not None and material.saSettings.b_useAlpha:
+            matProps = material.saSettings
+            src = matProps.b_srcAlpha
+            if src == 'ONE':
+                srcInst = enums.AlphaInstruction.One
+            elif src == 'OTHER':
+                srcInst = enums.AlphaInstruction.SrcColor
+            elif src == 'INV_OTHER':
+                srcInst = enums.AlphaInstruction.InverseSrcColor
+            elif src == 'SRC':
+                srcInst = enums.AlphaInstruction.SrcAlpha
+            elif src == 'INV_SRC':
+                srcInst = enums.AlphaInstruction.InverseSrcAlpha
+            elif src == 'DST':
+                srcInst = enums.AlphaInstruction.DstAlpha
+            elif src == 'INV_DST':
+                srcInst = enums.AlphaInstruction.InverseDstAlpha
+            else:
+                srcInst = enums.AlphaInstruction.Zero
+
+            
+            dst = matProps.b_destAlpha
+            if dst == 'ONE':
+                dstInst = enums.AlphaInstruction.One
+            elif dst == 'OTHER':
+                dstInst = enums.AlphaInstruction.SrcColor
+            elif dst == 'INV_OTHER':
+                dstInst = enums.AlphaInstruction.InverseSrcColor
+            elif dst == 'SRC':
+                dstInst = enums.AlphaInstruction.SrcAlpha
+            elif dst == 'INV_SRC':
+                dstInst = enums.AlphaInstruction.InverseSrcAlpha
+            elif dst == 'DST':
+                dstInst = enums.AlphaInstruction.DstAlpha
+            elif dst == 'INV_DST':
+                dstInst = enums.AlphaInstruction.InverseDstAlpha
+            else:
+                dstInst = enums.AlphaInstruction.Zero
+
+            useTransparency = 1
+            
+        value = (srcInst.value << 11) | (dstInst.value << 8) | (useTransparency << 14)
+        fileW.wUInt(value)
+        paramCount += 1
 
         # lighting parameters (we have no clue how those work atm, so we just write a default
         fileW.wUInt(enums.ParameterType.Lighting.value)
         fileW.wUInt(0x00010B11) # enables shadows and uses vertex colors, dont ask me why or how that works
         paramCount += 1
 
-        # that unknown parameter
-        fileW.wUInt(enums.ParameterType.Unknown_9.value)
-        fileW.wUInt(0x04) # seems to be default
-        paramCount += 1
+        # ambient color
+        fileW.wUInt(enums.ParameterType.AmbientColor.value)
+        color = ColorARGB([1,1,1,1]) if material == None else ColorARGB(material.saSettings.b_Ambient)
+        color.write(fileW)
+        paramCount += 1        
 
         if material == None:
-
-            # alpha 
-            fileW.wUInt(enums.ParameterType.BlendAlpha.value)
-            dstInst = enums.AlphaInstruction.InverseSrcAlpha
-            srcInst = enums.AlphaInstruction.SrcAlpha
-            value = (dstInst.value << 8) | (srcInst.value << 11)
-            fileW.wUInt(value)
-
-            # ambient color
-            fileW.wUInt(enums.ParameterType.AmbientColor.value)
-            color = ColorARGB([1,1,1,1])
-            color.write(fileW)
-            paramCount += 1
-
             #texture
             fileW.wUInt(enums.ParameterType.Texture.value)
             fileW.wUInt(0) # texture 0 with no tilemode
+            paramCount += 1
+
+            # that unknown parameter
+            fileW.wUInt(enums.ParameterType.Unknown_9.value)
+            fileW.wUInt(0x04) # seems to be default
             paramCount += 1
 
             #texCoordGen
@@ -164,68 +214,15 @@ class PolyVert:
         else:
             matProps = material.saSettings
 
-            fileW.wUInt(enums.ParameterType.BlendAlpha.value)
-            dstInst = enums.AlphaInstruction.InverseSrcAlpha
-            srcInst = enums.AlphaInstruction.SrcAlpha
-
-            if matProps.b_useAlpha:
-                src = matProps.b_srcAlpha
-                if src == 'ONE':
-                    srcInst = enums.AlphaInstruction.One
-                elif src == 'OTHER':
-                    srcInst = enums.AlphaInstruction.SrcColor
-                elif src == 'INV_OTHER':
-                    srcInst = enums.AlphaInstruction.InverseSrcColor
-                elif src == 'SRC':
-                    srcInst = enums.AlphaInstruction.SrcAlpha
-                elif src == 'INV_SRC':
-                    srcInst = enums.AlphaInstruction.InverseSrcAlpha
-                elif src == 'DST':
-                    srcInst = enums.AlphaInstruction.DstAlpha
-                elif src == 'INV_DST':
-                    srcInst = enums.AlphaInstruction.InverseDstAlpha
-                else:
-                    srcInst = enums.AlphaInstruction.Zero
-
-                
-                dst = matProps.b_destAlpha
-                if dst == 'ONE':
-                    dstInst = enums.AlphaInstruction.One
-                elif dst == 'OTHER':
-                    dstInst = enums.AlphaInstruction.SrcColor
-                elif dst == 'INV_OTHER':
-                    dstInst = enums.AlphaInstruction.InverseSrcColor
-                elif dst == 'SRC':
-                    dstInst = enums.AlphaInstruction.SrcAlpha
-                elif dst == 'INV_SRC':
-                    dstInst = enums.AlphaInstruction.InverseSrcAlpha
-                elif dst == 'DST':
-                    dstInst = enums.AlphaInstruction.DstAlpha
-                elif dst == 'INV_DST':
-                    dstInst = enums.AlphaInstruction.InverseDstAlpha
-                else:
-                    dstInst = enums.AlphaInstruction.Zero
-            
-            value = (dstInst.value << 8) | (srcInst.value << 11)
-            fileW.wUInt(value)
-
-            paramCount += 1
-
-            # ambient color
-            fileW.wUInt(enums.ParameterType.AmbientColor.value)
-            color = ColorARGB(matProps.b_Ambient)
-            color.write(fileW)
-            paramCount += 1
-
             #texture
             fileW.wUInt(enums.ParameterType.Texture.value)
             fileW.wUShort(matProps.b_TextureID)
             
             tileMode = enums.TileMode.null
 
-            if matProps.b_clampV:
+            if not matProps.b_clampV:
                 tileMode |= enums.TileMode.WrapV
-            if matProps.b_clampU:
+            if not matProps.b_clampU:
                 tileMode |= enums.TileMode.WrapU
             if matProps.b_mirrorV:
                 tileMode |= enums.TileMode.MirrorV
@@ -234,6 +231,11 @@ class PolyVert:
             
             fileW.wUShort(tileMode.value)
 
+            paramCount += 1
+
+            # that unknown parameter
+            fileW.wUInt(enums.ParameterType.Unknown_9.value)
+            fileW.wUInt(0x04) # seems to be default
             paramCount += 1
 
             #texCoordGen
@@ -372,7 +374,10 @@ class PolyVert:
         fileW.setBigEndian(bigEndian = True) # for some reason they are big endian
 
         for l in polyList:
-            fileW.wByte(enums.PrimitiveType.TriangleStrip.value)
+            if len(l) == 3:
+                fileW.wByte(enums.PrimitiveType.Triangles.value)
+            else:
+                fileW.wByte(enums.PrimitiveType.TriangleStrip.value)
             fileW.wUShort(len(l))
             for p in l:
                 if idFlags & enums.IndexAttributeFlags.Position16BitIndex:
@@ -388,9 +393,9 @@ class PolyVert:
                     
                 if idFlags & enums.IndexAttributeFlags.HasColor:
                     if idFlags & enums.IndexAttributeFlags.Color16BitIndex:
-                        fileW.wUShort(p.vcID)
+                        fileW.wUShort(0 if defaultVC else p.vcID)
                     else:
-                        fileW.wByte(p.vcID)
+                        fileW.wByte(0 if defaultVC else p.vcID)
 
                 if idFlags & enums.IndexAttributeFlags.HasUV:
                     if idFlags & enums.IndexAttributeFlags.UV16BitIndex:
@@ -398,10 +403,13 @@ class PolyVert:
                     else:
                         fileW.wByte(p.uvID)
         
+        fileW.pad(indexAddress, 32)      
+        length = fileW.tell() - indexAddress
         fileW.setBigEndian(bigEndian = False)
-        fileW.align(32)
 
-        return meshProp(paramAddress, paramCount, indexAddress, fileW.tell() - indexAddress)
+        mp = meshProp(paramAddress, paramCount, indexAddress, length)
+
+        return mp
 
 class BoundingBox:
     """Used to calculate the bounding sphere which the game uses"""
@@ -458,18 +466,20 @@ class BoundingBox:
 class vertexAttrib:
 
     vType = enums.VertexAttribute.Null
-    fracBitCount = 12 #default
-    unknown = 0
+    fracBitCount = 12
+    vCount = 0
     compCount = enums.ComponentCount.Position_XYZ
     dataType = enums.DataType.Float32
     address = 0
     size = 0
 
-    def __init__(self, vType, unknown, compCount, dataType, address, vCount):
+    def __init__(self, vType, fracBitCount, vCount, compCount, dataType, address):
         self.vType = vType
         if vType == enums.VertexAttribute.Null:
             self.fracBitCount = 0
-        self.unknown = unknown
+        else:
+            self.fracBitCount = fracBitCount
+        self.vCount = vCount
         self.compCount = compCount
         self.dataType = dataType
         self.address = address
@@ -492,7 +502,7 @@ class vertexAttrib:
     def debug(self):
         print(" Attrib:", self.vType)
         print("   fracBitCount:", self.fracBitCount)
-        print("   unknown:", self.unknown)
+        print("   vCount:", self.vCount)
         print("   Component Count:", self.compCount)
         print("   Data Type:", self.dataType)
         print("   Data Address:", self.address)
@@ -502,7 +512,7 @@ class vertexAttrib:
     def write(self, fileW):
         fileW.wByte(self.vType.value)
         fileW.wByte(self.fracBitCount)
-        fileW.wShort(self.unknown)
+        fileW.wShort(self.vCount)
         
         datainfo = self.compCount.value | (self.dataType.value << 4)
         fileW.wUInt(datainfo)
@@ -534,6 +544,7 @@ class meshProp:
         fileW.wUInt(self.parameterCount)
         fileW.wUInt(self.indexDataAddress)
         fileW.wUInt(self.indexDataSize)
+        print('{:04x}'.format(self.indexDataSize))
 
 def distinctPolys(polys):
     """Takes a list of PolyVerts and returns a distinct list"""
@@ -568,7 +579,8 @@ def write(fileW,
         vertexType = 'NRMVC'
 
     writeNRM = vertexType == 'NRMVC' or vertexType == 'NRM'
-    writeVC = (vertexType == 'NRMVC' or vertexType == 'VC') and len(mesh.vertex_colors) > 0
+    writeVC = (vertexType == 'NRMVC' or vertexType == 'VC') #and len(mesh.vertex_colors) > 0
+    defaultCol = len(mesh.vertex_colors) == 0
     writeUV = len(mesh.uv_layers) > 0
 
     posData = list()
@@ -610,19 +622,23 @@ def write(fileW,
 
     # getting vertex color data
     if writeVC:
-        vcIDs = [0] * len(mesh.vertex_colors[0].data)
-        for i, vc in enumerate(mesh.vertex_colors[0].data):
-            found = None
-            col = ColorARGB(vc.color)
-            for j, c in enumerate(vcData):
-                if col == c:
-                    found = j
-                    break
-            if found is None:
-                vcData.append(col)
-                vcIDs[i] = len(vcData) - 1
-            else:
-                vcIDs[i] = found
+        if defaultCol:
+            vcIDs = [0]
+            vcData = [ColorARGB([1,1,1,1])]
+        else:
+            vcIDs = [0] * len(mesh.vertex_colors[0].data)
+            for i, vc in enumerate(mesh.vertex_colors[0].data):
+                found = None
+                col = ColorARGB(vc.color)
+                for j, c in enumerate(vcData):
+                    if col == c:
+                        found = j
+                        break
+                if found is None:
+                    vcData.append(col)
+                    vcIDs[i] = len(vcData) - 1
+                else:
+                    vcIDs[i] = found
 
     # getting uv data
     if writeUV:
@@ -670,6 +686,7 @@ def write(fileW,
     
     strips = list() # material specific -> strip -> polygon
     Stripf = strippifier.Strippifier()
+    stripLimit = 0xFFFF
 
     for l in tris:
         if len(l) == 0:
@@ -682,8 +699,10 @@ def write(fileW,
         polyStrips = [None] * len(stripIndices)
 
         for i, strip in enumerate(stripIndices):
-            tStrip = [None] * len(strip)
+            tStrip = [None] * min(stripLimit, len(strip))
             for j, index in enumerate(strip):
+                if j > len(tStrip):
+                    break
                 tStrip[j] = distinct[index]
             polyStrips[i] = tStrip
         
@@ -698,34 +717,34 @@ def write(fileW,
     vAttribs = list()
 
     # position data
-    vAttribs.append( vertexAttrib(enums.VertexAttribute.Position, 0, enums.ComponentCount.Position_XYZ, enums.DataType.Float32, fileW.tell(), len(posData) ) )
+    vAttribs.append( vertexAttrib(enums.VertexAttribute.Position, 12, len(posData), enums.ComponentCount.Position_XYZ, enums.DataType.Float32, fileW.tell()) )
     for pos in posData:
         pos.write(fileW)
     fileW.align(4)
 
     # normal data
     if writeNRM:
-        vAttribs.append( vertexAttrib(enums.VertexAttribute.Normal, 0, enums.ComponentCount.Normal_XYZ, enums.DataType.Float32, fileW.tell(), len(nrmData) ) )
+        vAttribs.append( vertexAttrib(enums.VertexAttribute.Normal, 12, len(nrmData), enums.ComponentCount.Normal_XYZ, enums.DataType.Float32, fileW.tell()) )
         for nrm in nrmData:
             nrm.write(fileW)   
         fileW.align(4)
     
     # color data
     if writeVC:
-        vAttribs.append( vertexAttrib(enums.VertexAttribute.Color0, 0, enums.ComponentCount.Color_RGBA, enums.DataType.RGBA8, fileW.tell(), len(vcData) ) )
+        vAttribs.append( vertexAttrib(enums.VertexAttribute.Color0, 4, len(vcData), enums.ComponentCount.Color_RGBA, enums.DataType.RGBA8, fileW.tell()) )
         for vc in vcData:
             vc.write(fileW)
         fileW.align(4)
     
     # uv data
     if writeUV:
-        vAttribs.append( vertexAttrib(enums.VertexAttribute.Tex0, 0, enums.ComponentCount.TexCoord_ST, enums.DataType.Signed16, fileW.tell(), len(uvData) ) )
+        vAttribs.append( vertexAttrib(enums.VertexAttribute.Tex0, 4, len(uvData), enums.ComponentCount.TexCoord_ST, enums.DataType.Signed16, fileW.tell()) )
         for uv in uvData:
             uv.write(fileW)
         fileW.align(4)
     
     # attrib end marker
-    vAttribs.append( vertexAttrib(enums.VertexAttribute.Null, 0, enums.ComponentCount.Position_XY, enums.DataType.Unsigned8, 0, 0) )
+    vAttribs.append( vertexAttrib(enums.VertexAttribute.Null, 0, 0, enums.ComponentCount.Position_XY, enums.DataType.Unsigned8, 0) )
 
     # writing vertex properties
     vAttribAddress = fileW.tell()
@@ -767,7 +786,7 @@ def write(fileW,
         if mat is None:
             debug("  no material found")
 
-        mp = PolyVert.writeData(fileW, s, indexAttributes, mat)
+        mp = PolyVert.writeData(fileW, s, indexAttributes, mat, defaultCol)
 
         if mat is not None and mat.saSettings.b_useAlpha:
             transparentProps.append(mp)
@@ -793,8 +812,8 @@ def write(fileW,
 
     fileW.wUInt(vAttribAddress) # vertex address
     fileW.wUInt(0) # gap
-    fileW.wUInt(opaqueAddress)
-    fileW.wUInt(transparentAddress)
+    fileW.wUInt(opaqueAddress if len(opaqueProps) > 0 else 0)
+    fileW.wUInt(transparentAddress if len(transparentProps) > 0 else 0)
     fileW.wUShort(len(opaqueProps))
     fileW.wUShort(len(transparentProps))
 
