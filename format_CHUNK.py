@@ -131,7 +131,6 @@ class PolyVert:
         fileW.wUShort(self.vertex.index)
         self.uv.write(fileW)
 
-
 class PolyChunk:
     """Base polychunk"""
 
@@ -346,11 +345,11 @@ class Attach:
         writeUVs = len(mesh.uv_layers) > 0
         
         vertices: List[Vertex] = list()
+        polyVerts: List[PolyVert] = list()
 
         if vertexType == 'VC':
             verts: List[List[Vertex]] = [[] for v in mesh.vertices]
-            polyVerts: List[PolyVert] = list()
-
+            
             # generating the vertices with their colors
             for l in mesh.loops:
                 vert = mesh.vertices[l.vertex_index]
@@ -383,8 +382,8 @@ class Attach:
                 vertices.append( Vertex(v.index, v.index, Vector3(export_matrix @ v.co), Vector3(export_matrix @ v.normal), ColorARGB(), 0) )
 
             for l in mesh.loops:
-                uv = UV(mesh.uv_layers[0].data[lID].uv) if writeUVs else UV()
-                polyVert = PolyVert(l.vertex_index, uv)
+                uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
+                polyVert = PolyVert(vertices[l.vertex_index], uv)
                 polyVerts.append(polyVert)
 
         # creating the vertex chunk

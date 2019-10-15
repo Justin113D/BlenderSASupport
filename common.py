@@ -182,6 +182,7 @@ class ModelData:
     child = None #: ModelData
     sibling = None #: ModelData
     parent = None #: ModelData
+    hierarchyDepth: int
 
     position: Vector3
     rotation: BAMSRotation
@@ -200,6 +201,7 @@ class ModelData:
     def __init__(self, 
              bObject: bpy.types.Object,
              parent, #: ModelData,
+             hierarchyDepth: int,
              name: str,
              global_matrix: mathutils.Matrix, 
              fmt: str = '',
@@ -207,6 +209,7 @@ class ModelData:
              visible: bool = False ):
 
         self.name = name
+        self.hierarchyDepth = hierarchyDepth
         if bObject.type == 'MESH':
             self.fmt = fmt
             self.origObject = bObject
@@ -400,7 +403,10 @@ def convertObjectData(context: bpy.types.Context,
 
     if len(objects) == 0:
         print("No objects found")
-        return {'CANCELLED'}
+        if fmt == 'SA1' or not lvl:
+            return None, None, None, None
+        else:
+            return None, None, None, None, None, None
 
     # getting the objects without parents
     noParents = list()
@@ -416,7 +422,7 @@ def convertObjectData(context: bpy.types.Context,
     modelData = list()
     lastSibling = None
     for o in noParents:
-        current = sortChildren(o, objects, None, export_matrix, fmt, lvl, modelData)
+        current = sortChildren(o, objects, None, 0, export_matrix, fmt, lvl, modelData)
         if lastSibling is not None:
             lastSibling.sibling = current
         lastSibling = current
@@ -470,6 +476,7 @@ def convertObjectData(context: bpy.types.Context,
 def sortChildren(cObject: bpy.types.Object, 
                 objects: List[bpy.types.Object],
                 parent: ModelData, 
+                hierarchyDepth: int,
                 export_matrix: mathutils.Matrix,
                 fmt: str,
                 lvl: bool,
@@ -479,9 +486,9 @@ def sortChildren(cObject: bpy.types.Object,
     lastSibling = None
     if cObject.type == 'MESH':
         if lvl and fmt != 'SA1' and cObject.saSettings.isCollision and cObject.saSettings.isVisible:
-            model = ModelData(cObject, parent, "vsl_" + cObject.name, export_matrix, 'cnk' if fmt == "SA2" else 'gc', False, True)
+            model = ModelData(cObject, parent, hierarchyDepth, "vsl_" + cObject.name, export_matrix, 'cnk' if fmt == "SA2" else 'gc', False, True)
             # collision
-            lastSibling = ModelData(cObject, model, "cls_" + cObject.name, export_matrix, 'bsc', True, False)
+            lastSibling = ModelData(cObject, model, hierarchyDepth, "cls_" + cObject.name, export_matrix, 'bsc', True, False)
         else:
             if fmt == 'SA1' or cObject.saSettings.isCollision and lvl:
                 meshTag = 'bsc' # BASIC is used by all sa1 models and sa2 collisions
@@ -492,16 +499,16 @@ def sortChildren(cObject: bpy.types.Object,
 
             visible = True if not cObject.saSettings.isCollision else cObject.saSettings.isVisible
                 
-            model = ModelData(cObject, parent, cObject.name, export_matrix, meshTag, cObject.saSettings.isCollision, visible)
+            model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, meshTag, cObject.saSettings.isCollision, visible)
     else:
         # everything that is not a mesh should be written as an empty
-        model = ModelData(cObject, cObject.name, export_matrix)
+        model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, fmt, False, False)
     
     result.append(model)
 
     for c in cObject.children:
         if c in objects:
-            child = sortChildren(c, objects, model, export_matrix, fmt, result)
+            child = sortChildren(c, objects, model, hierarchyDepth + 1, export_matrix, fmt, lvl, result)
             if lastSibling is not None:
                 lastSibling.sibling = child
             lastSibling = child
@@ -577,7 +584,7 @@ def writeMethaData(fileW: fileWriter.FileWriter,
 
     global DO
     if DO:
-        print(" Labels:")
+        print(" == Labels ==")
         for k,v in labels.items():
             print("  ", k + ":", '{:08x}'.format(v))
         print("")

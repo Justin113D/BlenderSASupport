@@ -203,7 +203,17 @@ def write(context,
                print("  Anim address:     ",  hex8(animPtr))
                print("  Texture file name:",  texFileName)
                print("  Tex list pointer: ",  hex8(texListPointer))
-          print("  - - - - - -\n")
+          print(" - - - -\n")
+          print(" == Model hierarchy == \n")
+          for o in objects:
+               marker = " "
+               for r in range(o.hierarchyDepth):
+                    marker += "--"
+               if len(marker) > 1:
+                    print(marker, o.name)
+               else:
+                    print("", o.name)
+          print(" - - - -\n")
 
      common.writeMethaData(fileW, labels, context.scene)
 

@@ -1,6 +1,7 @@
 import bpy
 import os
 from . import fileWriter, enums, common, format_BASIC, format_CHUNK, format_GC
+from .common import ModelData
 
 DO = False # Debug out
 
@@ -57,9 +58,9 @@ def write(context,
 
    # creating and getting variables to use in the export process
    objects, meshes, materials, mObjects = common.convertObjectData(context, use_selection, apply_modifs, global_matrix, export_format, False)
-   if objects == {'FINISHED'}:
+   if objects is None:
       fileW.close()
-      return {'FINISHED'}
+      return {'CANCELLED'}
 
    if export_format == 'SA1':
       # writing material data first
@@ -96,7 +97,18 @@ def write(context,
       print(" == Model file info ==")
       print("  model pointer: ", hex8(modelPtr))
       print("  labels pointer:", hex8(labelsAddress))
-      print("  - - - - - -\n")
+      print(" - - - -\n")
+      print(" == Model hierarchy == \n")
+      for o in objects:
+         marker = " "
+         for r in range(o.hierarchyDepth):
+            marker += "--"
+         if len(marker) > 1:
+            print(marker, o.name)
+         else:
+            print("", o.name)
+      print(" - - - -\n")
+      
 
    # writing chunk data
    common.writeMethaData(fileW, labels, context.scene)
