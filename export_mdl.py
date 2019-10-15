@@ -1,12 +1,11 @@
 import bpy
 import os
+from . import fileWriter, enums, common, format_BASIC, format_CHUNK, format_GC
 
 DO = False # Debug out
 
-def debug(*string):
-    global DO
-    if DO:
-        print(*string)
+def hex8(number : int):
+    return '{:08x}'.format(number)
 
 def write(context, 
          filepath, *, 
@@ -16,10 +15,9 @@ def write(context,
          global_matrix,
          console_debug_output
          ):
-   from . import fileWriter, enums, common, format_BASIC, format_CHUNK, format_GC
-   
-   # clear console and enable debug outputs
-   os.system("cls")
+
+   from .common import ModelData
+
    global DO
    DO = console_debug_output
    common.DO = DO
@@ -27,66 +25,78 @@ def write(context,
    format_CHUNK.DO = DO
    format_GC.DO = DO
 
+   if DO:
+         # clear console and enable debug outputs
+         os.system("cls")
+
+
    # create the file
    fileW = fileWriter.FileWriter(filepath=filepath)
-   debug("File:", fileW.filepath, "\n")
 
-   # creating file and writing header   
+   # write the header
    fileVersion = 3
-   if export_format == 'SA1MDL':
-      fileW.wULong(enums.MDLFormatIndicator.SA1MDL.value | (fileVersion << 56))
-      fmt = 'SA1'
-      debug("Format: SA1MDL V", fileVersion)
-   elif export_format == 'SA2MDL':
-      fileW.wULong(enums.MDLFormatIndicator.SA2MDL.value | (fileVersion << 56))
-      fmt = 'SA2'
-      debug("Format: SA2MDL V", fileVersion)
-   else: # SA2BMDL
-      fileW.wULong(enums.MDLFormatIndicator.SA2BMDL.value | (fileVersion << 56))
-      fmt = 'SA2B'
-      debug("Format: SA1BMDL V", fileVersion)
 
-   # creating and getting variables to use in the export process
-   objects, noParents, meshes, materials = common.evaluateObjectsToWrite(use_selection, apply_modifs, context)
-   if objects == {'FINISHED'}:
-      return {'FINISHED'}
-   labels = dict()
+   if export_format == 'SA1':
+      indicator = enums.MDLFormatIndicator.SA1MDL
+   elif export_format == 'SA2':
+      indicator = enums.MDLFormatIndicator.SA2MDL
+   else: # SA2BLVL
+      indicator = enums.MDLFormatIndicator.SA2BMDL
+      
+   fileW.wULong(indicator.value | (fileVersion << 56))
 
-   # Writing starts here
+   if DO:
+      print(" == Starting MDL file exporting ==")
+      print("  File:", fileW.filepath)
+      print("  Format:", export_format, "version", fileVersion)
+      print("  - - - - - -\n")
 
    fileW.wUInt(0) # placeholder for the model properties address
-   fileW.wUInt(0) # placeholder for the labels address
+   fileW.wUInt(0) # placeholder for the labels address     
+   labels = dict() # for labels methadata
 
-   if export_format == 'SA1MDL':
+   # creating and getting variables to use in the export process
+   objects, meshes, materials, mObjects = common.convertObjectData(context, use_selection, apply_modifs, global_matrix, export_format, False)
+   if objects == {'FINISHED'}:
+      fileW.close()
+      return {'FINISHED'}
+
+   if export_format == 'SA1':
       # writing material data first
-      common.writeBASICMaterialData(fileW, materials, labels) 
+      bscMaterials = format_BASIC.Material.writeMaterials(fileW, materials, labels)
       # then writing mesh data
       for m in meshes:
-         format_BASIC.WriteMesh(fileW, m, global_matrix, materials, labels)
+         mesh = format_BASIC.Attach.fromMesh(m, global_matrix, bscMaterials)
+         if mesh is not None:
+               mesh.write(fileW, labels)
 
-   elif export_format == 'SA2MDL':
-      #writing mes data
+   elif export_format == 'SA2':
       for m in meshes:
-         format_CHUNK.write(fileW, m, global_matrix, materials, labels)
+         mesh = format_CHUNK.Attach.fromMesh(m, global_matrix, materials)
+         if mesh is not None:
+            mesh.write(fileW, labels)  
 
    else:
-      #writing mes data
       for m in meshes:
-         format_GC.write(fileW, m, global_matrix, materials, labels)
+          mesh = format_GC.Attach.fromMesh(m, global_matrix, materials)
+          if mesh is not None:
+              mesh.write(fileW, labels)
 
-
-   saObjects = common.getObjData(objects, noParents, global_matrix, labels, fmt)
-   mdlAddress = common.saObject.writeObjList(fileW, saObjects, labels, False)
+   # writing model data
+   ModelData.updateMeshPointer(objects, labels)
+   modelPtr = ModelData.writeObjectList(objects, fileW, labels)
 
    labelsAddress = fileW.tell()
    fileW.seek(8, 0) # go to the location of the model properties addrees
-   fileW.wUInt(mdlAddress) # and write the address
+   fileW.wUInt(modelPtr) # and write the address
    fileW.wUInt(labelsAddress)
    fileW.seek(0,2) # then return back to the end
    
    if DO:
-      print(" model address: ", '{:08x}'.format(mdlAddress))
-      print(" labels address:", '{:08x}'.format(labelsAddress), "\n") 
+      print(" == Model file info ==")
+      print("  model pointer: ", hex8(modelPtr))
+      print("  labels pointer:", hex8(labelsAddress))
+      print("  - - - - - -\n")
 
    # writing chunk data
    common.writeMethaData(fileW, labels, context.scene)

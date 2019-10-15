@@ -64,7 +64,7 @@ class SA2SurfaceFlags(Flag):
     CannotLand = 0x1000
     Water2 = 0x2000
     NoShadows = 0x8000
-    Unknown22 = 0x400000
+    noFog = 0x400000
     Unknown24 = 0x01000000
     Unknown29 = 0x20000000
     Unknown30 = 0x40000000

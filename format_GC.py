@@ -1,7 +1,11 @@
 import bpy
 import math
 import mathutils
-from . import fileWriter, enums, strippifier
+from typing import List
+
+from . import fileWriter, enums, strippifier, common
+from .common import Vector3, ColorARGB, UV, BoundingBox
+from .__init__ import SAMaterialSettings
 
 DO = False
 
@@ -10,68 +14,286 @@ def debug(*string):
     if DO:
         print(*string)
 
-class Vector3(mathutils.Vector):
+# == Geometry parameters ==
 
-    def toMathutils(self):
-        import mathutils
-        return mathutils.Vector((self.x, self.y, self.z))
+class Parameter:
 
-    def distanceFromCenter(self):
-        return (self.x * self.x + self.y * self.y + self.z * self.z)**(0.5)
+    pType: enums.ParameterType
+    data: int
 
-    def write(self, fileW):
-        fileW.wFloat(self.x)
-        fileW.wFloat(self.y)
-        fileW.wFloat(self.z)
+    def __init__(self, pType: enums.ParameterType):
+        self.pType = pType
+        self.data = 0
 
-class ColorARGB:
-    """4 Channel Color
+    def write(self, fileW: fileWriter.FileWriter):
+        fileW.wUInt(self.pType.value)
+        fileW.wUInt(self.data)
 
-    takes values from 0.0 - 1.0 as input and converts them to 0 - 255
-    """
+class VtxAttrFmt(Parameter):
+    """We dont know what this does but we know that we 
+    need one for each vertex data set"""
 
-    a = 0
-    r = 0
-    g = 0
-    b = 0
+    def __init__(self,
+                 vtxType: enums.VertexAttribute):
+        super(VtxAttrFmt, self).__init__(enums.ParameterType.VtxAttrFmt)
+        self.vtxType = vtxType
+        if vtxType == enums.VertexAttribute.Position:
+            self.unknown = 5120
+        elif vtxType == enums.VertexAttribute.Normal:
+            self.unknown = 9216
+        elif vtxType == enums.VertexAttribute.Color0:
+            self.unknown = 27136
+        elif vtxType == enums.VertexAttribute.Tex0:
+            self.unknown = 33544
+        
 
-    def __init__(self, c = [0,0,0,0]):
-        self.a = round(c[3] * 255)
-        self.r = round(c[0] * 255)
-        self.g = round(c[1] * 255)
-        self.b = round(c[2] * 255)
+    @property
+    def unknown(self) -> int:
+        return self.data & 0xFFFF
 
-    def __eq__(self, other):
-        return self.a == other.a and self.r == other.r and self.g == other.g and self.b == other.b
+    @unknown.setter
+    def unknown(self, val: int):
+        self.data &= ~0xFFFF
+        self.data |= min(0xFFFF, val)
 
-    def __str__(self):
-        return "(" + str(self.a) + ", " + str(self.r) + ", " + str(self.g) + ", " + str(self.b) + ")"
+    @property
+    def vtxType(self) -> enums.VertexAttribute:
+        return enums.VertexAttribute((self.data >> 16) & 0xFFFF)
 
-    def write(self, fileW):
-        """writes data to file"""
-      
-        fileW.wByte(self.a)
-        fileW.wByte(self.b)
-        fileW.wByte(self.g)                
-        fileW.wByte(self.r)
+    @vtxType.setter
+    def vtxType(self, val: enums.VertexAttribute):
+        self.data &= ~0xFFFF0000
+        self.data |= val.value << 16
 
-class UV:
+class IndexAttributes(Parameter):
+    """Which data the polygon corners hold"""
 
-    x = 0
-    y = 0
+    def __init__(self, 
+                 idAttr: enums.IndexAttributeFlags):
+        super(IndexAttributes, self).__init__(enums.ParameterType.IndexAttributeFlags)
+        self.indexAttributes = idAttr
 
-    def __init__(self, uv):
-        self.x = round(uv[0] * 256)
-        self.y = round((1-uv[1]) * 256)
+    @property
+    def indexAttributes(self) -> enums.IndexAttributeFlags:
+        return enums.IndexAttributeFlags(self.data)
 
-    def __eq__(self, other):
-        return self.x == other.x and self.y == other.y
+    @indexAttributes.setter
+    def indexAttributes(self, val: enums.IndexAttributeFlags):
+        self.data = val.value
 
-    def write(self, fileW):
-        fileW.wShort(self.x)
-        fileW.wShort(self.y)
+class Lighting(Parameter):
+    """Holds lighting data for the mesh"""
+
+    def __init__(self,
+                 shadowStencil: int):
+        super(Lighting, self).__init__(enums.ParameterType.Lighting)
+        # everything except shadow stencil are default values
+        self.lightingFlags = 0x0B11
+        self.shadowStencil = shadowStencil
+        self.unknown1 = 0
+        self.unknown2 = 0
+
+    @property
+    def lightingFlags(self) -> int:
+        return self.data & 0xFFFF
+
+    @lightingFlags.setter
+    def lightingFlags(self, val: int):
+        self.data &= (~0xFFFF)
+        self.data |= min(0xFFFF, val)
+
+    @property
+    def shadowStencil(self) -> int:
+        return (self.data >> 16) & 0xF
+
+    @shadowStencil.setter
+    def shadowStencil(self, val: int):
+        self.data &= (~0xF0000)
+        self.data |= min(0xF, val) << 16
+
+    @property
+    def unknown1(self) -> int:
+        return (self.data >> 20) & 0xF
+
+    @unknown1.setter
+    def unknown1(self, val: int):
+        self.data &= (~0xF00000)
+        self.data |= min(0xF, val) << 20
+    
+    @property
+    def unknown2(self) -> int:
+        return (self.data >> 24) & 0xFF
+
+    @unknown2.setter
+    def unknown2(self, val: int):
+        self.data &= (~0xFF000000)
+        self.data |= min(0xFF, val) << 24
+
+class AlphaBlend(Parameter):
+    """How the alpha is rendered on top of the opaque geometry"""
+
+    def __init__(self, 
+                 src: enums.AlphaInstruction, 
+                 dst: enums.AlphaInstruction,
+                 active: bool):
+        super(AlphaBlend, self).__init__(enums.ParameterType.BlendAlpha)
+        self.src = src
+        self.dst = dst
+        self.active = active
+        
+    @property
+    def dst(self) -> enums.AlphaInstruction:
+        return enums.AlphaInstruction((self.data >> 8) & 0x7)
+
+    @dst.setter
+    def dst(self, val: enums.AlphaInstruction):
+        self.data &= ~0x700
+        self.data |= val.value << 8
+
+    @property
+    def src(self) -> enums.AlphaInstruction:
+        return enums.AlphaInstruction((self.data >> 11) & 0x7)
+
+    @src.setter
+    def src(self, val: enums.AlphaInstruction):
+        self.data &= ~0x3800
+        self.data |= val.value << 11 
+
+    @property
+    def active(self) -> bool:
+        return (self.data & 0x4000) > 1
+
+    @active.setter
+    def active(self, val: bool):
+        if val:
+            self.data |= 0x4000
+        else:
+            self.data &= ~0x4000 
+
+class AmbientColor(Parameter):
+    """Ambient color of the mesh"""
+
+    def __init__(self, color: ColorARGB):
+        super(AmbientColor, self).__init__(enums.ParameterType.AmbientColor)
+        self.color = color
+
+    @property
+    def color(self) -> ColorARGB:
+        a = self.data & 0xFF
+        g = (self.data >> 8) & 0xFF
+        g = (self.data >> 16) & 0xFF
+        b = (self.data >> 24) & 0xFF
+        return ColorARGB((a,r,g,b))
+
+    @color.setter
+    def color(self, val: ColorARGB):
+        self.data = min(val.a, 0xFF) | min(val.b, 0xFF) << 8 | min(val.g, 0xFF) << 16 | min(val.r, 0xFF) << 24
+
+class Texture(Parameter):
+    """Holds texture info"""
+
+    def __init__(self, texID: int, tilemode: enums.TileMode):
+        super(Texture, self).__init__(enums.ParameterType.Texture)
+        self.texID = texID
+        self.tilemode = tilemode
+    
+    @property
+    def texID(self) -> int:
+        return self.data & 0xFFFF
+
+    @texID.setter
+    def texID(self, val: int):
+        self.data &= ~0xFFFF
+        self.data |= min(0xFFFF, val)
+
+    @property
+    def tilemode(self) -> enums.TileMode:
+        return enums.TileMode((self.data >> 16) & 0xFFFF)
+
+    @tilemode.setter
+    def tilemode(self, val: enums.TileMode):
+        self.data &= ~0xFFFF0000
+        self.data |= val.value << 16
+
+class unknown_9(Parameter):
+    """We have absolutely no clue what this is for, but we need it"""
+
+    def __init__(self):
+        super(unknown_9, self).__init__(enums.ParameterType.Unknown_9)
+        self.unknown1 = 4
+        self.unknown2 = 0
+
+    @property
+    def unknown1(self) -> int:
+        return self.data & 0xFFFF
+
+    @unknown1.setter
+    def unknown1(self, val: int):
+        self.data &= ~0xFFFF
+        self.data |= min(0xFFFF, val)
+
+    @property
+    def unknown2(self) -> int:
+        return (self.data >> 16) & 0xFFFF
+
+    @unknown2.setter
+    def unknown2(self, val: int):
+        self.data &= ~0xFFFF0000
+        self.data |= min(0xFFFF, val) << 16
+
+class TexCoordGen(Parameter):
+    """Determines how the uv data should be used"""
+
+    def __init__(self,
+                 mtx: enums.TexGenMtx,
+                 src: enums.TexGenSrc,
+                 typ: enums.TexGenType,
+                 texID: enums.TexCoordID):
+        super(TexCoordGen, self).__init__(enums.ParameterType.TexCoordGen)
+        self.mtx = mtx
+        self.src = src
+        self.typ = typ
+        self.texID = texID
+
+    @property
+    def mtx(self) -> enums.TexGenMtx:
+        return enums.TexGenMtx(self.data & 0xF)
+
+    @mtx.setter
+    def mtx(self, val: enums.TexGenMtx):
+        self.data &= ~0xF
+        self.data |= val.value
+
+    @property
+    def src(self) -> enums.TexGenSrc:
+        return enums.TexGenSrc((self.data >> 4) & 0xFF)
+
+    @src.setter
+    def src(self, val: enums.TexGenSrc):
+        self.data &= ~0xFF0
+        self.data |= val.value << 4
+
+    @property
+    def typ(self) -> enums.TexGenType:
+        return enums.TexGenType((self.data >> 12) & 0xF)
+
+    @typ.setter
+    def typ(self, val: enums.TexGenType):
+        self.data &= ~0xF000
+        self.data |= val.value << 12
+
+    @property
+    def texID(self) -> enums.TexCoordID:
+        return enums.TexCoordID((self.data >> 16) & 0xFF)
+
+    @texID.setter
+    def texID(self, val: enums.TexCoordID):
+        self.data &= ~0xFF0000
+        self.data |= val.value << 16
+
 
 class PolyVert:
+    """Indices of a single polygon corner"""
 
     posID = 0
     nrmID = 0
@@ -87,545 +309,229 @@ class PolyVert:
     def __eq__(self, other):
         return self.posID == other.posID and self.nrmID == other.nrmID and self.vcID == other.vcID and self.uvID == other.uvID
 
-    def writeData(fileW, polyList, idFlags: enums.IndexAttributeFlags, material, defaultVC):
-        
-        # writing parameters
-        paramAddress = fileW.tell()
-        paramCount = 0
+class Geometry:
+    """Holds a single polygon data set"""
 
-        # vertex format attribute parameter (pos)
-        fileW.wUInt(enums.ParameterType.VtxAttrFmt.value)
-        fileW.wUShort(5120)
-        fileW.wUShort(enums.VertexAttribute.Position.value)
-        paramCount += 1
+    params: List[Parameter]
+    paramPtr: int
+    polygons: List[List[PolyVert]] # each list in the list is a polygon. lists with 3 items are triangles, more items and its a strip
+    polygonPtr: int
+    polygonSize: int
+    indexAttributes: enums.IndexAttributeFlags
+    transparent: bool
 
-        if idFlags & enums.IndexAttributeFlags.HasNormal:
-            # vertex format attribute parameter (col)
-            fileW.wUInt(enums.ParameterType.VtxAttrFmt.value)
-            fileW.wUShort(9216)
-            fileW.wUShort(enums.VertexAttribute.Normal.value)
-            paramCount += 1
+    def __init__(self,
+                 params: List[Parameter],
+                 polygons: List[List[PolyVert]]):
+        self.params = params
+        self.polygons = polygons
 
-        if idFlags & enums.IndexAttributeFlags.HasColor:
-            # vertex format attribute parameter (col)
-            fileW.wUInt(enums.ParameterType.VtxAttrFmt.value)
-            fileW.wUShort(27136)
-            fileW.wUShort(enums.VertexAttribute.Color0.value)
-            paramCount += 1
+        for p in params:
+            if isinstance(p, IndexAttributes):
+                self.indexAttributes = p.indexAttributes
+            if isinstance(p, AlphaBlend):
+                self.transparent = p.active
 
-        if idFlags & enums.IndexAttributeFlags.HasUV:
-            # vertex format attribute parameter (uv)
-            fileW.wUInt(enums.ParameterType.VtxAttrFmt.value)
-            fileW.wUShort(33544)
-            fileW.wUShort(enums.VertexAttribute.Tex0.value)
-            paramCount += 1           
+        if self.indexAttributes is None:
+            print("Index attributes not found")
 
-        # index attribute parameter
-        fileW.wUInt(enums.ParameterType.IndexAttributeFlags.value)
-        fileW.wUInt(idFlags.value)
-        paramCount += 1
+    def writeParams(self, fileW: fileWriter.FileWriter):
+        """Writes the parameters of the geometry"""
+        self.paramPtr = fileW.tell()
+        for p in self.params:
+            p.write(fileW)
 
-        # alpha instructions
-        fileW.wUInt(enums.ParameterType.BlendAlpha.value)
-        dstInst = enums.AlphaInstruction.InverseSrcAlpha
-        srcInst = enums.AlphaInstruction.SrcAlpha
-        useTransparency = 0
+    def writePolygons(self, fileW: fileWriter.FileWriter):
+        """Writes the polygon data of the geometry"""
+        self.polygonPtr = fileW.tell()
+        fileW.setBigEndian(True)
 
-        if material is not None and material.saSettings.b_useAlpha:
-            matProps = material.saSettings
-            src = matProps.b_srcAlpha
-            if src == 'ONE':
-                srcInst = enums.AlphaInstruction.One
-            elif src == 'OTHER':
-                srcInst = enums.AlphaInstruction.SrcColor
-            elif src == 'INV_OTHER':
-                srcInst = enums.AlphaInstruction.InverseSrcColor
-            elif src == 'SRC':
-                srcInst = enums.AlphaInstruction.SrcAlpha
-            elif src == 'INV_SRC':
-                srcInst = enums.AlphaInstruction.InverseSrcAlpha
-            elif src == 'DST':
-                srcInst = enums.AlphaInstruction.DstAlpha
-            elif src == 'INV_DST':
-                srcInst = enums.AlphaInstruction.InverseDstAlpha
-            else:
-                srcInst = enums.AlphaInstruction.Zero
-
-            
-            dst = matProps.b_destAlpha
-            if dst == 'ONE':
-                dstInst = enums.AlphaInstruction.One
-            elif dst == 'OTHER':
-                dstInst = enums.AlphaInstruction.SrcColor
-            elif dst == 'INV_OTHER':
-                dstInst = enums.AlphaInstruction.InverseSrcColor
-            elif dst == 'SRC':
-                dstInst = enums.AlphaInstruction.SrcAlpha
-            elif dst == 'INV_SRC':
-                dstInst = enums.AlphaInstruction.InverseSrcAlpha
-            elif dst == 'DST':
-                dstInst = enums.AlphaInstruction.DstAlpha
-            elif dst == 'INV_DST':
-                dstInst = enums.AlphaInstruction.InverseDstAlpha
-            else:
-                dstInst = enums.AlphaInstruction.Zero
-
-            useTransparency = 1
-            
-        value = (srcInst.value << 11) | (dstInst.value << 8) | (useTransparency << 14)
-        fileW.wUInt(value)
-        paramCount += 1
-
-        # lighting parameters (we have no clue how those work atm, so we just write a default
-        fileW.wUInt(enums.ParameterType.Lighting.value)
-        fileW.wUInt(0x00010B11) # enables shadows and uses vertex colors, dont ask me why or how that works
-        paramCount += 1
-
-        # ambient color
-        fileW.wUInt(enums.ParameterType.AmbientColor.value)
-        color = ColorARGB([1,1,1,1]) if material == None else ColorARGB(material.saSettings.b_Ambient)
-        color.write(fileW)
-        paramCount += 1        
-
-        if material == None:
-            #texture
-            fileW.wUInt(enums.ParameterType.Texture.value)
-            fileW.wUInt(0) # texture 0 with no tilemode
-            paramCount += 1
-
-            # that unknown parameter
-            fileW.wUInt(enums.ParameterType.Unknown_9.value)
-            fileW.wUInt(0x04) # seems to be default
-            paramCount += 1
-
-            #texCoordGen
-            fileW.wUInt(enums.ParameterType.TexCoordGen.value)
-
-            mtx = enums.TexGenMtx.Identity # use default matrix
-            src = enums.TexGenSrc.TexCoord0 # on uv set 0
-            typ = enums.TexGenType.Matrix2x4 # with a 2x4 matrix (2d matrix)
-            tID = enums.TexCoordID.TexCoord0 # and save that in uvslot 0
-
-            value = mtx.value | (src.value << 4) | (typ.value << 12) | (tID.value << 16)
-            fileW.wUInt(value)
-
-            paramCount += 1
-
-        else:
-            matProps = material.saSettings
-
-            #texture
-            fileW.wUInt(enums.ParameterType.Texture.value)
-            fileW.wUShort(matProps.b_TextureID)
-            
-            tileMode = enums.TileMode.null
-
-            if not matProps.b_clampV:
-                tileMode |= enums.TileMode.WrapV
-            if not matProps.b_clampU:
-                tileMode |= enums.TileMode.WrapU
-            if matProps.b_mirrorV:
-                tileMode |= enums.TileMode.MirrorV
-            if matProps.b_mirrorU:
-                tileMode |= enums.TileMode.MirrorU
-            
-            fileW.wUShort(tileMode.value)
-
-            paramCount += 1
-
-            # that unknown parameter
-            fileW.wUInt(enums.ParameterType.Unknown_9.value)
-            fileW.wUInt(0x04) # seems to be default
-            paramCount += 1
-
-            #texCoordGen
-            fileW.wUInt(enums.ParameterType.TexCoordGen.value)
-
-            #texMatrixID
-            if matProps.gc_texMatrixID == 'MATRIX0':
-                mtx = enums.TexGenMtx.Matrix0
-            elif matProps.gc_texMatrixID == 'MATRIX1':
-                mtx = enums.TexGenMtx.Matrix1
-            elif matProps.gc_texMatrixID == 'MATRIX2':
-                mtx = enums.TexGenMtx.Matrix2
-            elif matProps.gc_texMatrixID == 'MATRIX3':
-                mtx = enums.TexGenMtx.Matrix3
-            elif matProps.gc_texMatrixID == 'MATRIX4':
-                mtx = enums.TexGenMtx.Matrix4
-            elif matProps.gc_texMatrixID == 'MATRIX5':
-                mtx = enums.TexGenMtx.Matrix5
-            elif matProps.gc_texMatrixID == 'MATRIX6':
-                mtx = enums.TexGenMtx.Matrix6
-            elif matProps.gc_texMatrixID == 'MATRIX7':
-                mtx = enums.TexGenMtx.Matrix7
-            elif matProps.gc_texMatrixID == 'MATRIX8':
-                mtx = enums.TexGenMtx.Matrix8
-            elif matProps.gc_texMatrixID == 'MATRIX9':
-                mtx = enums.TexGenMtx.Matrix9
-            elif matProps.gc_texMatrixID == 'IDENTITY':
-                mtx = enums.TexGenMtx.Identity
-
-            #texGenSrc
-            if matProps.gc_texGenType[0] == 'M': #Matrix
-                if matProps.gc_texGenSourceMtx == 'POSITION':
-                    src = enums.TexGenSrc.Position
-                elif matProps.gc_texGenSourceMtx == 'NORMAL':
-                    src = enums.TexGenSrc.Normal   
-                elif matProps.gc_texGenSourceMtx == 'BINORMAL':
-                    src = enums.TexGenSrc.Binormal
-                elif matProps.gc_texGenSourceMtx == 'TANGENT':
-                    src = enums.TexGenSrc.Tangent
-                elif matProps.gc_texGenSourceMtx == 'TEX0':
-                    src = enums.TexGenSrc.Tex0
-                elif matProps.gc_texGenSourceMtx == 'TEX1':
-                    src = enums.TexGenSrc.Tex1
-                elif matProps.gc_texGenSourceMtx == 'TEX2':
-                    src = enums.TexGenSrc.Tex2
-                elif matProps.gc_texGenSourceMtx == 'TEX3':
-                    src = enums.TexGenSrc.Tex3
-                elif matProps.gc_texGenSourceMtx == 'TEX4':
-                    src = enums.TexGenSrc.Tex4
-                elif matProps.gc_texGenSourceMtx == 'TEX5':
-                    src = enums.TexGenSrc.Tex5
-                elif matProps.gc_texGenSourceMtx == 'TEX6':
-                    src = enums.TexGenSrc.Tex6
-                elif matProps.gc_texGenSourceMtx == 'TEX7':
-                    src = enums.TexGenSrc.Tex7
-            elif matProps.gc_texGenType[0] == 'B': #Bump
-                if matProps.gc_texGenSourceBmp == 'TEXCOORD0':
-                    src = enums.TexGenSrc.TexCoord0
-                elif matProps.gc_texGenSourceBmp == 'TEXCOORD1':
-                    src = enums.TexGenSrc.TexCoord1
-                elif matProps.gc_texGenSourceBmp == 'TEXCOORD2':
-                    src = enums.TexGenSrc.TexCoord2
-                elif matProps.gc_texGenSourceBmp == 'TEXCOORD3':
-                    src = enums.TexGenSrc.TexCoord3
-                elif matProps.gc_texGenSourceBmp == 'TEXCOORD4':
-                    src = enums.TexGenSrc.TexCoord4
-                elif matProps.gc_texGenSourceBmp == 'TEXCOORD5':
-                    src = enums.TexGenSrc.TexCoord5
-                elif matProps.gc_texGenSourceBmp == 'TEXCOORD6':
-                    src = enums.TexGenSrc.TexCoord6
-            else: #SRTG
-                if matProps.gc_texGenSourceSRTG == 'COLOR0':
-                    src = enums.TexGenSrc.Color0
-                elif matProps.gc_texGenSourceSRTG == 'COLOR1':
-                    src = enums.TexGenSrc.Color1
-
-            #texGenType
-            if matProps.gc_texGenType == 'MTX3X4':
-                typ = enums.TexGenType.Matrix3x4
-            elif matProps.gc_texGenType == 'MTX2X4':
-                typ = enums.TexGenType.Matrix2x4
-            elif matProps.gc_texGenType == 'BUMP0':
-                typ = enums.TexGenType.Bump0
-            elif matProps.gc_texGenType == 'BUMP1':
-                typ = enums.TexGenType.Bump1
-            elif matProps.gc_texGenType == 'BUMP2':
-                typ = enums.TexGenType.Bump2
-            elif matProps.gc_texGenType == 'BUMP3':
-                typ = enums.TexGenType.Bump3
-            elif matProps.gc_texGenType == 'BUMP4':
-                typ = enums.TexGenType.Bump4
-            elif matProps.gc_texGenType == 'BUMP5':
-                typ = enums.TexGenType.Bump5
-            elif matProps.gc_texGenType == 'BUMP6':
-                typ = enums.TexGenType.Bump6
-            elif matProps.gc_texGenType == 'BUMP7':
-                typ = enums.TexGenType.Bump7
-            elif matProps.gc_texGenType == 'SRTG':
-                typ = enums.TexGenType.SRTG
-
-            #texCoordID
-            if matProps.gc_texCoordID == 'TEXCOORD0':
-                tID = enums.TexCoordID.TexCoord0
-            elif matProps.gc_texCoordID == 'TEXCOORD1':
-                tID = enums.TexCoordID.TexCoord1
-            elif matProps.gc_texCoordID == 'TEXCOORD2':
-                tID = enums.TexCoordID.TexCoord2
-            elif matProps.gc_texCoordID == 'TEXCOORD3':
-                tID = enums.TexCoordID.TexCoord3
-            elif matProps.gc_texCoordID == 'TEXCOORD4':
-                tID = enums.TexCoordID.TexCoord4
-            elif matProps.gc_texCoordID == 'TEXCOORD5':
-                tID = enums.TexCoordID.TexCoord5
-            elif matProps.gc_texCoordID == 'TEXCOORD6':
-                tID = enums.TexCoordID.TexCoord6
-            elif matProps.gc_texCoordID == 'TEXCOORD7':
-                tID = enums.TexCoordID.TexCoord7
-            elif matProps.gc_texCoordID == 'TEXCOORD8':
-                tID = enums.TexCoordID.TexCoord8
-            elif matProps.gc_texCoordID == 'TEXCOORD9':
-                tID = enums.TexCoordID.TexCoord9
-            elif matProps.gc_texCoordID == 'TEXCOORDMAX':
-                tID = enums.TexCoordID.TexCoordMax
-            elif matProps.gc_texCoordID == 'TEXCOORDNULL':
-                tID = enums.TexCoordID.TexCoordNull
-
-            value = mtx.value | (src.value << 4) | (typ.value << 12) | (tID.value << 16)
-            fileW.wUInt(value)
-
-            paramCount += 1
-        
-        #writing primitives
-
-        indexAddress = fileW.tell()
-
-        fileW.setBigEndian(bigEndian = True) # for some reason they are big endian
-
-        for l in polyList:
+        for l in self.polygons:
             if len(l) == 3:
                 fileW.wByte(enums.PrimitiveType.Triangles.value)
             else:
                 fileW.wByte(enums.PrimitiveType.TriangleStrip.value)
             fileW.wUShort(len(l))
+            
             for p in l:
-                if idFlags & enums.IndexAttributeFlags.Position16BitIndex:
+                if self.indexAttributes & enums.IndexAttributeFlags.Position16BitIndex:
                     fileW.wUShort(p.posID)
                 else:
                     fileW.wByte(p.posID)
 
-                if idFlags & enums.IndexAttributeFlags.HasNormal:
-                    if idFlags & enums.IndexAttributeFlags.Normal16BitIndex:
+                if self.indexAttributes & enums.IndexAttributeFlags.HasNormal:
+                    if self.indexAttributes & enums.IndexAttributeFlags.Normal16BitIndex:
                         fileW.wUShort(p.nrmID)
                     else:
                         fileW.wByte(p.nrmID)
                     
-                if idFlags & enums.IndexAttributeFlags.HasColor:
-                    if idFlags & enums.IndexAttributeFlags.Color16BitIndex:
-                        fileW.wUShort(0 if defaultVC else p.vcID)
+                if self.indexAttributes & enums.IndexAttributeFlags.HasColor:
+                    if self.indexAttributes & enums.IndexAttributeFlags.Color16BitIndex:
+                        fileW.wUShort(p.vcID)
                     else:
-                        fileW.wByte(0 if defaultVC else p.vcID)
+                        fileW.wByte(p.vcID)
 
-                if idFlags & enums.IndexAttributeFlags.HasUV:
-                    if idFlags & enums.IndexAttributeFlags.UV16BitIndex:
+                if self.indexAttributes & enums.IndexAttributeFlags.HasUV:
+                    if self.indexAttributes & enums.IndexAttributeFlags.UV16BitIndex:
                         fileW.wUShort(p.uvID)
                     else:
                         fileW.wByte(p.uvID)
-        
-        fileW.pad(indexAddress, 32)      
-        length = fileW.tell() - indexAddress
-        fileW.setBigEndian(bigEndian = False)
-
-        mp = meshProp(paramAddress, paramCount, indexAddress, length)
-
-        return mp
-
-class BoundingBox:
-    """Used to calculate the bounding sphere which the game uses"""
-
-    boundCenter = Vector3()
-
-    def __init__(self, vertices):
-        self.x = 0
-        self.xn = 0
-        self.y = 0
-        self.yn = 0
-        self.z = 0
-        self.zn = 0
-
-        for v in vertices:
-            if self.x < v.co.x:
-                self.x = v.co.x
-            elif self.xn > v.co.x:
-                self.xn = v.co.x
-
-            if self.y < v.co.y:
-                self.y = v.co.y
-            elif self.yn > v.co.y:
-                self.yn = v.co.y
-
-            if self.z < v.co.z:
-                self.z = v.co.z
-            elif self.zn > v.co.z:
-                self.zn = v.co.z
-        cx = BoundingBox.center(self.x,self.xn)
-        cy = BoundingBox.center(self.y,self.yn)
-        cz = BoundingBox.center(self.z,self.zn)
-
-        self.boundCenter = Vector3((cx,cy,cz))
-
-        distance = 0
-        for v in vertices:
-            dif = Vector3( (self.boundCenter.x - v.co.x, 
-                            self.boundCenter.y - v.co.y, 
-                            self.boundCenter.z - v.co.z) )
-            tDist = math.sqrt(pow(dif.x, 2) + pow(dif.y, 2) + pow(dif.z, 2))
-            if tDist > distance:
-                distance = tDist
-
-        self.radius = distance
     
-    def center(p1, p2):
-        return (p1 + p2) / 2.0
+        fileW.setBigEndian(False)
+        self.polygonSize = fileW.tell() - self.polygonPtr
 
-    def write(self, fileW):
-        self.boundCenter.write(fileW)
-        fileW.wFloat(self.radius)
+    def writeGeom(self, fileW: fileWriter.FileWriter):
+        """Writes geometry data (requires params and polygons to be written)"""
+        fileW.wUInt(self.paramPtr)
+        fileW.wUInt(len(self.params))
+        fileW.wUInt(self.polygonPtr)
+        fileW.wUInt(self.polygonSize)
 
-class vertexAttrib:
+class Vertices:
+    """One vertex data array"""
 
-    vType = enums.VertexAttribute.Null
-    fracBitCount = 12
-    vCount = 0
-    compCount = enums.ComponentCount.Position_XYZ
-    dataType = enums.DataType.Float32
-    address = 0
-    size = 0
+    vType: enums.VertexAttribute
+    fracBitCount: int
+    compCount: enums.ComponentCount
+    dataType: enums.DataType
+    dataPtr: int
+    data: list
 
-    def __init__(self, vType, fracBitCount, vCount, compCount, dataType, address):
+    def __init__(self,
+                 vType: enums.VertexAttribute,
+                 fracBitCount: int,
+                 compCount: enums.ComponentCount,
+                 dataType: enums.DataType,
+                 data: list):
         self.vType = vType
-        if vType == enums.VertexAttribute.Null:
-            self.fracBitCount = 0
-        else:
-            self.fracBitCount = fracBitCount
-        self.vCount = vCount
+        self.fracBitCount = fracBitCount
         self.compCount = compCount
         self.dataType = dataType
-        self.address = address
+        self.data = data
 
+    def getCompSize(self) -> int:
+        """Calculates the size of a single element in bytes"""
         structSize = 1
-        if compCount == enums.ComponentCount.Position_XYZ or compCount == enums.ComponentCount.Normal_XYZ:
+        if self.compCount == enums.ComponentCount.Position_XYZ or self.compCount == enums.ComponentCount.Normal_XYZ:
             structSize = 3
-        elif compCount == enums.ComponentCount.TexCoord_ST or compCount == enums.ComponentCount.Position_XY:
+        elif self.compCount == enums.ComponentCount.TexCoord_ST or self.compCount == enums.ComponentCount.Position_XY:
             structSize = 2
 
-        if dataType == enums.DataType.Unsigned8 or dataType == enums.DataType.Signed8:
+        if self.dataType == enums.DataType.Unsigned8 or self.dataType == enums.DataType.Signed8:
             structSize = structSize
-        elif dataType == enums.DataType.Signed16 or dataType == enums.DataType.Unsigned16 or dataType == enums.DataType.RGB565 or dataType == enums.DataType.RGBA4 :
+        elif self.dataType == enums.DataType.Signed16 or self.dataType == enums.DataType.Unsigned16 or self.dataType == enums.DataType.RGB565 or self.dataType == enums.DataType.RGBA4 :
             structSize *= 2
         else:
             structSize *= 4
 
-        self.size = vCount * structSize
-
+        return structSize
+    
     def debug(self):
-        print(" Attrib:", self.vType)
+        print("  Attrib:", self.vType)
         print("   fracBitCount:", self.fracBitCount)
-        print("   vCount:", self.vCount)
+        print("   vCount:", len(self.data))
         print("   Component Count:", self.compCount)
         print("   Data Type:", self.dataType)
-        print("   Data Address:", self.address)
-        print("   Size:", self.size)
-        print(" ---- \n")
+        print("   Data Pointer:", common.hex4(self.dataPtr))
+        print("   Size:", len(self.data) * self.getCompSize())
+        print(" - - - - \n")
 
-    def write(self, fileW):
+    def writeData(self, fileW: fileWriter.FileWriter):
+        """Writes the data and saves the pointer"""
+        self.dataPtr = fileW.tell()
+
+        if self.vType == enums.VertexAttribute.Color0 or self.vType == enums.VertexAttribute.Color1:
+            for e in self.data:
+                e.writeRGBA(fileW)
+        else:
+            for e in self.data:
+                e.write(fileW)
+
+    def writeAttrib(self, fileW: fileWriter.FileWriter):
+        """Writes the attribute of the vertices (requires data to be written)"""
         fileW.wByte(self.vType.value)
         fileW.wByte(self.fracBitCount)
-        fileW.wShort(self.vCount)
+        fileW.wShort(len(self.data))
         
         datainfo = self.compCount.value | (self.dataType.value << 4)
         fileW.wUInt(datainfo)
-        fileW.wUInt(self.address)
-        fileW.wUInt(self.size)
+        fileW.wUInt(self.dataPtr)
+        fileW.wUInt(len(self.data) * self.getCompSize())
 
-class meshProp:
+class Attach:
+    """Gamecube format attach"""
 
-    parameterAddress = 0
-    parameterCount = 0
-    indexDataAddress = 0
-    indexDataSize = 0
+    name: str
+    vertices: List[Vertices]
+    opaqueGeom: List[Geometry]
+    transparentGeom: List[Geometry]
+    bounds: BoundingBox
 
-    def __init__(self, parameterAddress, parameterCount, indexDataAddress, indexDataSize):
-        self.parameterAddress = parameterAddress
-        self.parameterCount = parameterCount
-        self.indexDataAddress = indexDataAddress
-        self.indexDataSize = indexDataSize
+    def __init__(self,
+                 name: str,
+                 vertices: List[Vertices],
+                 opaqueGeom: List[Geometry],
+                 transparentGeom: List[Geometry],
+                 bounds: BoundingBox):
+        self.name = name
+        self.vertices = vertices
+        self.opaqueGeom = opaqueGeom
+        self.transparentGeom = transparentGeom
+        self.bounds = bounds
 
-    def debug(self):
-        print(" MeshProp:")
-        print("  Param Address:", self.parameterAddress)
-        print("  Param Count:", self.parameterCount)
-        print("  Index Address:", self.indexDataAddress)
-        print("  Index Size:", self.indexDataSize)
+    def fromMesh(mesh: bpy.types.Mesh, 
+                 export_matrix: mathutils.Matrix,
+                 materials: List[bpy.types.Material]):
 
-    def write(self, fileW):
-        fileW.wUInt(self.parameterAddress)
-        fileW.wUInt(self.parameterCount)
-        fileW.wUInt(self.indexDataAddress)
-        fileW.wUInt(self.indexDataSize)
-        print('{:04x}'.format(self.indexDataSize))
+        # determining which data should be written
+        vertexType = mesh.saSettings.sa2ExportType
 
-def distinctPolys(polys):
-    """Takes a list of PolyVerts and returns a distinct list"""
-    distinct = list()
-    oIDtodID = [0] * len(polys)
-    
-    for IDo, vo in enumerate(polys):
-        found = None
-        for IDd, vd in enumerate(distinct):
-            if vo == vd:
-                found = IDd
-                break
-        if found is None:
-            distinct.append(vo)
-            oIDtodID[IDo] = len(distinct) - 1
-        else:
-            oIDtodID[IDo] = found
+        # the model has to either contain normals or vertex colors. it wont work with both or none of each
+        writeNRM = vertexType == 'NRM' or vertexType == 'NRMW' or (vertexType == 'VC' and len(mesh.vertex_colors) == 0)
+        writeVC = not writeNRM #vertexType == 'VC' and len(mesh.vertex_colors) > 0
+        writeUV = len(mesh.uv_layers) > 0
 
-    return distinct, oIDtodID
+        # aquiring the vertex data
+        vertices: List[Vertices] = list()
 
-def write(fileW,
-          mesh,
-          exportMatrix,
-          materials,
-          labels: dict):
-
-    debug(" Writing GC:", mesh.name, "\n")
-
-    # determining which data should be written
-    vertexType = mesh.saSettings.sa2ExportType
-    if vertexType == 'NRMW':
-        vertexType = 'NRMVC'
-
-    writeNRM = vertexType == 'NRMVC' or vertexType == 'NRM'
-    writeVC = (vertexType == 'NRMVC' or vertexType == 'VC') #and len(mesh.vertex_colors) > 0
-    defaultCol = len(mesh.vertex_colors) == 0
-    writeUV = len(mesh.uv_layers) > 0
-
-    posData = list()
-    nrmData = list()
-    vcData = list()
-    uvData = list()
-
-    # gettings all of the data to be written
-    # getting position data
-    posIDs = [0] * len(mesh.vertices)
-    for i, v in enumerate(mesh.vertices):
-        found = None
-        pos = Vector3(exportMatrix @ v.co)
-        for j, p in enumerate(posData):
-            if p == pos:
-                found = j
-                break
-        if found is None:
-            posData.append(pos)
-            posIDs[i] = len(posData) - 1
-        else:
-            posIDs[i] = found
-
-    # getting normal data
-    if writeNRM:
-        nrmIDs = [0] * len(mesh.vertices)
+        # position data is always required
+        posData = list()
+        posIDs = [0] * len(mesh.vertices)
         for i, v in enumerate(mesh.vertices):
             found = None
-            nrm = Vector3(exportMatrix @ v.normal)
-            for j, n in enumerate(nrmData):
-                if n == nrm:
+            pos = Vector3(export_matrix @ v.co)
+            for j, p in enumerate(posData):
+                if p == pos:
                     found = j
                     break
             if found is None:
-                nrmData.append(nrm)
-                nrmIDs[i] = len(nrmData) - 1
+                posData.append(pos)
+                posIDs[i] = len(posData) - 1
             else:
-                nrmIDs[i] = found
+                posIDs[i] = found
+        vertices.append( Vertices(enums.VertexAttribute.Position, 12, enums.ComponentCount.Position_XYZ, enums.DataType.Float32, posData))
 
-    # getting vertex color data
-    if writeVC:
-        if defaultCol:
-            vcIDs = [0]
-            vcData = [ColorARGB([1,1,1,1])]
-        else:
+        # getting normal data
+        if writeNRM:
+            nrmData = list()
+            nrmIDs = [0] * len(mesh.vertices)
+            for i, v in enumerate(mesh.vertices):
+                found = None
+                nrm = Vector3(export_matrix @ v.normal)
+                for j, n in enumerate(nrmData):
+                    if n == nrm:
+                        found = j
+                        break
+                if found is None:
+                    nrmData.append(nrm)
+                    nrmIDs[i] = len(nrmData) - 1
+                else:
+                    nrmIDs[i] = found
+            vertices.append( Vertices(enums.VertexAttribute.Normal, 12, enums.ComponentCount.Normal_XYZ, enums.DataType.Float32, nrmData))
+
+        # getting vertex color data
+        if writeVC:
+            vcData = list()
             vcIDs = [0] * len(mesh.vertex_colors[0].data)
             for i, vc in enumerate(mesh.vertex_colors[0].data):
                 found = None
@@ -639,186 +545,379 @@ def write(fileW,
                     vcIDs[i] = len(vcData) - 1
                 else:
                     vcIDs[i] = found
+            vertices.append( Vertices(enums.VertexAttribute.Color0, 4, enums.ComponentCount.Color_RGBA, enums.DataType.RGBA8, vcData))
 
-    # getting uv data
-    if writeUV:
-        uvIDs = [0] * len(mesh.uv_layers[0].data)
-        for i, uv in enumerate(mesh.uv_layers[0].data):
-            found = None
-            newUV = UV(uv.uv)
-            for j, uvD in enumerate(uvData):
-                if newUV == uvD:
-                    found = j
-                    break
-            if found is None:
-                uvData.append(newUV)
-                uvIDs[i] = len(uvData) - 1
-            else:
-                uvIDs[i] = found
+        # getting uv data
+        if writeUV:
+            uvData = list()
+            uvIDs = [0] * len(mesh.uv_layers[0].data)
+            for i, uv in enumerate(mesh.uv_layers[0].data):
+                    found = None
+                    newUV = UV(uv.uv)
+                    for j, uvD in enumerate(uvData):
+                        if newUV == uvD:
+                            found = j
+                            break
+                    if found is None:
+                        uvData.append(newUV)
+                        uvIDs[i] = len(uvData) - 1
+                    else:
+                        uvIDs[i] = found
+            vertices.append( Vertices(enums.VertexAttribute.Tex0, 4, enums.ComponentCount.TexCoord_ST, enums.DataType.Signed16, uvData))
 
+        # assembling polygons
 
-    # assembling poly data
-    tris = list()
-    for m in mesh.materials:
-        tris.append([])
-    if len(tris) == 0:
-        tris.append([])
+        # preparing polygon lists
+        tris: List[List[PolyVert]] = [[] for n in mesh.materials]
+        if len(tris) == 0:
+            tris.append([])
 
-    for p in mesh.polygons:
-        for l in p.loop_indices:
-            loop = mesh.loops[l]
+        for p in mesh.polygons:
+            for l in p.loop_indices:
+                loop = mesh.loops[l]
 
-            posID = posIDs[loop.vertex_index]
-            nrmID = None
-            vcID = None
-            uvID = None
+                posID = posIDs[loop.vertex_index]
+                nrmID = None
+                vcID = None
+                uvID = None
 
-            if writeNRM:
-                nrmID = nrmIDs[loop.vertex_index]
-            if writeVC:
-                vcID = vcIDs[l]
-            if writeUV:
-                uvID = uvIDs[l]
+                if writeNRM:
+                    nrmID = nrmIDs[loop.vertex_index]
+                if writeVC:
+                    vcID = vcIDs[l]
+                if writeUV:
+                    uvID = uvIDs[l]
 
-            tris[p.material_index].append( PolyVert(posID, nrmID, vcID, uvID) )
+                tris[p.material_index].append( PolyVert(posID, nrmID, vcID, uvID) )
 
-    #strippifying the poly data
-    
-    strips = list() # material specific -> strip -> polygon
-    Stripf = strippifier.Strippifier()
-    stripLimit = 0xFFFF
-
-    for l in tris:
-        if len(l) == 0:
-            strips.append(None)
-            continue
-        distinct, indices = distinctPolys(l)
-
-        stripIndices = Stripf.Strippify(indices, doSwaps=False, concat=False)
-
-        polyStrips = [None] * len(stripIndices)
-
-        for i, strip in enumerate(stripIndices):
-            tStrip = [None] * min(stripLimit, len(strip))
-            for j, index in enumerate(strip):
-                if j > len(tStrip):
-                    break
-                tStrip[j] = distinct[index]
-            polyStrips[i] = tStrip
+        #strippifying the poly data
         
-        strips.append(polyStrips)
+        strips: List[List[List[PolyVert]]] = list() # material specific -> strip -> polygon
+        Stripf = strippifier.Strippifier()
 
-    # data ready to write!
+        for l in tris:
+            if len(l) == 0:
+                strips.append(None)
+                continue
 
-    # === WRITING TO THE FILE === #
+            distinct = list()
+            IDs = [0] * len(l)
+            
+            for i, o in enumerate(l):
+                found = None
+                for j, d in enumerate(distinct):
+                    if o == d:
+                        found = j
+                        break
+                if found is None:
+                    distinct.append(o)
+                    IDs[i] = len(distinct) - 1
+                else:
+                    IDs[i] = found
 
-    # writing vertex data
+            stripIndices = Stripf.Strippify(IDs, doSwaps=False, concat=False)
 
-    vAttribs = list()
+            polyStrips = [None] * len(stripIndices)
 
-    # position data
-    vAttribs.append( vertexAttrib(enums.VertexAttribute.Position, 12, len(posData), enums.ComponentCount.Position_XYZ, enums.DataType.Float32, fileW.tell()) )
-    for pos in posData:
-        pos.write(fileW)
-    fileW.align(4)
+            for i, strip in enumerate(stripIndices):
+                tStrip = [None] * len(strip)
+                for j, index in enumerate(strip):
+                    tStrip[j] = distinct[index]
+                polyStrips[i] = tStrip
+            
+            strips.append(polyStrips)
 
-    # normal data
-    if writeNRM:
-        vAttribs.append( vertexAttrib(enums.VertexAttribute.Normal, 12, len(nrmData), enums.ComponentCount.Normal_XYZ, enums.DataType.Float32, fileW.tell()) )
-        for nrm in nrmData:
-            nrm.write(fileW)   
-        fileW.align(4)
-    
-    # color data
-    if writeVC:
-        vAttribs.append( vertexAttrib(enums.VertexAttribute.Color0, 4, len(vcData), enums.ComponentCount.Color_RGBA, enums.DataType.RGBA8, fileW.tell()) )
-        for vc in vcData:
-            vc.write(fileW)
-        fileW.align(4)
-    
-    # uv data
-    if writeUV:
-        vAttribs.append( vertexAttrib(enums.VertexAttribute.Tex0, 4, len(uvData), enums.ComponentCount.TexCoord_ST, enums.DataType.Signed16, fileW.tell()) )
-        for uv in uvData:
-            uv.write(fileW)
-        fileW.align(4)
-    
-    # attrib end marker
-    vAttribs.append( vertexAttrib(enums.VertexAttribute.Null, 0, 0, enums.ComponentCount.Position_XY, enums.DataType.Unsigned8, 0) )
+        # generating geometry from the polygon strips
+        opaqueGeom = list()
+        transparentGeom = list()
 
-    # writing vertex properties
-    vAttribAddress = fileW.tell()
-    for v in vAttribs:
-        v.write(fileW)
-    
-    if DO:
-        for v in vAttribs:
-            v.debug()
-    
-    # writing geometry
+        for i, s in enumerate(strips):
+            if s is None:
+                continue
+            mat = None
+            for m in materials:
+                if m.name == mesh.materials[i].name:
+                    mat = m
 
-    indexAttributes = enums.IndexAttributeFlags.HasPosition
-    if len(posData) > 255:
-        indexAttributes |= enums.IndexAttributeFlags.Position16BitIndex
-    if writeNRM:
-        indexAttributes |= enums.IndexAttributeFlags.HasNormal
-        if len(nrmData) > 255:
-            indexAttributes |= enums.IndexAttributeFlags.Normal16BitIndex
-    if writeVC:
-        indexAttributes |= enums.IndexAttributeFlags.HasColor
-        if len(vcData) > 255:
-            indexAttributes |= enums.IndexAttributeFlags.Color16BitIndex
-    if writeUV:
-        indexAttributes |= enums.IndexAttributeFlags.HasUV
-        if len(uvData) > 255:
-            indexAttributes |= enums.IndexAttributeFlags.UV16BitIndex
+            # generating parameters
+            parameters = list()
+            # vtx attribute parameters come first
+            parameters.append(VtxAttrFmt(enums.VertexAttribute.Position))
+            if writeNRM:
+                parameters.append(VtxAttrFmt(enums.VertexAttribute.Normal))
+            if writeVC:
+                parameters.append(VtxAttrFmt(enums.VertexAttribute.Color0))
+            if writeUV:
+                parameters.append(VtxAttrFmt(enums.VertexAttribute.Tex0))
+            
+            # ID attributes
+            idAttribs = enums.IndexAttributeFlags.HasPosition
+            if writeNRM:
+                idAttribs |= enums.IndexAttributeFlags.HasNormal
+            if writeVC:
+                idAttribs |= enums.IndexAttributeFlags.HasColor
+            if writeUV:
+                idAttribs |= enums.IndexAttributeFlags.HasUV
+            
+            for l in s:
+                for p in l:
+                    if p.posID > 0xFF:
+                        idAttribs |= enums.IndexAttributeFlags.Position16BitIndex
+                    if writeNRM and p.nrmID > 0xFF:
+                        idAttribs |= enums.IndexAttributeFlags.Normal16BitIndex
+                    if writeVC and p.vcID > 0xFF:
+                        idAttribs |= enums.IndexAttributeFlags.Color16BitIndex
+                    if writeUV and p.uvID > 0xFF:
+                        idAttribs |= enums.IndexAttributeFlags.UV16BitIndex
+                
+            parameters.append(IndexAttributes(idAttribs))
 
-    # writing opaque geometry first
-    opaqueProps = list()
-    transparentProps = list()
-    for i, s in enumerate(strips):
-        if s is None:
-            continue
-        mat = None
-        for m in materials:
-            if m.name == mesh.materials[i].name:
-                mat = m
-        if mat is None:
-            debug("  no material found")
+            # material dependend things
+            if mat is None:
+                parameters.append(Lighting(1))
+                parameters.append(AlphaBlend(enums.AlphaInstruction.SrcAlpha, enums.AlphaInstruction.InverseSrcAlpha, False))
+                parameters.append(AmbientColor(ColorARGB((1,1,1,1))))
+                parameters.append(Texture(0, enums.TileMode.WrapU | enums.TileMode.WrapV))
+                parameters.append(unknown_9())
+                parameters.append(TexCoordGen(enums.TexGenMtx.Identity, enums.TexGenSrc.TexCoord0, enums.TexGenType.Matrix2x4, enums.TexCoordID.TexCoord0))
+            else:
+                matProps: SAMaterialSettings = mat.saSettings
+                parameters.append(Lighting(matProps.gc_shadowStencil))
 
-        mp = PolyVert.writeData(fileW, s, indexAttributes, mat, defaultCol)
+                srcInst = enums.AlphaInstruction.SrcAlpha
+                dstInst = enums.AlphaInstruction.InverseSrcAlpha
+                if matProps.b_useAlpha:
+                    src = matProps.b_srcAlpha
+                    if src == 'ONE':
+                        srcInst = enums.AlphaInstruction.One
+                    elif src == 'OTHER':
+                        srcInst = enums.AlphaInstruction.SrcColor
+                    elif src == 'INV_OTHER':
+                        srcInst = enums.AlphaInstruction.InverseSrcColor
+                    elif src == 'SRC':
+                        srcInst = enums.AlphaInstruction.SrcAlpha
+                    elif src == 'INV_SRC':
+                        srcInst = enums.AlphaInstruction.InverseSrcAlpha
+                    elif src == 'DST':
+                        srcInst = enums.AlphaInstruction.DstAlpha
+                    elif src == 'INV_DST':
+                        srcInst = enums.AlphaInstruction.InverseDstAlpha
+                    else:
+                        srcInst = enums.AlphaInstruction.Zero
 
-        if mat is not None and mat.saSettings.b_useAlpha:
-            transparentProps.append(mp)
-        else:
-            opaqueProps.append(mp)
+                    dst = matProps.b_destAlpha
+                    if dst == 'ONE':
+                        dstInst = enums.AlphaInstruction.One
+                    elif dst == 'OTHER':
+                        dstInst = enums.AlphaInstruction.SrcColor
+                    elif dst == 'INV_OTHER':
+                        dstInst = enums.AlphaInstruction.InverseSrcColor
+                    elif dst == 'SRC':
+                        dstInst = enums.AlphaInstruction.SrcAlpha
+                    elif dst == 'INV_SRC':
+                        dstInst = enums.AlphaInstruction.InverseSrcAlpha
+                    elif dst == 'DST':
+                        dstInst = enums.AlphaInstruction.DstAlpha
+                    elif dst == 'INV_DST':
+                        dstInst = enums.AlphaInstruction.InverseDstAlpha
+                    else:
+                        dstInst = enums.AlphaInstruction.Zero
 
-    opaqueAddress = fileW.tell()
+                parameters.append(AlphaBlend(srcInst, dstInst, matProps.b_useAlpha))
+                parameters.append(AmbientColor(ColorARGB(matProps.b_Ambient)))
 
-    for m in opaqueProps:
-        m.write(fileW)
-        if DO:
-            m.debug()
-    
-    transparentAddress = fileW.tell()
+                tileMode = enums.TileMode.null
 
-    for m in transparentProps:
-        m.write(fileW)
-        if DO:
-            m.debug()
+                if not matProps.b_clampV:
+                    tileMode |= enums.TileMode.WrapV
+                if not matProps.b_clampU:
+                    tileMode |= enums.TileMode.WrapU
+                if matProps.b_mirrorV:
+                    tileMode |= enums.TileMode.MirrorV
+                if matProps.b_mirrorU:
+                    tileMode |= enums.TileMode.MirrorU
+        
+                parameters.append(Texture(matProps.b_TextureID, tileMode))
+                parameters.append(unknown_9())
 
-    # gc info
-    labels["gc_" + mesh.name] = fileW.tell()
+                #texMatrixID
+                if matProps.gc_texMatrixID == 'MATRIX0':
+                    mtx = enums.TexGenMtx.Matrix0
+                elif matProps.gc_texMatrixID == 'MATRIX1':
+                    mtx = enums.TexGenMtx.Matrix1
+                elif matProps.gc_texMatrixID == 'MATRIX2':
+                    mtx = enums.TexGenMtx.Matrix2
+                elif matProps.gc_texMatrixID == 'MATRIX3':
+                    mtx = enums.TexGenMtx.Matrix3
+                elif matProps.gc_texMatrixID == 'MATRIX4':
+                    mtx = enums.TexGenMtx.Matrix4
+                elif matProps.gc_texMatrixID == 'MATRIX5':
+                    mtx = enums.TexGenMtx.Matrix5
+                elif matProps.gc_texMatrixID == 'MATRIX6':
+                    mtx = enums.TexGenMtx.Matrix6
+                elif matProps.gc_texMatrixID == 'MATRIX7':
+                    mtx = enums.TexGenMtx.Matrix7
+                elif matProps.gc_texMatrixID == 'MATRIX8':
+                    mtx = enums.TexGenMtx.Matrix8
+                elif matProps.gc_texMatrixID == 'MATRIX9':
+                    mtx = enums.TexGenMtx.Matrix9
+                elif matProps.gc_texMatrixID == 'IDENTITY':
+                    mtx = enums.TexGenMtx.Identity
 
-    fileW.wUInt(vAttribAddress) # vertex address
-    fileW.wUInt(0) # gap
-    fileW.wUInt(opaqueAddress if len(opaqueProps) > 0 else 0)
-    fileW.wUInt(transparentAddress if len(transparentProps) > 0 else 0)
-    fileW.wUShort(len(opaqueProps))
-    fileW.wUShort(len(transparentProps))
+                #texGenSrc
+                if matProps.gc_texGenType[0] == 'M': #Matrix
+                    if matProps.gc_texGenSourceMtx == 'POSITION':
+                        src = enums.TexGenSrc.Position
+                    elif matProps.gc_texGenSourceMtx == 'NORMAL':
+                        src = enums.TexGenSrc.Normal   
+                    elif matProps.gc_texGenSourceMtx == 'BINORMAL':
+                        src = enums.TexGenSrc.Binormal
+                    elif matProps.gc_texGenSourceMtx == 'TANGENT':
+                        src = enums.TexGenSrc.Tangent
+                    elif matProps.gc_texGenSourceMtx == 'TEX0':
+                        src = enums.TexGenSrc.Tex0
+                    elif matProps.gc_texGenSourceMtx == 'TEX1':
+                        src = enums.TexGenSrc.Tex1
+                    elif matProps.gc_texGenSourceMtx == 'TEX2':
+                        src = enums.TexGenSrc.Tex2
+                    elif matProps.gc_texGenSourceMtx == 'TEX3':
+                        src = enums.TexGenSrc.Tex3
+                    elif matProps.gc_texGenSourceMtx == 'TEX4':
+                        src = enums.TexGenSrc.Tex4
+                    elif matProps.gc_texGenSourceMtx == 'TEX5':
+                        src = enums.TexGenSrc.Tex5
+                    elif matProps.gc_texGenSourceMtx == 'TEX6':
+                        src = enums.TexGenSrc.Tex6
+                    elif matProps.gc_texGenSourceMtx == 'TEX7':
+                        src = enums.TexGenSrc.Tex7
+                elif matProps.gc_texGenType[0] == 'B': #Bump
+                    if matProps.gc_texGenSourceBmp == 'TEXCOORD0':
+                        src = enums.TexGenSrc.TexCoord0
+                    elif matProps.gc_texGenSourceBmp == 'TEXCOORD1':
+                        src = enums.TexGenSrc.TexCoord1
+                    elif matProps.gc_texGenSourceBmp == 'TEXCOORD2':
+                        src = enums.TexGenSrc.TexCoord2
+                    elif matProps.gc_texGenSourceBmp == 'TEXCOORD3':
+                        src = enums.TexGenSrc.TexCoord3
+                    elif matProps.gc_texGenSourceBmp == 'TEXCOORD4':
+                        src = enums.TexGenSrc.TexCoord4
+                    elif matProps.gc_texGenSourceBmp == 'TEXCOORD5':
+                        src = enums.TexGenSrc.TexCoord5
+                    elif matProps.gc_texGenSourceBmp == 'TEXCOORD6':
+                        src = enums.TexGenSrc.TexCoord6
+                else: #SRTG
+                    if matProps.gc_texGenSourceSRTG == 'COLOR0':
+                        src = enums.TexGenSrc.Color0
+                    elif matProps.gc_texGenSourceSRTG == 'COLOR1':
+                        src = enums.TexGenSrc.Color1
 
-    bounds = BoundingBox(mesh.vertices)
-    bounds.boundCenter = exportMatrix @ bounds.boundCenter
+                #texGenType
+                if matProps.gc_texGenType == 'MTX3X4':
+                    typ = enums.TexGenType.Matrix3x4
+                elif matProps.gc_texGenType == 'MTX2X4':
+                    typ = enums.TexGenType.Matrix2x4
+                elif matProps.gc_texGenType == 'BUMP0':
+                    typ = enums.TexGenType.Bump0
+                elif matProps.gc_texGenType == 'BUMP1':
+                    typ = enums.TexGenType.Bump1
+                elif matProps.gc_texGenType == 'BUMP2':
+                    typ = enums.TexGenType.Bump2
+                elif matProps.gc_texGenType == 'BUMP3':
+                    typ = enums.TexGenType.Bump3
+                elif matProps.gc_texGenType == 'BUMP4':
+                    typ = enums.TexGenType.Bump4
+                elif matProps.gc_texGenType == 'BUMP5':
+                    typ = enums.TexGenType.Bump5
+                elif matProps.gc_texGenType == 'BUMP6':
+                    typ = enums.TexGenType.Bump6
+                elif matProps.gc_texGenType == 'BUMP7':
+                    typ = enums.TexGenType.Bump7
+                elif matProps.gc_texGenType == 'SRTG':
+                    typ = enums.TexGenType.SRTG
 
-    bounds.write(fileW)
+                #texCoordID
+                if matProps.gc_texCoordID == 'TEXCOORD0':
+                    tID = enums.TexCoordID.TexCoord0
+                elif matProps.gc_texCoordID == 'TEXCOORD1':
+                    tID = enums.TexCoordID.TexCoord1
+                elif matProps.gc_texCoordID == 'TEXCOORD2':
+                    tID = enums.TexCoordID.TexCoord2
+                elif matProps.gc_texCoordID == 'TEXCOORD3':
+                    tID = enums.TexCoordID.TexCoord3
+                elif matProps.gc_texCoordID == 'TEXCOORD4':
+                    tID = enums.TexCoordID.TexCoord4
+                elif matProps.gc_texCoordID == 'TEXCOORD5':
+                    tID = enums.TexCoordID.TexCoord5
+                elif matProps.gc_texCoordID == 'TEXCOORD6':
+                    tID = enums.TexCoordID.TexCoord6
+                elif matProps.gc_texCoordID == 'TEXCOORD7':
+                    tID = enums.TexCoordID.TexCoord7
+                elif matProps.gc_texCoordID == 'TEXCOORD8':
+                    tID = enums.TexCoordID.TexCoord8
+                elif matProps.gc_texCoordID == 'TEXCOORD9':
+                    tID = enums.TexCoordID.TexCoord9
+                elif matProps.gc_texCoordID == 'TEXCOORDMAX':
+                    tID = enums.TexCoordID.TexCoordMax
+                elif matProps.gc_texCoordID == 'TEXCOORDNULL':
+                    tID = enums.TexCoordID.TexCoordNull
+
+                parameters.append(TexCoordGen(mtx, src, typ, tID))
+
+            geom = Geometry(parameters, s)
+            if mat is not None and mat.saSettings.b_useAlpha:
+                transparentGeom.append(geom)
+            else:
+                opaqueGeom.append(geom)
+
+        # calculating the bounds
+        bounds = BoundingBox(mesh.vertices)
+        bounds.adjust(export_matrix)
+
+        return Attach(mesh.name, vertices, opaqueGeom, transparentGeom, bounds)
+            
+    def write(self, 
+              fileW: fileWriter.FileWriter, 
+              labels: dict):
+        # writing vertex data first
+        for l in self.vertices:
+            l.writeData(fileW)
+
+        # writing the vertex properties
+        vertPtr = fileW.tell()
+
+        for l in self.vertices:
+            l.writeAttrib(fileW)
+        
+        fileW.wULong(0xFF) # an empty vertex attrib (terminator)
+
+        # next we write geometry data
+        # opaque data comes first
+        for g in self.opaqueGeom:
+            g.writeParams(fileW)
+            g.writePolygons(fileW)
+
+        opaquePtr = fileW.tell()
+        for g in self.opaqueGeom:
+            g.writeGeom(fileW)
+
+        # then the transparent data 
+        for g in self.transparentGeom:
+            g.writeParams(fileW)
+            g.writePolygons(fileW)
+
+        transparentPtr = fileW.tell()
+        for g in self.transparentGeom:
+            g.writeGeom(fileW)
+
+        # writing attach info
+
+        labels["gc_" + self.name] = fileW.tell()
+        fileW.wUInt(vertPtr)
+        fileW.wUInt(0) # gap
+        fileW.wUInt(opaquePtr)
+        fileW.wUInt(transparentPtr)
+        fileW.wUShort(len(self.opaqueGeom))
+        fileW.wUShort(len(self.transparentGeom))
+        self.bounds.write(fileW)
+
 

@@ -121,7 +121,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         
         keywords["global_matrix"] = global_matrix
-        keywords["export_format"] = 'SA1MDL'
+        keywords["export_format"] = 'SA1'
         return export_mdl.write(context, **keywords)
 
 @orientation_helper(axis_forward='Z', axis_up='Y')    
@@ -178,7 +178,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         
         keywords["global_matrix"] = global_matrix
-        keywords["export_format"] = 'SA2MDL'
+        keywords["export_format"] = 'SA2'
         return export_mdl.write(context, **keywords)
 
 @orientation_helper(axis_forward='Z', axis_up='Y')    
@@ -235,7 +235,7 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         
         keywords["global_matrix"] = global_matrix
-        keywords["export_format"] = 'SA2BMDL'
+        keywords["export_format"] = 'SA2B'
         return export_mdl.write(context, **keywords)
 
 @orientation_helper(axis_forward='Z', axis_up='Y')  
@@ -292,7 +292,7 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         
         keywords["global_matrix"] = global_matrix
-        keywords["export_format"] = 'SA1LVL'
+        keywords["export_format"] = 'SA1'
         return export_lvl.write(context, **keywords)
 
 @orientation_helper(axis_forward='Z', axis_up='Y')  
@@ -349,7 +349,7 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         
         keywords["global_matrix"] = global_matrix
-        keywords["export_format"] = 'SA2LVL'
+        keywords["export_format"] = 'SA2'
         return export_lvl.write(context, **keywords)
 
 @orientation_helper(axis_forward='Z', axis_up='Y')  
@@ -406,7 +406,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
                                          ).to_4x4())
         
         keywords["global_matrix"] = global_matrix
-        keywords["export_format"] = 'SA2BLVL'
+        keywords["export_format"] = 'SA2B'
         return export_lvl.write(context, **keywords)
 
 #operators
@@ -713,21 +713,21 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         default=False
         )
 
-    noShadows: BoolProperty(
-        name="No shadows",
-        description="No shadows will be displayed on mesh",
-        default=False
-        )
-
     water2: BoolProperty(
         name="Water 2",
         description="The same as water, but different!",
         default=False
         )
 
-    unknown22: BoolProperty(
-        name="Unknown 22",
-        description="No idea what this does",
+    noShadows: BoolProperty(
+        name="No shadows",
+        description="No shadows will be displayed on mesh",
+        default=False
+        )
+
+    noFog: BoolProperty(
+        name="No fog",
+        description="Disables fog for this object",
         default=False
         )
 
@@ -775,8 +775,32 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         default=False
         )
 
+    def toDictionary(self) -> dict:
+        d = dict()
+        d["isCollision"] = self.isCollision
+        d["solid"] = self.solid
+        d["water"] = self.water
+        d["cannotLand"] = self.cannotLand
+        d["diggable"] = self.diggable
+        d["unclimbable"] = self.unclimbable
+        d["hurt"] = self.hurt
+        d["isVisible"] = self.isVisible
+        d["userFlags"] = self.userFlags
 
-    #
+        d["standOnSlope"] = self.standOnSlope
+        d["water2"] = self.water2
+        d["noShadows"] = self.noShadows
+        d["noFog"] = self.noFog
+        d["unknown24"] = self.unknown24
+        d["unknown29"] = self.unknown29
+        d["unknown30"] = self.unknown30
+
+        d["noFriction"] = self.noFriction
+        d["noAcceleration"] = self.noAcceleration
+        d["increasedAcceleration"] = self.increasedAcceleration
+        d["footprints"] = self.footprints
+
+        return d
 
 class SASettings(bpy.types.PropertyGroup):
     """Information global to the scene"""
@@ -1023,7 +1047,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
     gc_shadowStencil: IntProperty(
         name="Shadow Stencil",
         description="shadow stencil",
-        min=0, max=63,
+        min=0, max=0xF,
         default=1
         )
 
@@ -1182,10 +1206,8 @@ class SAMeshSettings(bpy.types.PropertyGroup):
         description = "Determines which vertex data should be written for sa2",
         items = ( ('VC', "Colors", "Only vertex colors are gonna be written"),
                   ('NRM', "Normals", "Only normals are gonna be written"),
-                  ('NRMVC', "Normals and Colors", "Both normals and vertex colors are gonna be written"),
-                  ('NRMW', "Normals and Weights (WIP)", "Normals and weights are gonna be written (not supported at the moment)")
                 ),
-        default = 'NRMVC'
+        default = 'VC'
         )
 
 #panels
@@ -1294,9 +1316,9 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
 
         if menuProps.expandedGC:
 
-            #split = box.split(factor=0.6)
-            #split.label(text = "Shadow Stencil:")
-            #split.prop(matProps, "gc_shadowStencil", text="")
+            split = box.split(factor=0.6)
+            split.label(text = "Shadow Stencil:")
+            split.prop(matProps, "gc_shadowStencil", text="")
 
             box.prop(menuProps, "expandedGCTexGen",
                 icon="TRIA_DOWN" if menuProps.expandedGCTexGen else "TRIA_RIGHT",
@@ -1330,7 +1352,6 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
                         split.label(text = "Source")
                         split.prop(matProps, "gc_texGenSourceSRTG", text="")
             
-
 class SAObjectPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_saProperties"
     bl_label = "SA Material Properties"
@@ -1368,6 +1389,8 @@ class SAObjectPanel(bpy.types.Panel):
             box.prop(objProps, "diggable")
             box.prop(objProps, "unclimbable")
             box.prop(objProps, "hurt")
+
+        if menuProps.expandedSA1obj and (not objProps.isCollision or objProps.isCollision and objProps.isVisible):
             box.prop(objProps, "footprints")
 
         # sa2 flags
@@ -1390,11 +1413,11 @@ class SAObjectPanel(bpy.types.Panel):
 
         if menuProps.expandedSA2obj and (not objProps.isCollision or objProps.isCollision and objProps.isVisible):
             box.prop(objProps, "noShadows")
+            box.prop(objProps, "noFog")
 
         if menuProps.expandedSA2obj and objProps.isCollision:
             box.separator()
             box.label(text="Experimental")
-            box.prop(objProps, "unknown22")
             box.prop(objProps, "unknown24")
             box.prop(objProps, "unknown29")
             box.prop(objProps, "unknown30")
@@ -1403,9 +1426,9 @@ class SAObjectPanel(bpy.types.Panel):
         layout.label(text="Experimental")
         split = layout.split()
 
-        split = layout.split(factor=0.3)
+        split = layout.split(factor=0.4)
         split.label(text="User flags (hex):")
-        split = split.split(factor=0.1)
+        split = split.split(factor=0.15)
         split.alignment='RIGHT'
         split.label(text="0x")
         split.prop(objProps, "userFlags", text="")

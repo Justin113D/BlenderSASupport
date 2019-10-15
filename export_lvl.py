@@ -1,11 +1,14 @@
 import bpy
+import os
+from . import fileWriter, enums, common, format_BASIC, format_GC, format_CHUNK
 
 DO = False # Debug out
 
-def debug(*string):
-    global DO
-    if DO:
-        print(*string)
+def hex8(number : int):
+    return '{:08x}'.format(number)
+
+def hex16(number : int):
+    return '{:016x}'.format(number)
 
 def write(context, 
          filepath, *, 
@@ -15,11 +18,9 @@ def write(context,
          global_matrix,
          console_debug_output
          ):
-     import os
-     from . import fileWriter, enums, common, format_BASIC, format_GC, format_CHUNK
-     
-     # clear console and enable debug outputs
-     os.system("cls")
+     from .common import ModelData
+
+
      global DO
      DO = console_debug_output
      common.DO = DO
@@ -27,102 +28,116 @@ def write(context,
      format_CHUNK.DO = DO
      format_GC.DO = DO
 
+     if DO:
+          # clear console and enable debug outputs
+          os.system("cls")
+
      # create the file
      fileW = fileWriter.FileWriter(filepath=filepath)
-     debug("File:", fileW.filepath, "\n")
 
-     # creating file and writing header   
+     # write the file header
      fileVersion = 3
-     if export_format == 'SA1LVL':
-          fileW.wULong(enums.LVLFormatIndicator.SA1LVL.value | (fileVersion << 56))
-          fmt = 'SA1'
-          debug("Format: SA1LVL V", fileVersion)
-     elif export_format == 'SA2LVL':
-          fileW.wULong(enums.LVLFormatIndicator.SA2LVL.value | (fileVersion << 56))
-          fmt = 'SA2'
-          debug("Format: SA2LVL V", fileVersion)
-     else: # SA2BLVL
-          fileW.wULong(enums.LVLFormatIndicator.SA2BLVL.value | (fileVersion << 56))
-          fmt = 'SA2B'
-          debug("Format: SA2BLVL V", fileVersion)
-
-     fileW.wUInt(0) # placeholder for the landtable address
-     fileW.wUInt(0) # placeholder for the labels address
      
-     labels = dict()
+     if export_format == 'SA1':
+          indicator = enums.LVLFormatIndicator.SA1LVL
+     elif export_format == 'SA2':
+          indicator = enums.LVLFormatIndicator.SA2LVL
+     else: # SA2BLVL
+          indicator = enums.LVLFormatIndicator.SA2BLVL
+
+     fileW.wULong(indicator.value | (fileVersion << 56))          
+
+     if DO:
+          print(" == Starting LVL file exporting ==")
+          print("  File:", fileW.filepath)
+          print("  Format:", export_format, "version", fileVersion)
+          print("  - - - - - -\n")
+
+     # settings placeholders for the
+     fileW.wUInt(0) # landtable address
+     fileW.wUInt(0) # methadata address
+     labels = dict() # for labels methadata
 
      # creating and getting variables to use in the export process
-     if export_format == 'SA1LVL':
+     if export_format == 'SA1':
           #the sa1 format doesnt need to seperate between collision and visual meshes
-          objects, noParents, meshes, materials = common.evaluateObjectsToWrite(use_selection, apply_modifs, context)
+          objects, meshes, materials, mObjects = common.convertObjectData(context, use_selection, apply_modifs, global_matrix, export_format, True)
+          if objects == {'FINISHED'}:
+               file.close()
+               return {'FINISHED'}
 
-          common.writeBASICMaterialData(fileW, materials, labels)
+          bscMaterials = format_BASIC.Material.writeMaterials(fileW, materials, labels)
+
           # then writing mesh data
+          if DO:
+               print(" == Writing BASIC attaches == \n")
           for m in meshes:
-               format_BASIC.WriteMesh(fileW, m, global_matrix, materials, labels)
-
+               mesh = format_BASIC.Attach.fromMesh(m, global_matrix, bscMaterials)
+               if mesh is not None:
+                    mesh.write(fileW, labels)
+          if DO:
+               print(" - - - - \n")
      else:
           #writing the collision material, just to be sure
           if context.scene.saSettings.doubleSidedCollision:
                colMat = format_BASIC.Material(materialFlags=enums.MaterialFlags.FLAG_DOUBLE_SIDE)
           else:
                colMat = format_BASIC.Material()
-          labels["col_material"] = 0x00000010
-          colMat.write(fileW)
+          colMat.write(fileW, labels)
 
-          objects, noParents, cMeshes, vMeshes, materials, cObjects, vObjects, nObjects, temp = common.evaluateObjectsToWrite(use_selection, apply_modifs, context, True)
+          objects, cMeshes, vMeshes, materials, cObjects, vObjects = common.convertObjectData(context, use_selection, apply_modifs, global_matrix, export_format, True)
           if objects == {'FINISHED'}:
+               file.close()
                return {'FINISHED'}
 
           #writing the collision meshes
+          if DO:
+               print(" == Writing BASIC attaches == \n")          
           for m in cMeshes:
-               format_BASIC.WriteMesh(fileW, m, global_matrix, [], labels, isCollision=True)
+               mesh = format_BASIC.Attach.fromMesh(m, global_matrix, [], isCollision=True)
+               if mesh is not None:
+                    mesh.write(fileW, labels)
 
           #writing visual meshes
-          if export_format == 'SA2LVL':
+          if export_format == 'SA2':
                for m in vMeshes:
-                    format_CHUNK.write(fileW, m, global_matrix, materials, labels)
+                    mesh = format_CHUNK.Attach.fromMesh(m, global_matrix, materials)
+                    if mesh is not None:
+                         mesh.write(fileW, labels)
           else:
+               if DO:
+                    print(" == Writing GC attaches == \n")
                for m in vMeshes:
-                    format_GC.write(fileW, m, global_matrix, materials, labels)
+                    mesh = format_GC.Attach.fromMesh(m, global_matrix, materials)
+                    if mesh is not None:
+                         mesh.write(fileW, labels)
      
-
-
-     saObjects = common.getObjData(objects, noParents, global_matrix, labels, fmt, isLvl = True)
-     common.saObject.writeObjList(fileW, saObjects, labels, True)
+     # writing model data
+     ModelData.updateMeshPointer(objects, labels)
+     ModelData.writeObjectList(objects, fileW, labels, True)
 
      #write COLs
-     COLaddress = fileW.tell()
+     COLPtr = fileW.tell()
 
-     if export_format == 'SA1LVL':
-          for o in objects:
-               labels["col_" + o.name] = fileW.tell()
-               #labels[o.name] = fileW.tell()
-               col = common.COL(o, global_matrix, labels, True)
-               col.write(fileW, True)
+     if export_format == 'SA1':
+          COLcount = len(mObjects)
+          for o in mObjects:
+               o.writeCOL(fileW, labels, False)
      else:
+          COLcount = len(vObjects) + len(cObjects) 
           for o in vObjects:
-               labels["col_" + o.name] = fileW.tell()
-               #labels[o.name] = fileW.tell()
-               col = common.COL(o, global_matrix, labels, False)
-               col.write(fileW, False)
+               o.writeCOL(fileW, labels, True)
           for o in cObjects:
-               labels["col_" + o.name] = fileW.tell()
-               #labels[o.name] = fileW.tell()
-               col = common.COL(o, global_matrix, labels, False)
-               col.write(fileW, False)
-          #nObjects dont receive a COL, since they are no level geometry, but they exist as an empty object
+               o.writeCOL(fileW, labels, True)
 
-     texFileNameAddr = fileW.tell()
      #write texture filename
+     texFileNameAddr = fileW.tell()
      if context.scene.saSettings.texFileName == "":
           texFileName =  os.path.splitext(os.path.basename(filepath))[0]
      else: 
           texFileName = context.scene.saSettings.texFileName
      
      texListPointer = int("0x" + context.scene.saSettings.texListPointer, 0)
-     debug(" Texture file name:", texFileName)
-     debug(" Tex list pointer:", '{:08X}'.format(texListPointer))
      fileW.wString(texFileName)
 
      fileW.align(4)
@@ -131,40 +146,66 @@ def write(context,
      labels[texFileName + "_Table"] = landTableAddress
 
      #landtable info
-     fileW.wUShort(len(objects)) # COL count
-     if export_format == 'SA1LVL':
-          fileW.wUShort(0) # anim count (unused rn)
-          fileW.wUInt(0x8) # landtable flags - 8 determines that PVM/GVM's should be used
-          fileW.wFloat(context.scene.saSettings.drawDistance) # Draw Distance
-          fileW.wUInt(COLaddress) # geometry address
-          fileW.wUInt(0) # animation address (unused rn)
+     fileW.wUShort(COLcount) # COL count
+     drawDist = context.scene.saSettings.drawDistance
+     animPtr = 0
+     
+     if export_format == 'SA1':
+          animCount = 0
+          fileW.wUShort(animCount) # (unused rn)
+          ltFlags = 8
+          fileW.wUInt(ltFlags) # landtable flags - 8 determines that PVM/GVM's should be used
+          fileW.wFloat(drawDist) # Draw Distance
+          fileW.wUInt(COLPtr) # geometry address
+          fileW.wUInt(animPtr) # animation address (unused rn)
           fileW.wUInt(texFileNameAddr) # texture file name address
           fileW.wUInt(texListPointer) # texture list pointer (usually handled by mod)
-          fileW.wFloat(0) # unknown2
-          fileW.wFloat(0) # unknown3
+
+          unknown2 = 0
+          fileW.wFloat(unknown2)
+          unknown3 = 0
+          fileW.wFloat(unknown3)
      else:
           fileW.wUShort(len(vObjects)) # visual col count
-          fileW.wULong(0)
-          fileW.wFloat(context.scene.saSettings.drawDistance) # Draw Distance
-          fileW.wUInt(COLaddress) # geometry address
-          fileW.wUInt(0) # animation address (unused rn)
+          ltFlags = 0
+          fileW.wULong(ltFlags)
+          fileW.wFloat(drawDist) # Draw Distance
+          fileW.wUInt(COLPtr) # geometry address
+          fileW.wUInt(animPtr) # animation address (unused rn)
           fileW.wUInt(texFileNameAddr) # (texFileNameAddr) texture file name address
           fileW.wUInt(texListPointer) # texture list pointer (usually handled by mod)
 
      labelsAddress = fileW.tell()
+
+     # writing the 
      fileW.seek(8, 0) # go to the location of the model properties addrees
      fileW.wUInt(landTableAddress) # and write the address
-     fileW.wUInt(labelsAddress)
+     fileW.wUInt(labelsAddress) # labels address
      fileW.seek(0,2) # then return back to the end
+
+     if DO:
+          print(" == Landtable info ==")
+          if export_format == 'SA1':
+               print("  COL count:        ",  len(objects))
+               print("  Animation count:  ",  animCount)
+               print("  Landtable Flags:  ",  hex8(ltFlags))
+               print("  Draw distance:    ",  drawDist)
+               print("  COL address:      ",  hex8(COLPtr))
+               print("  Animation address:",  hex8(animPtr))
+               print("  Texture file name:",  texFileName)
+               print("  Tex list pointer: ",  hex8(texListPointer))
+          else:
+               print("  COL count:        ",  len(objects))
+               print("  Visual COL count: ",  len(vObjects))
+               print("  Unknown:          ",  hex16(ltFlags))
+               print("  Draw distance:    ",  drawDist)
+               print("  COL address:      ",  hex8(COLPtr))
+               print("  Anim address:     ",  hex8(animPtr))
+               print("  Texture file name:",  texFileName)
+               print("  Tex list pointer: ",  hex8(texListPointer))
+          print("  - - - - - -\n")
 
      common.writeMethaData(fileW, labels, context.scene)
 
      fileW.close()
-
-     # remove the temporary objects
-     if not export_format == 'SA1LVL':
-          for o in temp:
-               bpy.data.objects.remove(o)
-
-
      return {'FINISHED'}

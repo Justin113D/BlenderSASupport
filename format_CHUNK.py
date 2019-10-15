@@ -1,575 +1,589 @@
 import bpy
-import math
 import mathutils
-from . import fileWriter, enums, strippifier
+
+import math
+from typing import List
+
+from . import enums, fileWriter, strippifier, common
+from .common import Vector3, ColorARGB, UV, BoundingBox
+from .__init__ import SAMaterialSettings
 
 DO = False
 
-def debug(*string):
-    global DO
-    if DO:
-        print(*string)
-
-class Vector3(mathutils.Vector):
-
-    def toMathutils(self):
-        import mathutils
-        return mathutils.Vector((self.x, self.y, self.z))
-
-    def distanceFromCenter(self):
-        return (self.x * self.x + self.y * self.y + self.z * self.z)**(0.5)
-
-
-    def write(self, fileW):
-        fileW.wFloat(self.x)
-        fileW.wFloat(self.y)
-        fileW.wFloat(self.z)
-
-class ColorARGB:
-    """4 Channel Color
-
-    takes values from 0.0 - 1.0 as input and converts them to 0 - 255
-    """
-
-    a = 0
-    r = 0
-    g = 0
-    b = 0
-
-    def __init__(self, c = [0,0,0,0]):
-        self.a = round(c[3] * 255)
-        self.r = round(c[0] * 255)
-        self.g = round(c[1] * 255)
-        self.b = round(c[2] * 255)
-
-    def __eq__(self, other):
-        return self.a == other.a and self.r == other.r and self.g == other.g and self.b == other.b
-
-    def __str__(self):
-        return "(" + str(self.a) + ", " + str(self.r) + ", " + str(self.g) + ", " + str(self.b) + ")"
-
-    def write(self, fileW, noAlpha = False):
-        """writes data to file"""
-        fileW.wByte(self.b)
-        fileW.wByte(self.g)
-        fileW.wByte(self.r)
-        if not noAlpha:
-            fileW.wByte(self.a)
-
 class Vertex:
+    """A single vertex in the model, stored in vertex chunksd"""
 
-    origIndex = 0
-    index = 0
-    co = Vector3()
-    nrm = Vector3()
-    col = ColorARGB()
-    ninjaFlags = 0
+    origIndex: int
+    pos: Vector3
+    nrm: Vector3
+    col: ColorARGB
+    ninjaFlags: int
 
-    def __init__(self, origIndex, index, pos, nrm, col = (1,1,1,1), ninjaFlags = 0):
-        self.index = index
+    def __init__(self, 
+                 origIndex: int,
+                 index: int,
+                 pos: Vector3,
+                 nrm: Vector3,
+                 col: ColorARGB,
+                 weight: float):
+        self.ninjaFlags = 0
         self.origIndex = origIndex
-        self.co = Vector3(pos)
-        self.nrm = Vector3(nrm)
-        if type(col) is ColorARGB:
-            self.col = col
-        else:
-            self.col = ColorARGB(col)
-        self.ninjaFlags = ninjaFlags
-
-    def writeVC(self, fileW):
-        self.co.write(fileW)
-        self.col.write(fileW)
+        self.index = index
+        self.pos = pos
+        self.nrm = nrm
+        self.col = col
+        self.weight = weight
         
-    def writeNRM(self, fileW):
-        self.co.write(fileW)
+    @property
+    def index(self) -> int:
+        return self.ninjaFlags & 0xFFFF
+
+    @index.setter
+    def index(self, val: int):
+        self.ninjaFlags &= ~0xFFFF
+        self.ninjaFlags |= min(0xFFFF, val)
+
+    @property
+    def weight(self) -> float:
+        return ((self.ninjaFlags >> 16) & 0xFF) / 255.0
+
+    @weight.setter
+    def weight(self, val: float):
+        self.ninjaFlags &= ~0xFF0000
+        self.ninjaFlags |= min(1, max(0, round(255 * val))) << 16
+
+    def writeVC(self, fileW: fileWriter.FileWriter):
+        self.pos.write(fileW)
+        self.col.writeARGB(fileW)
+        
+    def writeNRM(self, fileW: fileWriter.FileWriter):
+        self.pos.write(fileW)
         self.nrm.write(fileW)
 
-    def writeNRMVC(self, fileW):
-        self.co.write(fileW)
-        self.nrm.write(fileW)
-        self.col.write(fileW)
+    def writeNRMW(self, fileW: fileWriter.FileWriter):
+        self.pos.write(fileW)
+        fileW.wUInt(self.ninjaFlags)
 
-    def writeNRMW(self, fileW):
-        print("nope")
+class VertexChunk:
+    """One vertex data set"""
+
+    chunkType: enums.ChunkType
+    weightType: enums.WeightStatus
+    indexBufferOffset: int
+    vertices: List[Vertex]
+
+    def __init__(self,
+                 chunkType: enums.ChunkType,
+                 weightType: enums.WeightStatus,
+                 indexBufferOffset: int,
+                 vertices: List[Vertex]):
+        self.chunkType = chunkType
+        self.weightType = weightType
+        self.indexBufferOffset = indexBufferOffset
+        self.vertices = vertices
+
+    def write(self, fileW: fileWriter.FileWriter):
+        fileW.wByte(self.chunkType.value)
+        fileW.wByte(self.weightType.value)
+        
+        if self.chunkType == enums.ChunkType.Vertex_VertexDiffuse8:
+            vertexSize = 4
+        elif self.chunkType == enums.ChunkType.Vertex_VertexNormal:
+            vertexSize = 6
+        elif self.chunkType == enums.ChunkType.Vertex_VertexNormalNinjaFlags:
+            vertexSize = 7
+        else:
+            print("unsupported chunk format:", self.chunkType)
+
+        fileW.wUShort((vertexSize * len(self.vertices)) + 1)
+        fileW.wUShort(self.indexBufferOffset)
+        fileW.wUShort(len(self.vertices))
+
+        if self.chunkType == enums.ChunkType.Vertex_VertexDiffuse8:
+            for v in self.vertices:
+                v.writeVC(fileW)
+        elif self.chunkType == enums.ChunkType.Vertex_VertexNormal:
+            for v in self.vertices:
+                v.writeNRM(fileW)
+        elif self.chunkType == enums.ChunkType.Vertex_VertexNormalNinjaFlags:
+            for v in self.vertices:
+                v.writeNRMW(fileW)
 
 class PolyVert:
+    """A single polygon corner of a mesh"""
 
-    #vertexID = None
-    # uv
-    uv = (0.0, 0.0)
+    vertex: Vertex
+    uv: UV
 
-    def __init__(self, vertexID, uv = (0.0,0.0)):
-        self.vertexID = vertexID
+    def __init__(self, 
+                 vertex: Vertex, 
+                 uv: UV):
+        self.vertex = vertex
         self.uv = uv
 
     def __eq__(self, other):
-        return self.vertexID == other.vertexID and self.uv == other.uv
-
-    def updateUV(self, HD):
-        if HD:
-            self.uv = (round(self.uv[0] * 1024), round((1-self.uv[1]) * 1024))
-        else:
-            self.uv = (round(self.uv[0] * 256), round((1-self.uv[1]) * 256))
+        return self.vertex == other.vertex and self.uv == other.uv
 
     def write(self, fileW):
-        fileW.wUShort(self.vertexID)
+        fileW.wUShort(self.vertex.index)
 
     def writeUV(self, fileW):
-        fileW.wUShort(self.vertexID)
-        fileW.wShort(self.uv[0])
-        fileW.wShort(self.uv[1])
-
-class BoundingBox:
-    """Used to calculate the bounding sphere which the game uses"""
-
-    boundCenter = Vector3
+        fileW.wUShort(self.vertex.index)
+        self.uv.write(fileW)
 
 
-    def __init__(self, vertices):
-        self.x = 0
-        self.xn = 0
-        self.y = 0
-        self.yn = 0
-        self.z = 0
-        self.zn = 0
+class PolyChunk:
+    """Base polychunk"""
 
-        for v in vertices:
-            if self.x < v.co.x:
-                self.x = v.co.x
-            elif self.xn > v.co.x:
-                self.xn = v.co.x
+    chunkType: enums.ChunkType
 
-            if self.y < v.co.y:
-                self.y = v.co.y
-            elif self.yn > v.co.y:
-                self.yn = v.co.y
+    def __init__(self, chunkType: enums.ChunkType):
+        self.chunkType = chunkType
 
-            if self.z < v.co.z:
-                self.z = v.co.z
-            elif self.zn > v.co.z:
-                self.zn = v.co.z
-        cx = BoundingBox.center(self.x,self.xn)
-        cy = BoundingBox.center(self.y,self.yn)
-        cz = BoundingBox.center(self.z,self.zn)
+    def write(self, fileW: fileWriter.FileWriter):
+        fileW.wByte(self.chunkType.value)
 
-        self.boundCenter = Vector3((cx,cy,cz))
+class PolyChunk_Bit(PolyChunk):
+    """Base class for one byte Poly chunks"""
 
-        distance = 0
-        for v in vertices:
-            dif = Vector3( (self.boundCenter.x - v.co.x, 
-                            self.boundCenter.y - v.co.y, 
-                            self.boundCenter.z - v.co.z) )
-            tDist = math.sqrt(pow(dif.x, 2) + pow(dif.y, 2) + pow(dif.z, 2))
-            if tDist > distance:
-                distance = tDist
+    data: int
 
-        self.radius = distance
+    def __init__(self, chunkType: enums.ChunkType):
+        super(PolyChunk_Bit, self).__init__(chunkType)
+        self.data = 0
+
+    def write(self, fileW: fileWriter.FileWriter):
+        super(PolyChunk_Bit, self).write(fileW)
+        fileW.wByte(self.data)
+
+class PolyChunk_BlendAlpha(PolyChunk_Bit):
+    """Holds alpha instructions for the mesh"""
+
+    def __init__(self, instr: enums.SA2AlphaInstructions):
+        super(PolyChunk_BlendAlpha, self).__init__(enums.ChunkType.Bits_BlendAlpha)
+        self.alphaInstruction = instr
+
+    @property
+    def alphaInstruction(self) -> enums.SA2AlphaInstructions:
+        return enums.SA2AlphaInstructions(self.data)
+
+    @alphaInstruction.setter
+    def alphaInstruction(self, val: enums.SA2AlphaInstructions):
+        self.data = val.value
+
+class PolyChunk_MipmapDAdjust(PolyChunk_Bit):
+    """Mipmap distance multiplicator"""
+
+    def __init__(self, instr: enums.MipMapDistanceAdjust):
+        super(PolyChunk_MipmapDAdjust, self).__init__(enums.ChunkType.Bits_MipmapDAdjust)
+        self.value = instr
+
+    @property
+    def value(self) -> enums.MipMapDistanceAdjust:
+        return enums.MipMapDistanceAdjust(self.data)
+
+    @value.setter
+    def value(self, val: enums.MipMapDistanceAdjust):
+        self.data = val.value
+
+class PolyChunk_SpecularExponent(PolyChunk_Bit):
+    """Specular exponent of the mesh material (unused tho? eh, who cares)"""
+
+    def __init__(self, exponent: float):
+        super(PolyChunk_SpecularExponent, self).__init__(enums.ChunkType.Bits_SpecularExponent)
+        self.data |= 0x10
+        self.exponent = exponent
+
+    @property
+    def exponent(self) -> float:
+        return (self.data & 0xF) / 15.0
+
+    @exponent.setter
+    def exponent(self, val: float):
+        self.data &= ~0xF
+        self.data |= min(0xF, round(val * 15))
+
+class PolyChunk_CachePolygonList(PolyChunk_Bit):
+
+    def __init__(self, index: int):
+        super(PolyChunk_CachePolygonList, self).__init__(enums.ChunkType.Bits_CachePolygonList)
+        self.index = index
+
+    @property
+    def index(self) -> int:
+        return self.data
+
+    @index.setter
+    def index(self, val: int):
+        self.data = min(0xFF, val)
+
+class PolyChunk_DrawpolygonList(PolyChunk_Bit):
+
+    def __init__(self, index: int):
+        super(PolyChunk_DrawpolygonList, self).__init__(enums.ChunkType.Bits_DrawPolygonList)
+        self.index = index
+
+    @property
+    def index(self) -> int:
+        return self.data
+
+    @index.setter
+    def index(self, val: int):
+        self.data = min(0xFF, val)
+
+class PolyChunk_Texture(PolyChunk):
+    """Texture info of the mesh"""
+
+    texID: int
+    flags: enums.TextureIDFlags
+    anisotropy: bool
+    filtering: enums.TextureFiltering
+
+    def __init__(self, 
+                 texID: int,
+                 flags: enums.TextureIDFlags,
+                 anisotropy: bool,
+                 filtering: enums.TextureFiltering):
+        super(PolyChunk_Texture, self).__init__(enums.ChunkType.Tiny_TextureID)
+        self.texID = texID
+        self.flags = flags
+        self.anisotropy = anisotropy
+        self.filtering = filtering
+
+    def write(self, fileW: fileWriter.FileWriter):
+        super(PolyChunk_Texture, self).write(fileW)
+        fileW.wByte(self.flags.value)
+        value = min(self.texID, 0x1FFF)
+        if self.anisotropy:
+            value |= 0x2000
+        value |= (self.filtering.value << 14)
+        fileW.wUShort(value)
+
+class PolyChunk_Material(PolyChunk):
+    """The material chunk with all 3 colors"""
+
+    diffuse: ColorARGB
+    ambient: ColorARGB
+    specular: ColorARGB
     
-    def center(p1, p2):
-        return (p1 + p2) / 2.0
+    def __init__(self,
+                 diffuse: ColorARGB,
+                 ambient: ColorARGB,
+                 specular: ColorARGB):
+        super(PolyChunk_Material, self).__init__(enums.ChunkType.Material_DiffuseAmbientSpecular)
+        self.diffuse = diffuse
+        self.ambient = ambient
+        self.specular = specular
 
-    def write(self, fileW):
-        self.boundCenter.write(fileW)
-        fileW.wFloat(self.radius)
-
-def write(fileW: fileWriter.FileWriter,
-          mesh: bpy.types.Mesh,
-          exportMatrix,
-          materials,
-          labels: dict
-          ):
-    global DO
-    debug(" Writing CHUNK:", mesh.name) 
-
-    #getting vertex data
-
-    # weights arent supported rn
-    vertexType = mesh.saSettings.sa2ExportType
-    if vertexType == 'NRMW':
-        vertexType = 'NRMVC'
-        debug("Weights not supported as of now")
-
-    # if type includes colors, but the mesh doesnt contain any colors, write normals only
-    if (vertexType == 'NRMVC' or vertexType == 'VC') and len(mesh.vertex_colors) == 0:
-        debug("  No colors founds, writing normals...")
-        vertexType = 'NRM'
-
-    writeUVs = len(mesh.uv_layers) > 0
-    HDUV = False
-
-    # creating 2d vertex array
-    vertices = list()
-    for v in mesh.vertices:
-        vertices.append(list())
-
-    polyVerts = list()
-
-    # getting the vertices
-    if vertexType == 'NRMVC' or vertexType == 'VC':
-        # creating a vertex for each loop color
-        for l in mesh.loops:
-            vert = mesh.vertices[l.vertex_index]
-            col = ColorARGB(mesh.vertex_colors[0].data[l.index].color)
-
-            # only create the vertex if there isnt one with the same color already
-            exists = False
-            foundV = None
-            for v in vertices[l.vertex_index]:
-                if v.col == col:
-                    exists = True
-                    foundV = v
-                    break
-
-            if not exists:
-                pos = exportMatrix @ vert.co
-                nrm = exportMatrix @ vert.normal
-                foundV = Vertex(l.vertex_index, 0, pos, nrm, col)
-                vertices[l.vertex_index].append(foundV)
-
-            if writeUVs:
-                uv = mesh.uv_layers[0].data[l.index].uv
-                polyVert = PolyVert(foundV, uv)
-                if abs(uv[0]) > 32 or abs(uv[1]) > 32:
-                    HDUV = False
-
-            else:
-                polyVert = PolyVert(foundV)
-
-            polyVerts.append(polyVert)
-
-        # correcting indices
-        i = 0
-        for v in vertices:
-            for vt in v:
-                vt.index = i
-                i += 1
-
-        # now that the vertices have their index, we can exchange the vertex in the polyverts with the vertex' index
-        if writeUVs:
-            for p in polyVerts:
-                p.vertexID = p.vertexID.index
-                # update the uvs too
-                p.updateUV(HDUV)
-        else:
-            for p in polyVerts:
-                p.vertexID = p.vertexID.index
-    else:
-        for i, v in enumerate(mesh.vertices):
-            pos = exportMatrix @ v.co
-            nrm = exportMatrix @ v.normal
-            vertices[i] = [Vertex(i, i, pos, nrm)]
-        for l in mesh.loops:
-            if writeUVs:
-                uv = mesh.uv_layers[0].data[l.index].uv
-                polyVert = PolyVert(l.vertex_index, uv)
-                if abs(uv[0]) > 32 or abs(uv[1]) > 32:
-                    HDUV = False
-            else:
-                polyVert = PolyVert(l.vertex_index)
-
-            polyVerts.append(polyVert)
-
-        # updating the uv's
-        if writeUVs:
-            for p in polyVerts:
-                p.updateUV(HDUV)
-
-    # getting the distinct polygons
-    distinctPolys = list()
-    oIDtodID = [0] * len(polyVerts)
+    def write(self, fileW: fileWriter.FileWriter):
+        super(PolyChunk_Material, self).write(fileW)
+        fileW.wByte(0) # gap, usually flags, but those are unused in sa2
+        fileW.wUShort(6) # size (amount of 2 byte sets)
+        self.diffuse.writeARGB(fileW)
+        self.ambient.writeARGB(fileW)
+        self.specular.writeARGB(fileW)
     
-    for IDo, vo in enumerate(polyVerts):
-        found = -1
-        for IDd, vd in enumerate(distinctPolys):
-            if vo == vd:
-                found = IDd
-                break
-        if found == -1:
-            distinctPolys.append(vo)
-            oIDtodID[IDo] = len(distinctPolys) - 1
+class PolyChunk_Strip(PolyChunk):
+
+    flags: enums.StripFlags
+    strips: List[List[PolyVert]] # list of strips
+
+    def __init__(self,
+                 hasUV: bool,
+                 flags: enums.StripFlags,
+                 strips: List[List[PolyVert]]):
+        if hasUV:
+            super(PolyChunk_Strip, self).__init__(enums.ChunkType.Strip_StripUVN)
         else:
-            oIDtodID[IDo] = found
+            super(PolyChunk_Strip, self).__init__(enums.ChunkType.Strip_Strip)
+        self.flags = flags
+        self.strips = strips
     
-    #setting up the triangle lists
-    materialLength = len(materials)
-    
-    tris = list()
-    for m in mesh.materials:
-        tris.append(list())
-    if len(tris) == 0:
-        tris.append(list())
-
-    for p in mesh.polygons:
-        for l in p.loop_indices:
-            tris[p.material_index].append(oIDtodID[l])
-
-    strips = list() # material specific -> strip -> polygon
-
-    Stripf = strippifier.Strippifier()
-
-    for l in tris:
-        if len(l) == 0:
-            strips.append(None)
-            continue
-        stripIndices = Stripf.Strippify(l, doSwaps=False, concat=False)
-
-        polyStrips = [None] * len(stripIndices)
-
-        for i, strip in enumerate(stripIndices):
-            tStrip = [0] * len(strip)
-            for j, index in enumerate(strip):
-                tStrip[j] = distinctPolys[index]
-            polyStrips[i] = tStrip
-        
-        strips.append(polyStrips)
-
-    # now everything is ready to be written
-
-    # === WRITING TO THE FILE === #
-
-    # writing the vertex chunks:
-    if vertexType == 'NRMVC':
-        if len(mesh.vertex_colors) > 0:
-            vertexType = 'VC'
-        else:
-            vertexType = 'NRM'
-        # nrm vc doesnt seem to be supported...
-        #vertexType = enums.ChunkType.Vertex_VertexNormalDiffuse8   
-        #vertexSize = 7
-    if vertexType == 'VC':
-        vertexType = enums.ChunkType.Vertex_VertexDiffuse8
-        vertexSize = 4
-    elif vertexType == 'NRM':
-        vertexType = enums.ChunkType.Vertex_VertexNormal
-        vertexSize = 6
-
-       
-    else: # 'NRMW'
-        vertexType = enums.ChunkType.Vertex_VertexNormalNinjaFlags
-        vertexSize = 7
-
-    chunkFlags = enums.WeightStatus.Start # this is generally todo
-    vertexAddress = fileW.tell()
-    vertexCount = vertices[-1][-1].index + 1
-    size = (vertexSize * vertexCount) + 1
-    indexOffset = 0
-
-    # first header
-    fileW.wByte(vertexType.value) # chunktype
-    fileW.wByte(chunkFlags.value) # flags
-    fileW.wUShort(size) # amount of 4-byte sets after the first header
-    # second header
-    fileW.wUShort(indexOffset) # index offset. doesnt matter for non weighted models
-    fileW.wUShort(vertexCount) # vertex count
-
-    if DO:
-        print(" Vertices:")
-        print("   Chunktype:", vertexType)
-        print("   Flags:", chunkFlags)
-        print("   Size:", size)
-        print("   Index Offset:", indexOffset)
-        print("   Vertex Count:", vertexCount)
-
-    #writing the vertices
-    if vertexType == enums.ChunkType.Vertex_VertexDiffuse8:
-        for v in vertices:
-            for vt in v:
-                vt.writeVC(fileW)
-    elif vertexType == enums.ChunkType.Vertex_VertexNormal:
-        for v in vertices:
-            for vt in v:
-                vt.writeNRM(fileW)
-    elif vertexType == enums.ChunkType.Vertex_VertexNormalDiffuse8:
-        for v in vertices:
-            for vt in v:
-                vt.writeNRMVC(fileW)
-    else: # 'NRMW'
-        for v in vertices:
-            for vt in v:
-                vt.writeNRMW(fileW)
-    #marking the end of the vertex chunks
-    fileW.wULong(enums.ChunkType.End.value)
-
-    polyAddress = fileW.tell()
-
-    #Writing the poly chunks
-    from .enums import ChunkType
-    for mID, ms in enumerate(strips):
-        if ms is None:
-            continue
-        
-        #writing material chunks
-        material = None
-        if len(mesh.materials) > 0:
-            try:
-                for m in materials:
-                    if m.name == mesh.materials[mID].name:
-                        material = m
-                        break
-            except ValueError:
-                debug(" material", mesh.materials[i].name, "not found")
-        else:
-            debug(" mesh contains no material")
-            
-        stripFlags = enums.StripFlags.null
-
-        if material is not None:
-            matProps = material.saSettings
-
-            #writing the colors
-            fileW.wByte(ChunkType.Material_DiffuseAmbientSpecular.value)
-            fileW.wByte(0) # empty flags
-            fileW.wUShort(6) # size
-            ColorARGB(matProps.b_Diffuse).write(fileW) # diffuse color
-            ColorARGB(matProps.b_Ambient).write(fileW) # ambient color
-            ColorARGB(matProps.b_Specular).write(fileW, noAlpha=True) # specular color
-            fileW.wByte(round(matProps.b_Exponent * 255)) # specularity
-
-            # collecting texture info
-            textureFlags = enums.TextureIDFlags.null
-
-            if matProps.b_d_025:
-                textureFlags |= enums.TextureIDFlags.D_025
-            if matProps.b_d_050:
-                textureFlags |= enums.TextureIDFlags.D_050
-            if matProps.b_d_100:
-                textureFlags |= enums.TextureIDFlags.D_100
-            if matProps.b_d_200:
-                textureFlags |= enums.TextureIDFlags.D_200
-            if matProps.b_clampV:
-                textureFlags |= enums.TextureIDFlags.CLAMP_V
-            if matProps.b_clampU:
-                textureFlags |= enums.TextureIDFlags.CLAMP_U
-            if matProps.b_mirrorV:
-                textureFlags |= enums.TextureIDFlags.FLIP_U
-            if matProps.b_mirrorU:
-                textureFlags |= enums.TextureIDFlags.FLIP_V
-
-            texParams = min( matProps.b_TextureID, 0x1FFF)
-
-            if matProps.b_use_Anisotropy:
-                texParams |= 0x2000
-
-            filtering = enums.TextureFiltering.Point
-
-            if matProps.b_texFilter == 'BILINEAR':
-                filtering = enums.TextureFiltering.Bilinear
-            elif matProps.b_texFilter == 'TRILINEAR':
-                filtering = enums.TextureFiltering.Trilinear
-            elif matProps.b_texFilter == 'BLEND':
-                filtering = enums.TextureFiltering.Blend
-
-            filtering = filtering.value << 14
-            texParams |= filtering
-            
-            # writing texture info
-            fileW.wByte(ChunkType.Tiny_TextureID.value)
-            fileW.wByte(textureFlags.value)
-            fileW.wUShort(texParams)
-              
-            # writing alpha
-            fileW.wByte(ChunkType.Bits_BlendAlpha.value)
-            alphaflags = enums.SA2AlphaInstructions.null
-            if matProps.b_useAlpha:
-                from .enums import SA2AlphaInstructions
-                
-                src = matProps.b_srcAlpha
-                if src == 'ONE':
-                    alphaflags |= SA2AlphaInstructions.SA_ONE
-                elif src == 'OTHER':
-                    alphaflags |= SA2AlphaInstructions.SA_OTHER
-                elif src == 'INV_OTHER':
-                    alphaflags |= SA2AlphaInstructions.SA_INV_OTHER
-                elif src == 'SRC':
-                    alphaflags |= SA2AlphaInstructions.SA_SRC
-                elif src == 'INV_SRC':
-                    alphaflags |= SA2AlphaInstructions.SA_INV_SRC
-                elif src == 'DST':
-                    alphaflags |= SA2AlphaInstructions.SA_DST
-                elif src == 'INV_DST':
-                    alphaflags |= SA2AlphaInstructions.SA_INV_DST
-
-                dst = matProps.b_destAlpha
-                if dst == 'ONE':
-                    alphaflags |= SA2AlphaInstructions.DA_ONE
-                elif dst == 'OTHER':
-                    alphaflags |= SA2AlphaInstructions.DA_OTHER
-                elif dst == 'INV_OTHER':
-                    alphaflags |= SA2AlphaInstructions.DA_INV_OTHER
-                elif dst == 'SRC':
-                    alphaflags |= SA2AlphaInstructions.DA_SRC
-                elif dst == 'INV_SRC':
-                    alphaflags |= SA2AlphaInstructions.DA_INV_SRC
-                elif dst == 'DST':
-                    alphaflags |= SA2AlphaInstructions.DA_DST
-                elif dst == 'INV_DST':
-                    alphaflags |= SA2AlphaInstructions.DA_INV_DST
-            fileW.wByte(alphaflags.value)
-
-            #getting strip flags
-            if matProps.b_ignoreLighting:
-                stripFlags |= enums.StripFlags.IGNORE_LIGHT
-            if matProps.b_ignoreSpecular:
-                stripFlags |= enums.StripFlags.INGORE_SPECULAR
-            if matProps.b_ignoreAmbient:
-                stripFlags |= enums.StripFlags.IGNORE_AMBIENT
-            if matProps.b_useAlpha:
-                stripFlags |= enums.StripFlags.USE_ALPHA
-            if matProps.b_doubleSided:
-                stripFlags |= enums.StripFlags.DOUBLE_SIDE
-            if matProps.b_flatShading:
-                stripFlags |= enums.StripFlags.FLAT_SHADING
-            if matProps.b_useEnv:
-                stripFlags |= enums.StripFlags.ENV_MAPPING
-
-        # writing strips
-        if writeUVs:
-            if HDUV:
-                stripType = ChunkType.Strip_StripUVH
-            else:
-                stripType = ChunkType.Strip_StripUVN
-        else:
-            stripType = ChunkType.Strip_Strip
-
+    def write(self, fileW: fileWriter.FileWriter):
+        super(PolyChunk_Strip, self).write(fileW)
+        fileW.wByte(self.flags.value)
         size = 1
-        for s in ms:
-            size += len(s) * (3 if writeUVs else 1) + 1
-
-        stripCount = min(len(ms), 0x3FFF)
-
-        fileW.wByte(stripType.value)
-        fileW.wByte(stripFlags.value)
+        for s in self.strips:
+            size += len(s) * (3 if self.chunkType == enums.ChunkType.Strip_StripUVN else 1) + 1
         fileW.wUShort(size)
-        fileW.wUShort(stripCount)
+        fileW.wUShort(min(0x3FFF, len(self.strips)))
 
-        if DO:
-            print(" Strip", mID, "data:")
-            print("   type:", stripType)
-            print("   flags:", stripFlags)
-            print("   size:", size)
-            print("   stripCount:", stripCount)
-            
-        #writing the polygons
-        for i, s in enumerate(ms):
-            fileW.wShort(min(len(s), 0x7FFF)) # strip length
-            #debug("   strip", i, "length:", len(s))
-            if writeUVs:
+        for s in self.strips:
+            fileW.wUShort(min(0x7FFF, len(s)))
+            if self.chunkType == enums.ChunkType.Strip_StripUVN:
                 for p in s:
                     p.writeUV(fileW)
             else:
                 for p in s:
                     p.write(fileW)
+                
+class Attach:
+    """Chunk mesh data"""
 
-    fileW.wUShort(enums.ChunkType.End.value)
+    name: str
+    vertexChunks: List[VertexChunk]
+    polyChunks: List[PolyChunk]
+    bounds: BoundingBox
 
-    labels["cnk_" + mesh.name] = fileW.tell()
-    fileW.wUInt(vertexAddress)
-    labels["cnk_" + mesh.name + "_v"] = vertexAddress
-    fileW.wUInt(polyAddress)
-    labels["cnk_" + mesh.name + "_p"] = polyAddress
-    
-    bounds = BoundingBox(mesh.vertices)
-    bounds.boundCenter = exportMatrix @ bounds.boundCenter
-    bounds.write(fileW)
+    def __init__(self,
+                 name: str,
+                 vertexChunks: List[VertexChunk],
+                 polyChunks: List[PolyChunk],
+                 bounds: BoundingBox):
+        self.name = name
+        self.vertexChunks = vertexChunks
+        self.polyChunks = polyChunks
+        self.bounds = bounds
 
-    debug(" ---- \n")
+    def fromMesh(mesh: bpy.types.Mesh, 
+                 export_matrix: mathutils.Matrix, 
+                 materials: List[bpy.types.Material]):
+        
+        vertexType = mesh.saSettings.sa2ExportType
+        if vertexType == 'VC' and len(mesh.vertex_colors) == 0:
+            vertexType = 'NRM'
+
+        writeUVs = len(mesh.uv_layers) > 0
+        
+        vertices: List[Vertex] = list()
+
+        if vertexType == 'VC':
+            verts: List[List[Vertex]] = [[] for v in mesh.vertices]
+            polyVerts: List[PolyVert] = list()
+
+            # generating the vertices with their colors
+            for l in mesh.loops:
+                vert = mesh.vertices[l.vertex_index]
+                col = ColorARGB(mesh.vertex_colors[0].data[l.index].color)
+
+                # only create the vertex if there isnt one with the same color already
+                foundV: Vertex = None
+                for v in verts[l.vertex_index]:
+                    if v.col == col:
+                        foundV = v
+                        break
+
+                if foundV is None:
+                    foundV = Vertex(l.vertex_index, 0, Vector3(export_matrix @ vert.co), Vector3(), col, 0)
+                    verts[l.vertex_index].append(foundV)
+
+                uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
+                polyVerts.append(PolyVert(foundV, uv))
+
+            # correcting indices
+            i = 0
+            for v in verts:
+                for vt in v:
+                    vt.index = i
+                    vertices.append(vt)
+                    i += 1
+
+        else: # normals are a lot simpler to generate (luckily)
+            for v in mesh.vertices:
+                vertices.append( Vertex(v.index, v.index, Vector3(export_matrix @ v.co), Vector3(export_matrix @ v.normal), ColorARGB(), 0) )
+
+            for l in mesh.loops:
+                uv = UV(mesh.uv_layers[0].data[lID].uv) if writeUVs else UV()
+                polyVert = PolyVert(l.vertex_index, uv)
+                polyVerts.append(polyVert)
+
+        # creating the vertex chunk
+        chunkType = enums.ChunkType.Vertex_VertexDiffuse8 if vertexType == 'VC' else enums.ChunkType.Vertex_VertexNormal
+        vertexChunks: List[VertexChunk] = [VertexChunk(chunkType, enums.WeightStatus.Start, 0, vertices)]
+
+        # getting the distinct polygons
+        distinctPolys = list()
+        IDs = [0] * len(polyVerts)
+        
+        for i, o in enumerate(polyVerts):
+            found = None
+            for j, d in enumerate(distinctPolys):
+                if o == d:
+                    found = j
+                    break
+            if found is None:
+                distinctPolys.append(o)
+                IDs[i] = len(distinctPolys) - 1
+            else:
+                IDs[i] = found
+        
+        
+        polygons: List[List[PolyVert]] = [[] for m in mesh.materials]
+        if len(polygons) == 0:
+            polygons.append(list())
+
+        # assembling the polygons
+        for p in mesh.polygons:
+            for l in p.loop_indices:
+                polygons[p.material_index].append(IDs[l])
+
+        # converting triangle lists to strips
+        strips: List[List[PolyVert]] = list() # material specific -> strip -> polygon
+        Stripf = strippifier.Strippifier()
+
+        for l in polygons:
+            if len(l) == 0:
+                strips.append(None)
+                continue
+            stripIndices = Stripf.Strippify(l, doSwaps=False, concat=False)
+
+            polyStrips = [None] * len(stripIndices)
+
+            for i, strip in enumerate(stripIndices):
+                tStrip = [0] * len(strip)
+                for j, index in enumerate(strip):
+                    tStrip[j] = distinctPolys[index]
+                polyStrips[i] = tStrip
+            
+            strips.append(polyStrips)
+
+        # generating polygon chunks
+        polyChunks: List[PolyChunk] = list()
+
+        for mID, l in enumerate(strips):
+            if l is None:
+                continue
+            
+            # getting material
+            material = None
+            if len(mesh.materials) > 0:
+                for m in materials:
+                    if m.name == mesh.materials[mID].name:
+                        material = m
+                        break
+            else:
+                print(" mesh contains no material")
+
+            stripFlags = enums.StripFlags.null
+
+            if material is None:
+                polyChunks.append(PolyChunk_Texture(0, enums.TextureIDFlags.null, True, enums.TextureFiltering.Bilinear))
+                polyChunks.append(PolyChunk_Material(ColorARGB(), ColorARGB(), ColorARGB()))
+                polyChunks.append(PolyChunk_SpecularExponent(1))
+                polyChunks.append(PolyChunk_BlendAlpha(enums.SA2AlphaInstructions.SA_SRC | enums.SA2AlphaInstructions.DA_INV_SRC))
+            else:
+                matProps: SAMaterialSettings = material.saSettings
+
+                # getting texture info
+                textureFlags = enums.TextureIDFlags.null
+
+                if matProps.b_d_025:
+                    textureFlags |= enums.TextureIDFlags.D_025
+                if matProps.b_d_050:
+                    textureFlags |= enums.TextureIDFlags.D_050
+                if matProps.b_d_100:
+                    textureFlags |= enums.TextureIDFlags.D_100
+                if matProps.b_d_200:
+                    textureFlags |= enums.TextureIDFlags.D_200
+                if matProps.b_clampV:
+                    textureFlags |= enums.TextureIDFlags.CLAMP_V
+                if matProps.b_clampU:
+                    textureFlags |= enums.TextureIDFlags.CLAMP_U
+                if matProps.b_mirrorV:
+                    textureFlags |= enums.TextureIDFlags.FLIP_U
+                if matProps.b_mirrorU:
+                    textureFlags |= enums.TextureIDFlags.FLIP_V
+
+                filtering = enums.TextureFiltering.Point
+
+                if matProps.b_texFilter == 'BILINEAR':
+                    filtering = enums.TextureFiltering.Bilinear
+                elif matProps.b_texFilter == 'TRILINEAR':
+                    filtering = enums.TextureFiltering.Trilinear
+                elif matProps.b_texFilter == 'BLEND':
+                    filtering = enums.TextureFiltering.Blend
+
+                polyChunks.append(PolyChunk_Texture(matProps.b_TextureID, textureFlags, matProps.b_use_Anisotropy, filtering))
+                polyChunks.append(PolyChunk_Material(ColorARGB(matProps.b_Diffuse), ColorARGB(matProps.b_Ambient), ColorARGB(matProps.b_Specular)))
+                polyChunks.append(PolyChunk_SpecularExponent(matProps.b_Exponent))
+
+                # getting alpha
+                alphaflags = enums.SA2AlphaInstructions.null
+                if matProps.b_useAlpha:
+                    from .enums import SA2AlphaInstructions
+                    
+                    src = matProps.b_srcAlpha
+                    if src == 'ONE':
+                        alphaflags |= SA2AlphaInstructions.SA_ONE
+                    elif src == 'OTHER':
+                        alphaflags |= SA2AlphaInstructions.SA_OTHER
+                    elif src == 'INV_OTHER':
+                        alphaflags |= SA2AlphaInstructions.SA_INV_OTHER
+                    elif src == 'SRC':
+                        alphaflags |= SA2AlphaInstructions.SA_SRC
+                    elif src == 'INV_SRC':
+                        alphaflags |= SA2AlphaInstructions.SA_INV_SRC
+                    elif src == 'DST':
+                        alphaflags |= SA2AlphaInstructions.SA_DST
+                    elif src == 'INV_DST':
+                        alphaflags |= SA2AlphaInstructions.SA_INV_DST
+
+                    dst = matProps.b_destAlpha
+                    if dst == 'ONE':
+                        alphaflags |= SA2AlphaInstructions.DA_ONE
+                    elif dst == 'OTHER':
+                        alphaflags |= SA2AlphaInstructions.DA_OTHER
+                    elif dst == 'INV_OTHER':
+                        alphaflags |= SA2AlphaInstructions.DA_INV_OTHER
+                    elif dst == 'SRC':
+                        alphaflags |= SA2AlphaInstructions.DA_SRC
+                    elif dst == 'INV_SRC':
+                        alphaflags |= SA2AlphaInstructions.DA_INV_SRC
+                    elif dst == 'DST':
+                        alphaflags |= SA2AlphaInstructions.DA_DST
+                    elif dst == 'INV_DST':
+                        alphaflags |= SA2AlphaInstructions.DA_INV_DST
+                else:
+                    alphaflags = enums.SA2AlphaInstructions.SA_SRC | enums.SA2AlphaInstructions.DA_INV_SRC
+                
+                polyChunks.append(PolyChunk_BlendAlpha(alphaflags))
+
+                #getting strip flags
+                if matProps.b_ignoreLighting:
+                    stripFlags |= enums.StripFlags.IGNORE_LIGHT
+                if matProps.b_ignoreSpecular:
+                    stripFlags |= enums.StripFlags.INGORE_SPECULAR
+                if matProps.b_ignoreAmbient:
+                    stripFlags |= enums.StripFlags.IGNORE_AMBIENT
+                if matProps.b_useAlpha:
+                    stripFlags |= enums.StripFlags.USE_ALPHA
+                if matProps.b_doubleSided:
+                    stripFlags |= enums.StripFlags.DOUBLE_SIDE
+                if matProps.b_flatShading:
+                    stripFlags |= enums.StripFlags.FLAT_SHADING
+                if matProps.b_useEnv:
+                    stripFlags |= enums.StripFlags.ENV_MAPPING
+            
+            polyChunks.append(PolyChunk_Strip(writeUVs, stripFlags, l))
+                
+        bounds = BoundingBox(mesh.vertices)
+        bounds.adjust(export_matrix)
+
+        return Attach(mesh.name, vertexChunks, polyChunks, bounds)
+
+    def write(self, 
+              fileW: fileWriter.FileWriter,
+              labels: dict):
+        
+        # writing vertex chunks
+        vertexChunkPtr = fileW.tell()
+        for v in self.vertexChunks:
+            v.write(fileW)
+        # writing vertex chunk terminator
+        fileW.wULong(enums.ChunkType.End.value)
+
+        # writing polygon chunks
+        polyChunkPtr = fileW.tell()
+        for p in self.polyChunks:
+            p.write(fileW)
+
+        # writing poly chunk terminator
+        fileW.wUShort(enums.ChunkType.End.value)
+
+        labels["cnk_" + self.name] = fileW.tell()
+        labels["cnk_" + self.name + "_vtx"] = vertexChunkPtr
+        labels["cnk_" + self.name + "_poly"] = polyChunkPtr
+
+        fileW.wUInt(vertexChunkPtr)
+        fileW.wUInt(polyChunkPtr)
+        self.bounds.write(fileW)
