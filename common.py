@@ -3,7 +3,9 @@ import mathutils
 
 import math
 import copy
-from typing import List
+import queue
+from typing import List, Dict
+
 
 from . import fileWriter, enums
 
@@ -110,7 +112,8 @@ class BAMSRotation(mathutils.Vector):
         fileW.wInt(round(self.z))
 
     def __str__(self):
-        return "(" + '{:04x}'.format(round(self.x)) + ", " + '{:04x}'.format(round(self.y)) + ", " + '{:04x}'.format(round(self.z)) + ")"
+        return "(" + str(BAMSToRad(self.x)) + ", " + str(BAMSToRad(self.y)) + ", " + str(BAMSToRad(self.z)) + ")"
+        #return "(" + '{:04x}'.format(round(self.x)) + ", " + '{:04x}'.format(round(self.y)) + ", " + '{:04x}'.format(round(self.z)) + ")"
 
 class BoundingBox:
     """Used to calculate the bounding sphere which the game uses"""
@@ -177,12 +180,14 @@ class ModelData:
     fmt: str
 
     origObject: bpy.types.Object # used for exporting the meshes in correct formats
+    processedMesh: bpy.types.Mesh # the triangulated mesh
 
     children: list
     child = None #: ModelData
     sibling = None #: ModelData
     parent = None #: ModelData
     hierarchyDepth: int
+    partOfArmature: bool
 
     position: Vector3
     rotation: BAMSRotation
@@ -206,13 +211,16 @@ class ModelData:
              global_matrix: mathutils.Matrix, 
              fmt: str = '',
              collision: bool = False, 
-             visible: bool = False ):
+             visible: bool = False):
 
         self.name = name
         self.hierarchyDepth = hierarchyDepth
-        if bObject.type == 'MESH':
+        if parent is not None:
+            self.partOfArmature = isinstance(parent, Armature) or parent.partOfArmature
+        else:
+            self.partOfArmature = False
+        if bObject is not None and bObject.type == 'MESH':
             self.fmt = fmt
-            self.origObject = bObject
 
             self.bounds = BoundingBox(bObject.data.vertices)
             self.bounds.boundCenter = Vector3(global_matrix @ (self.bounds.boundCenter + bObject.location))
@@ -222,9 +230,10 @@ class ModelData:
             self.saProps["isCollision"] = collision
             self.saProps["isVisible"] = visible
         else:
-            self.origObject = None
             self.bounds = BoundingBox(None)
             self.saProps = None
+
+        self.origObject = bObject
 
         self.children = list()
         self.parent = parent
@@ -232,11 +241,13 @@ class ModelData:
             self.parent.children.append(self)
 
         # settings space data
-        obj_mat: mathutils.Matrix = global_matrix @ bObject.matrix_world
-        rot: mathutils.Vector = bObject.matrix_world.to_euler('XZY')
+        worldMatrix = bObject.matrix_world if bObject is not None else mathutils.Matrix.Identity(4)
+
+        obj_mat: mathutils.Matrix = global_matrix @ worldMatrix
+        rot: mathutils.Euler = worldMatrix.to_euler('XZY')
 
         self.position = Vector3(obj_mat.to_translation())
-        self.rotation = BAMSRotation( global_matrix @ mathutils.Vector((rot.x, rot.y, rot.z)) )
+        self.rotation = BAMSRotation( global_matrix @ mathutils.Vector((rot.x, rot.y, rot.z)))
         self.scale = Vector3(obj_mat.to_scale())
 
         # settings the unknowns
@@ -244,11 +255,19 @@ class ModelData:
         self.unknown2 = 0
         self.unknown3 = 0
 
+    def updateMeshes(objList: list, meshList: list):
+        for o in objList:
+            o.processedMesh = None
+            if o.origObject is not None and o.origObject.type == 'MESH':
+                for m in meshList:
+                    if m.name == o.origObject.data.name:
+                        o.processedMesh = m
+
     def updateMeshPointer(objList: list, labels: dict):
         """Updates the mesh pointer of a ModelData list utilizing the labels"""
         for o in objList:
-            if o.origObject is not None:
-                    o.meshPtr = labels[o.fmt + "_" + o.origObject.data.name]
+            if o.processedMesh is not None:
+                    o.meshPtr = labels[o.fmt + "_" + o.processedMesh.name]
             else:
                 o.meshPtr = 0
 
@@ -347,8 +366,10 @@ class ModelData:
         return flags
 
     def writeObjectList(objects: list, fileW: fileWriter.FileWriter, labels: dict, lvl: bool = False):
+        
         for o in reversed(objects):
             o.writeObject(fileW, labels, lvl)
+
         return objects[0].objectPtr
 
     def writeObject(self, fileW: fileWriter.FileWriter, labels: dict, lvl: bool = False):
@@ -386,6 +407,309 @@ class ModelData:
             fileW.wUInt(self.unknown3)
             fileW.wUInt(self.getSA1SurfaceFlags().value | int("0x" + self.saProps["userFlags"], 0))
 
+class BoneMesh:
+
+    model: ModelData
+    weightIndex: int
+    indexBufferOffset: int
+    weightStatus: enums.WeightStatus
+
+    # a weightindex of -1 indicates to write the entire mesh
+    # and an index of -2 means to write only unweighted vertices
+
+    def __init__(self,
+                 model: ModelData,
+                 weightIndex: int,
+                 indexBufferOffset: int,
+                 weightStatus: enums.WeightStatus):
+        self.model = model
+        self.weightIndex = weightIndex
+        self.indexBufferOffset = indexBufferOffset
+        self.weightStatus = weightStatus
+
+class Bone:
+
+    name: str
+    hierarchyDepth: int
+
+    matrix_world: mathutils.Matrix # in the world
+    matrix_local: mathutils.Matrix # relative to parent bone
+
+    weightedMeshes: List[BoneMesh]
+
+    parentBone = None #:Bone
+    children: list #: List[Bone]
+
+    child = None
+    sibling = None
+
+    position: Vector3
+    rotation: BAMSRotation
+    scale: Vector3
+
+    meshPtr: int# set after writing meshes
+    objectPtr: int# set after writing model address
+
+    def __init__(self,
+                 name: str,
+                 hierarchyDepth,
+                 armatureMatrix: mathutils.Matrix,
+                 localMatrix: mathutils.Matrix,
+                 exportMatrix: mathutils.Matrix,
+                 parentBone):
+        self.name = name
+        self.hierarchyDepth = hierarchyDepth
+
+        self.matrix_world = armatureMatrix @ localMatrix
+        if parentBone is not None:
+            self.matrix_local = parentBone.matrix_world.inverted() @ self.matrix_world
+            matrix = self.matrix_local
+        else: # only the root can cause this
+            self.matrix_local = self.matrix_world
+            matrix = armatureMatrix
+
+        posMatrix = exportMatrix @ matrix 
+        self.position = Vector3(posMatrix.to_translation())
+        self.scale = Vector3((1,1,1))
+
+        rot: mathutils.Euler = matrix.to_euler('XZY')
+        self.rotation = BAMSRotation( exportMatrix @ mathutils.Vector((rot.x, rot.y, rot.z)) )
+
+        self.parentBone = parentBone
+        self.weightedMeshes = list()
+        self.children = list()
+
+        if parentBone is not None:
+            parentBone.children.append(self)
+
+    def getBones(bBone: bpy.types.Bone,
+                parent, #: Bone 
+                hierarchyDepth: int,
+                export_matrix: mathutils.Matrix,
+                armatureMatrix: mathutils.Matrix,
+                result: List[ModelData]):
+
+        bone = Bone(bBone.name, hierarchyDepth, armatureMatrix, bBone.matrix_local, export_matrix, parent)
+        result.append(bone)
+        lastSibling = None
+
+        for b in bBone.children:
+            child = Bone.getBones(b, bone, hierarchyDepth + 1, export_matrix, armatureMatrix, result)
+            if lastSibling is not None:
+                lastSibling.sibling = child
+            lastSibling = child
+
+        # update sibling relationship
+        if len(bone.children) > 0:
+            bone.child = bone.children[0]
+        
+        return bone
+
+    def writeMesh(self,
+                  export_matrix: mathutils.Matrix,
+                  materials: List[bpy.types.Material],
+                  fileW: fileWriter.FileWriter,
+                  labels: dict):
+        self.meshPtr = 0  
+        if len(self.weightedMeshes) > 0:
+            if DO:
+                print(self.name, ":")
+                for m in self.weightedMeshes:
+                    print("  -", m.model.processedMesh.name, m.weightIndex, m.indexBufferOffset, m.weightStatus)
+
+            from . import format_CHUNK
+            mesh = format_CHUNK.Attach.fromWeightData(self.name, self.weightedMeshes, self.matrix_world, export_matrix, materials)
+            if mesh is not None:
+                self.meshPtr = mesh.write(fileW, labels)
+          
+    def write(self, fileW: fileWriter.FileWriter, labels: dict):
+        """Writes bone data in form of object data"""
+        labels["b_" + self.name] = fileW.tell()
+        self.objectPtr = fileW.tell()
+
+        objFlags = enums.ObjectFlags.NoMorph
+        if self.meshPtr == 0:
+            objFlags |= enums.ObjectFlags.NoDisplay
+        if len(self.children) == 0:
+            objFlags |= enums.ObjectFlags.NoChildren
+
+        fileW.wUInt(objFlags.value)
+        fileW.wUInt(self.meshPtr)
+        self.position.write(fileW)
+        self.rotation.write(fileW)
+        self.scale.write(fileW)
+        fileW.wUInt(0 if self.child is None else self.child.objectPtr)
+        fileW.wUInt(0 if self.sibling is None else self.sibling.objectPtr)
+
+class Armature(ModelData):
+    
+    bones: List[Bone]
+
+    def writeArmature(self,
+                      fileW: fileWriter.FileWriter,
+                      export_matrix: mathutils.Matrix,
+                      materials: List[bpy.types.Material],
+                      labels: dict
+                    ):
+        armature = self.origObject.data
+        self.bones: List[Bone] = list()
+
+        # first we need to evaluate all bone data (the fun part)
+        # lets start with the root bone. thats basically representing the armature object
+        root = Bone(self.name, 0, self.origObject.matrix_world, mathutils.Matrix.Identity(4), export_matrix, None)
+        self.bones.append(root)
+
+        # starting with the parentless bones
+        lastSibling = None
+        for b in armature.bones:
+            if b.parent is None:
+                bone = Bone.getBones(b, root, 1, export_matrix, self.origObject.matrix_world, self.bones)
+
+                if lastSibling is not None:
+                    lastSibling.sibling = bone
+                lastSibling = bone
+
+        if len(root.children) > 0:
+            root.child = root.children[0]
+
+        if DO:
+            print(" == Bone Hierarchy == \n")
+            for b in self.bones:
+                marker = " "
+                for r in range(b.hierarchyDepth):
+                    marker += "- "
+                if len(marker) > 1:
+                    print(marker, b.name)
+                else:
+                    print("", b.name)
+            print(" - - - -\n")
+
+        # now, time to get the mesh data
+        # first we need to get all objects that the armature modifies
+        objects: List[ModelData] = list()
+        objQueue = queue.Queue()
+
+        for o in self.children:
+            objQueue.put(o)
+
+        while not objQueue.empty():
+            o = objQueue.get()
+            objects.append(o)
+            for c in o.children:
+                objQueue.put(c)
+        
+        # now we have all objects that get modified by the armature
+        # lets get the meshes
+        meshes = list()
+        for o in objects:
+            if o.processedMesh not in meshes:
+                meshes.append(o.processedMesh)
+
+        # giving each mesh an index buffer offset
+        meshesWOffset = dict()
+        currentOffset = 0
+        for m in meshes:
+            meshesWOffset[m] = currentOffset
+            currentOffset += len(m.vertices)
+
+        # ok lemme write some notes down:
+        # there are 3 types of objects that the armature modifies:
+        # 1. Objects with weights, which are parented to the armature
+        # 2. Objects parented to bones (also no weights)        
+        # 3. Objects without weights. may be parented to armature or object that is parented to armature
+
+
+        # determining which meshes get written with weights at all
+        weighted = list()
+        weightStatus = dict()
+
+        for o in objects:
+            # check case 1
+            if o.processedMesh is None:
+                continue
+
+            case1 = False
+            for m in o.origObject.modifiers:
+                if isinstance(m, bpy.types.ArmatureModifier):
+                    if m.object is self.origObject:
+                        # yeah then its case 1, otherwise no
+                        case1 = True
+                        break
+                    
+            if case1:
+                weighted.append(o)
+                weightStatus[o] = None
+            elif len(o.origObject.parent_bone) > 0:
+                for b in self.bones:
+                    if b.name == o.origObject.parent_bone:
+                        b.weightedMeshes.append(BoneMesh(o, -1, meshesWOffset[o.processedMesh], enums.WeightStatus.Start))
+                        break
+            else:
+                root.weightedMeshes.append(BoneMesh(o, -1, meshesWOffset[o.processedMesh], enums.WeightStatus.Start))
+
+        # assigning weighted meshes to bones
+
+        for b in self.bones:
+            if b is root:
+                for w in weighted:
+                    mesh = w.processedMesh
+                    for v in mesh.vertices:
+                        if len(v.groups) == 0:
+                            root.weightedMeshes.append(BoneMesh(w, -2, meshesWOffset[mesh], enums.WeightStatus.Start))
+                            weightStatus[w] = root
+                            break
+            else:
+                for w in weighted:
+                    obj = w.origObject
+                    for g in obj.vertex_groups:
+                        if g.name == b.name:
+                            mesh = w.processedMesh
+
+                            found = False
+                            #checking if any vertex even holds a weight for the group
+                            groupindex = g.index
+                            for v in mesh.vertices:
+                                try:
+                                    weight = g.weight(v.index)
+                                except RuntimeError:
+                                    continue
+                                found = True
+                                break
+                                
+                            
+                            # if the mesh has weights that can be written, then add it to the bone
+                            if found:
+                                if weightStatus[w] is None:
+                                    ws = enums.WeightStatus.Start
+                                else:
+                                    ws = enums.WeightStatus.Middle
+                                b.weightedMeshes.append(BoneMesh(w, groupindex, meshesWOffset[mesh], ws))
+                                weightStatus[w] = b
+
+        for o in weightStatus.keys():
+            bone: Bone = weightStatus[o]
+
+            for i, m in enumerate(bone.weightedMeshes):
+                if m.model == o:
+                    if m.weightStatus == enums.WeightStatus.Middle:
+                        m.weightStatus = enums.WeightStatus.End
+
+                    elif m.weightStatus == enums.WeightStatus.Start:
+                        m.weightIndex = -1
+        
+        # writing mesh data
+        for b in self.bones:
+            b.writeMesh(export_matrix, materials, fileW, labels)
+
+        if DO:
+            print("\n - - - -")
+
+        # writing object data
+        for b in reversed(self.bones):
+            b.write(fileW, labels)
+        
+        return self.bones[0].objectPtr         
+
 def convertObjectData(context: bpy.types.Context,
                       use_selection: bool,
                       apply_modifs: bool,
@@ -419,13 +743,24 @@ def convertObjectData(context: bpy.types.Context,
     noParents.sort(key=lambda x: x.name)
 
     # sort children recursively and convert them to ModelData objects
-    modelData = list()
+    modelData: List[ModelData] = list()
+    parent = None
+    hierarchyDepth = 0
+    if not lvl:
+        if len(noParents) > 1:
+            parent = ModelData(None, None, 0, "root", export_matrix, fmt, False, False)
+            modelData.append(parent)
+            hierarchyDepth = 1
+
     lastSibling = None
     for o in noParents:
-        current = sortChildren(o, objects, None, 0, export_matrix, fmt, lvl, modelData)
+        current = sortChildren(o, objects, parent, hierarchyDepth, export_matrix, fmt, lvl, modelData)
         if lastSibling is not None:
             lastSibling.sibling = current
         lastSibling = current
+
+    if parent is not None:
+        parent.child = parent.children[0]
 
     objects = modelData
 
@@ -435,10 +770,23 @@ def convertObjectData(context: bpy.types.Context,
 
         mObjects = list() # objects with a mesh
         for o in objects:
-            if o.origObject is not None:
+            if o.origObject is not None and o.origObject.type == 'MESH':
                 mObjects.append(o)
 
         meshes, materials = getMeshesFromObjects(mObjects, depsgraph, apply_modifs)
+        ModelData.updateMeshes(objects, meshes)
+
+        if fmt == 'SA2': # since sa2 can have armatures, we need to handle things a little different...
+            newObjects = list()
+            newMeshes = list()
+            for o in objects:
+                if not o.partOfArmature:
+                    newObjects.append(o)
+                    if o.processedMesh is not None and o.processedMesh not in newMeshes:
+                        newMeshes.append(o.processedMesh)
+            if len(newObjects) == 1 and isinstance(newObjects[0], Armature):
+                objects = newObjects
+                meshes = list()
 
         if DO:
             print(" == Exporting ==")
@@ -454,7 +802,7 @@ def convertObjectData(context: bpy.types.Context,
         vObjects = list() # visual objects
 
         for o in objects:
-            if o.origObject is not None:
+            if o.origObject.type == 'MESH':
                 if o.saProps["isCollision"]:
                     cObjects.append(o)
                 else:
@@ -462,7 +810,13 @@ def convertObjectData(context: bpy.types.Context,
 
         cMeshes, dontUse = getMeshesFromObjects(cObjects, depsgraph, apply_modifs)
         vMeshes, materials = getMeshesFromObjects(vObjects, depsgraph, apply_modifs)
-    
+
+        meshes = list()
+        meshes.extend(cMeshes)
+        meshes.extend(vMeshes)
+
+        ModelData.updateMeshes(objects, meshes)
+        
         if DO:
             print(" == Exporting ==")
             print("  Materials:", len(materials))
@@ -500,6 +854,9 @@ def sortChildren(cObject: bpy.types.Object,
             visible = True if not cObject.saSettings.isCollision else cObject.saSettings.isVisible
                 
             model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, meshTag, cObject.saSettings.isCollision, visible)
+    elif fmt == 'SA2' and not lvl and cObject.type == 'ARMATURE':
+        visible = True if not cObject.saSettings.isCollision else cObject.saSettings.isVisible
+        model = Armature(cObject, parent, hierarchyDepth, cObject.name, export_matrix, "cnk", cObject.saSettings.isCollision, visible)
     else:
         # everything that is not a mesh should be written as an empty
         model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, fmt, False, False)
@@ -555,10 +912,23 @@ def getMeshesFromObjects(objects: List[ModelData], depsgraph: bpy.types.Depsgrap
 
 def convertMesh(obj: bpy.types.Object, depsgraph: bpy.types.Depsgraph, apply_modifs: bool):
     """Applies modifiers (or not), triangulates the mesh and returns materials"""
+    toDisable = list()
+    oldStates = list()
+    for m in obj.modifiers:
+        if isinstance(m, bpy.types.ArmatureModifier):
+            toDisable.append(m)
+    for m in toDisable:
+        oldStates.append(m.show_viewport)
+        m.show_viewport = False
+        
     ob_for_convert = obj.evaluated_get(depsgraph) if apply_modifs else obj.original
     me = ob_for_convert.to_mesh()
 
     trianglulateMesh(me)
+
+    for s, m in zip(oldStates, toDisable):
+        m.show_viewport = s
+
     return me, obj.data.materials
 
 def trianglulateMesh(me: bpy.types.Mesh) -> bpy.types.Mesh:

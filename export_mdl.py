@@ -72,10 +72,11 @@ def write(context,
                mesh.write(fileW, labels)
 
    elif export_format == 'SA2':
-      for m in meshes:
-         mesh = format_CHUNK.Attach.fromMesh(m, global_matrix, materials)
-         if mesh is not None:
-            mesh.write(fileW, labels)  
+      if not (len(objects) == 1 and isinstance(objects[0], common.Armature)):
+         for m in meshes:
+            mesh = format_CHUNK.Attach.fromMesh(m, global_matrix, materials)
+            if mesh is not None:
+               mesh.write(fileW, labels)
 
    else:
       for m in meshes:
@@ -84,8 +85,11 @@ def write(context,
               mesh.write(fileW, labels)
 
    # writing model data
-   ModelData.updateMeshPointer(objects, labels)
-   modelPtr = ModelData.writeObjectList(objects, fileW, labels)
+   if export_format == 'SA2' and len(objects) == 1 and isinstance(objects[0], common.Armature):
+      modelPtr = objects[0].writeArmature(fileW, global_matrix, materials, labels)
+   else:
+      ModelData.updateMeshPointer(objects, labels)
+      modelPtr = ModelData.writeObjectList(objects, fileW, labels)
 
    labelsAddress = fileW.tell()
    fileW.seek(8, 0) # go to the location of the model properties addrees

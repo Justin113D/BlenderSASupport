@@ -5,7 +5,7 @@ import struct
 import tempfile
 
 
-class FileWriter(object):
+class FileWriter:
     """Handles file writing
     
     Contains methods to make binary writing easier

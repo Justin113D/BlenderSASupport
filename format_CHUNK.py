@@ -5,7 +5,7 @@ import math
 from typing import List
 
 from . import enums, fileWriter, strippifier, common
-from .common import Vector3, ColorARGB, UV, BoundingBox
+from .common import Vector3, ColorARGB, UV, BoundingBox, BoneMesh
 from .__init__ import SAMaterialSettings
 
 DO = False
@@ -32,7 +32,11 @@ class Vertex:
         self.pos = pos
         self.nrm = nrm
         self.col = col
-        self.weight = weight
+        if weight > 0:
+            self.weight = max(weight, 1 / 255.0)
+        else:
+            self.weight = 0
+
         
     @property
     def index(self) -> int:
@@ -50,7 +54,8 @@ class Vertex:
     @weight.setter
     def weight(self, val: float):
         self.ninjaFlags &= ~0xFF0000
-        self.ninjaFlags |= min(1, max(0, round(255 * val))) << 16
+        cVal = max(0, min(0xFF,  round(255 * val)))
+        self.ninjaFlags |= cVal << 16
 
     def writeVC(self, fileW: fileWriter.FileWriter):
         self.pos.write(fileW)
@@ -62,6 +67,7 @@ class Vertex:
 
     def writeNRMW(self, fileW: fileWriter.FileWriter):
         self.pos.write(fileW)
+        self.nrm.write(fileW)
         fileW.wUInt(self.ninjaFlags)
 
 class VertexChunk:
@@ -125,10 +131,16 @@ class PolyVert:
         return self.vertex == other.vertex and self.uv == other.uv
 
     def write(self, fileW):
-        fileW.wUShort(self.vertex.index)
+        if isinstance(self.vertex, Vertex):
+            fileW.wUShort(self.vertex.index)
+        else:
+            fileW.wUShort(self.vertex)
 
     def writeUV(self, fileW):
-        fileW.wUShort(self.vertex.index)
+        if isinstance(self.vertex, Vertex):
+            fileW.wUShort(self.vertex.index)
+        else:
+            fileW.wUShort(self.vertex)
         self.uv.write(fileW)
 
 class PolyChunk:
@@ -315,7 +327,10 @@ class PolyChunk_Strip(PolyChunk):
             else:
                 for p in s:
                     p.write(fileW)
-                
+
+class Container(object):
+    pass
+
 class Attach:
     """Chunk mesh data"""
 
@@ -334,61 +349,10 @@ class Attach:
         self.polyChunks = polyChunks
         self.bounds = bounds
 
-    def fromMesh(mesh: bpy.types.Mesh, 
-                 export_matrix: mathutils.Matrix, 
-                 materials: List[bpy.types.Material]):
-        
-        vertexType = mesh.saSettings.sa2ExportType
-        if vertexType == 'VC' and len(mesh.vertex_colors) == 0:
-            vertexType = 'NRM'
-
-        writeUVs = len(mesh.uv_layers) > 0
-        
-        vertices: List[Vertex] = list()
-        polyVerts: List[PolyVert] = list()
-
-        if vertexType == 'VC':
-            verts: List[List[Vertex]] = [[] for v in mesh.vertices]
-            
-            # generating the vertices with their colors
-            for l in mesh.loops:
-                vert = mesh.vertices[l.vertex_index]
-                col = ColorARGB(mesh.vertex_colors[0].data[l.index].color)
-
-                # only create the vertex if there isnt one with the same color already
-                foundV: Vertex = None
-                for v in verts[l.vertex_index]:
-                    if v.col == col:
-                        foundV = v
-                        break
-
-                if foundV is None:
-                    foundV = Vertex(l.vertex_index, 0, Vector3(export_matrix @ vert.co), Vector3(), col, 0)
-                    verts[l.vertex_index].append(foundV)
-
-                uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
-                polyVerts.append(PolyVert(foundV, uv))
-
-            # correcting indices
-            i = 0
-            for v in verts:
-                for vt in v:
-                    vt.index = i
-                    vertices.append(vt)
-                    i += 1
-
-        else: # normals are a lot simpler to generate (luckily)
-            for v in mesh.vertices:
-                vertices.append( Vertex(v.index, v.index, Vector3(export_matrix @ v.co), Vector3(export_matrix @ v.normal), ColorARGB(), 0) )
-
-            for l in mesh.loops:
-                uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
-                polyVert = PolyVert(vertices[l.vertex_index], uv)
-                polyVerts.append(polyVert)
-
-        # creating the vertex chunk
-        chunkType = enums.ChunkType.Vertex_VertexDiffuse8 if vertexType == 'VC' else enums.ChunkType.Vertex_VertexNormal
-        vertexChunks: List[VertexChunk] = [VertexChunk(chunkType, enums.WeightStatus.Start, 0, vertices)]
+    def getPolygons(mesh: bpy.types.Mesh,
+                    writeUVs: bool,
+                    polyVerts: List[PolyVert],
+                    materials: List[bpy.types.Material]):
 
         # getting the distinct polygons
         distinctPolys = list()
@@ -405,7 +369,6 @@ class Attach:
                 IDs[i] = len(distinctPolys) - 1
             else:
                 IDs[i] = found
-        
         
         polygons: List[List[PolyVert]] = [[] for m in mesh.materials]
         if len(polygons) == 0:
@@ -554,15 +517,151 @@ class Attach:
                     stripFlags |= enums.StripFlags.ENV_MAPPING
             
             polyChunks.append(PolyChunk_Strip(writeUVs, stripFlags, l))
+
+        return polyChunks
+
+    def fromMesh(mesh: bpy.types.Mesh, 
+                 export_matrix: mathutils.Matrix, 
+                 materials: List[bpy.types.Material]):
+        
+        vertexType = mesh.saSettings.sa2ExportType
+        if vertexType == 'VC' and len(mesh.vertex_colors) == 0:
+            vertexType = 'NRM'
+
+        writeUVs = len(mesh.uv_layers) > 0
+        
+        vertices: List[Vertex] = list()
+        polyVerts: List[PolyVert] = list()
+
+        if vertexType == 'VC':
+            verts: List[List[Vertex]] = [[] for v in mesh.vertices]
+            
+            # generating the vertices with their colors
+            for l in mesh.loops:
+                vert = mesh.vertices[l.vertex_index]
+                col = ColorARGB(mesh.vertex_colors[0].data[l.index].color)
+
+                # only create the vertex if there isnt one with the same color already
+                foundV: Vertex = None
+                for v in verts[l.vertex_index]:
+                    if v.col == col:
+                        foundV = v
+                        break
+
+                if foundV is None:
+                    foundV = Vertex(l.vertex_index, 0, Vector3(export_matrix @ vert.co), Vector3(), col, 0)
+                    verts[l.vertex_index].append(foundV)
+
+                uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
+                polyVerts.append(PolyVert(foundV, uv))
+
+            # correcting indices
+            i = 0
+            for v in verts:
+                for vt in v:
+                    vt.index = i
+                    vertices.append(vt)
+                    i += 1
+
+        else: # normals are a lot simpler to generate (luckily)
+            for v in mesh.vertices:
+                vertices.append( Vertex(v.index, v.index, Vector3(export_matrix @ v.co), Vector3(export_matrix @ v.normal), ColorARGB(), 0) )
+
+            for l in mesh.loops:
+                uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
+                polyVert = PolyVert(vertices[l.vertex_index], uv)
+                polyVerts.append(polyVert)
+
+        # creating the vertex chunk
+        chunkType = enums.ChunkType.Vertex_VertexDiffuse8 if vertexType == 'VC' else enums.ChunkType.Vertex_VertexNormal
+        vertexChunks: List[VertexChunk] = [VertexChunk(chunkType, enums.WeightStatus.Start, 0, vertices)]
+
+        polyChunks = Attach.getPolygons(mesh, writeUVs, polyVerts, materials)
                 
         bounds = BoundingBox(mesh.vertices)
         bounds.adjust(export_matrix)
 
         return Attach(mesh.name, vertexChunks, polyChunks, bounds)
 
+    def fromWeightData(boneName: str,
+                       meshData: List[BoneMesh],
+                       boneMatrix_world: mathutils.Matrix, 
+                       export_matrix: mathutils.Matrix, 
+                       materials: List[bpy.types.Material]):
+
+        vertexChunks: List[VertexChunk] = list()
+        polyChunks: List[PolyChunk] = list()
+
+        allVertices = list()
+
+        for m in meshData:
+            matrix = export_matrix @ (boneMatrix_world.inverted() @ m.model.origObject.matrix_world)
+
+            mesh = m.model.processedMesh
+
+            vertices: List[Vertex] = list()
+            vChunkType = enums.ChunkType.Vertex_VertexNormalNinjaFlags
+            if m.weightIndex >= 0: # do weights
+                if m.weightStatus == enums.WeightStatus.Start:
+                    for v in mesh.vertices:
+                        weight = 0
+                        for g in v.groups:
+                            if g.group == m.weightIndex:
+                                weight = g.weight
+                                break
+                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3(matrix @ v.normal), ColorARGB(), weight) )
+
+                        vert = Container()
+                        vert.co = Vector3(matrix @ v.co)
+                        allVertices.append(vert)
+                else:
+                    for v in mesh.vertices:
+                        for g in v.groups:
+                            if g.group == m.weightIndex:
+                                vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3(matrix @ v.normal), ColorARGB(), g.weight) )
+
+                                vert = Container()
+                                vert.co = Vector3(matrix @ v.co)
+                                allVertices.append(vert)
+                                break
+            elif m.weightIndex == -1: # do all
+                for v in mesh.vertices:
+                    vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3(matrix @ v.normal), ColorARGB(), 0) )
+
+                    vert = Container()
+                    vert.co = Vector3(matrix @ v.co)
+                    allVertices.append(vert)
+                vChunkType = enums.ChunkType.Vertex_VertexNormal
+            elif m.weightIndex == -2: # do those with no weights
+                for v in mesh.vertices:
+                    if len(v.groups) == 0:
+                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3(matrix @ v.normal), ColorARGB(), 1) )
+
+                        vert = Container()
+                        vert.co = Vector3(matrix @ v.co)
+                        allVertices.append(vert)
+            
+            vertexChunks.append(VertexChunk(vChunkType, m.weightStatus, m.indexBufferOffset, vertices))
+
+            if m.weightIndex == -1 or m.weightStatus == enums.WeightStatus.End: # write polygons
+                writeUVs = len(mesh.uv_layers) > 0
+                polyVerts: List[PolyVert] = list()
+                for l in mesh.loops:
+                    uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
+                    polyVert = PolyVert(l.vertex_index + m.indexBufferOffset, uv)
+                    polyVerts.append(polyVert)
+                
+                polyChunks.extend(Attach.getPolygons(mesh, writeUVs, polyVerts, materials))
+
+        bounds = BoundingBox(allVertices)
+                
+        return Attach(boneName, vertexChunks, polyChunks, bounds)
+
+
     def write(self, 
               fileW: fileWriter.FileWriter,
               labels: dict):
+        global DO
         
         # writing vertex chunks
         vertexChunkPtr = fileW.tell()
@@ -575,14 +674,24 @@ class Attach:
         polyChunkPtr = fileW.tell()
         for p in self.polyChunks:
             p.write(fileW)
-
+                
         # writing poly chunk terminator
         fileW.wUShort(enums.ChunkType.End.value)
 
-        labels["cnk_" + self.name] = fileW.tell()
+        attachPtr = fileW.tell()
+        labels["cnk_" + self.name] = attachPtr
         labels["cnk_" + self.name + "_vtx"] = vertexChunkPtr
         labels["cnk_" + self.name + "_poly"] = polyChunkPtr
 
         fileW.wUInt(vertexChunkPtr)
         fileW.wUInt(polyChunkPtr)
         self.bounds.write(fileW)
+
+        if DO:
+            print("  Chunk mesh:", self.name)
+            print("    Vertex chunks:", len(self.vertexChunks))
+            print("    Vertex chunk ptr:", vertexChunkPtr)
+            print("    Poly chunks:", len(self.polyChunks))
+            print("    Poly chunk ptr:", polyChunkPtr, "\n")
+
+        return attachPtr

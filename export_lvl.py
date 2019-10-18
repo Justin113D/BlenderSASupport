@@ -100,6 +100,8 @@ def write(context,
 
           #writing visual meshes
           if export_format == 'SA2':
+               if DO:
+                    print(" == Writing CHUNK attaches == \n")  
                for m in vMeshes:
                     mesh = format_CHUNK.Attach.fromMesh(m, global_matrix, materials)
                     if mesh is not None:
