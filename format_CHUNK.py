@@ -698,6 +698,25 @@ class Attach:
             matrix = export_matrix @ (boneMatrix_world.inverted() @ m.model.origObject.matrix_world)
 
             mesh = m.model.processedMesh
+            
+
+            # getting normals
+            normals = list()
+            nMesh = m.model.origObject.data if len(m.model.origObject.data.vertices) == len(mesh.vertices) else mesh
+            nMesh.calc_normals_split()
+            for v in nMesh.vertices:
+                normal = mathutils.Vector((0,0,0))
+                normalCount = 0
+                for l in nMesh.loops:
+                    if l.vertex_index == v.index:
+                        normal += l.normal
+                        normalCount += 1
+                if normalCount == 0:
+                    normals.append(v.normal)
+                else:
+                    normals.append(normal / normalCount)
+
+            nMesh.free_normals_split()
 
             vertices: List[Vertex] = list()
             vChunkType = enums.ChunkType.Vertex_VertexNormalNinjaFlags
@@ -711,9 +730,9 @@ class Attach:
                             weightsAdded += g.weight
                             if g.group == m.weightIndex:
                                 weight = g.weight
-                                break
-                        weight = weight / weightsAdded
-                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ v.normal).normalized()), ColorARGB(), weight) )
+                        if weightsAdded > 0:
+                                weight = weight / weightsAdded
+                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), ColorARGB(), weight) )
 
                         vert = Container()
                         vert.co = Vector3(matrix @ v.co)
@@ -727,15 +746,16 @@ class Attach:
                             if g.group == m.weightIndex:
                                 weight = g.weight
                         if weight is not None:
-                            weight = weight / weightsAdded
-                            vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ v.normal).normalized()), ColorARGB(), weight) )
+                            if weightsAdded > 0:
+                                weight = weight / weightsAdded
+                            vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), ColorARGB(), weight) )
 
-                        vert = Container()
-                        vert.co = Vector3(matrix @ v.co)
-                        allVertices.append(vert)
+                            vert = Container()
+                            vert.co = Vector3(matrix @ v.co)
+                            allVertices.append(vert)
             elif m.weightIndex == -1: # do all
                 for v in mesh.vertices:
-                    vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ v.normal).normalized()), ColorARGB(), 0) )
+                    vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), ColorARGB(), 0) )
 
                     vert = Container()
                     vert.co = Vector3(matrix @ v.co)
@@ -744,7 +764,7 @@ class Attach:
             elif m.weightIndex == -2: # do those with no weights
                 for v in mesh.vertices:
                     if len(v.groups) == 0:
-                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ v.normal).normalized()), ColorARGB(), 1) )
+                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), ColorARGB(), 1) )
 
                         vert = Container()
                         vert.co = Vector3(matrix @ v.co)
@@ -1059,7 +1079,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                     if vtx.model not in affectedBy:
                         affectedBy.append(vtx.model)
 
-            weighted = len(affectedBy) > 1
+            #weighted = len(affectedBy) > 1
             
             # getting distinct vertices, so that we can weld them and prevent doubles
             vertexSets = list()
@@ -1205,9 +1225,6 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
 
             for v in vDistinct:
                 vert = bm.verts.new(v[0])
-                #vert2 = bm.verts.new(v[0])
-                #vert2.co += mathutils.Vector(v[1])
-                #bm.edges.new((vert, vert2))
             bm.verts.ensure_lookup_table()
             bm.verts.index_update()
 
@@ -1233,9 +1250,18 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
             bm.to_mesh(mesh)
             bm.free()
 
-            #mesh.create_normals_split()
-            #normals = [vDistinct[l.vertex_index][1] for l in mesh.loops]
-            #mesh.normals_split_custom_set(normals)  
+            mesh.create_normals_split()
+            
+            mesh.validate(clean_customdata=False)  # *Very* important to not remove lnors here!
+            mesh.update()
+
+            split_normal = [vDistinct[l.vertex_index][1] for l in mesh.loops]
+            mesh.normals_split_custom_set(split_normal)
+            mesh.use_auto_smooth = True
+
+            # dont ask me why, but blender likes to add sharp edges- we dont need those at all in this case
+            for e in mesh.edges:
+                e.use_edge_sharp = False
 
             if isArmature:
                 meshOBJ = bpy.data.objects.new(mesh.name, mesh)

@@ -167,8 +167,6 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
             attaches[o.meshPtr] = format_CHUNK.Attach.read(fileR, o.meshPtr, meshID, labels)
             meshID += 1
 
-   meshes = dict()
-
    if file_format == 'SA2':
       # checking whether the file is an armature (weighted model)
       isArmature = False
@@ -233,12 +231,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
          bpyObj.matrix_local = o.matrix_local
          collection.objects.link(bpyObj)
 
-         if len(o.meshes) > 1 and isArmature:
-            for m in o.meshes:
-               m.parent = bpyObj
-               collection.objects.link(m)
-
-
+   context.view_layer.update()
 
    if DO:
       for o in objects:
