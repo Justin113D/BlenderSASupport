@@ -47,11 +47,8 @@ class FileWriter:
         self.oFile.seek(0, 2)
 
     def close(self):
-        """Closes File and returns bytes"""
-        self.oFile.seek(0,0)
-        data = self.oFile.read()
+        """Closes File"""
         self.oFile.close()
-        return data
 
     def align(self, by):
         size = self.tell()
@@ -116,3 +113,78 @@ class FileWriter:
         """Writes a String in utf-8"""
         self.w(string.encode('utf-8'))
         self.wByte(0x00)
+
+class FileReader:
+
+
+    def __init__(self, filepath: str):
+        import os
+        if filepath is None or not os.path.exists(filepath):
+            print("Invalid file path")
+            self.filepath = None
+        else:
+            oFile = open(filepath, "rb") # read, binary 
+            self.fileC = oFile.read()
+            oFile.close()
+            self.filepath = filepath
+            self.endian = "<"
+
+    def setBigEndian(self, bigEndian = False):
+        self.endian = ">" if bigEndian else "<"
+    
+    def isBigEndian(self):
+        return self.endian == ">"
+
+    # reading bytes in a specific way
+
+    def rByte(self, address: int):
+        """Returns a Byte"""
+        return struct.unpack_from("B", self.fileC, address)[0]
+
+    def rShort(self, address: int):
+        """Returns a Short"""
+        return struct.unpack_from(self.endian + "h", self.fileC, address)[0]
+
+    def rUShort(self, address: int):
+        """Returns an unsigned Short"""
+        return struct.unpack_from(self.endian + "H", self.fileC, address)[0]
+
+    def rHalf(self, address: int):
+        """Returns a Half"""
+        return struct.unpack_from(self.endian + "e", self.fileC, address)[0]
+
+    def rInt(self, address: int):
+        """Returns an Integer"""
+        return struct.unpack_from(self.endian + "i", self.fileC, address)[0]
+    
+    def rUInt(self, address: int):
+        """Returns an unsigned Integer"""
+        return struct.unpack_from(self.endian + "I", self.fileC, address)[0]
+
+    def rFloat(self, address: int):
+        """Returns a Float"""
+        return struct.unpack_from(self.endian + "f", self.fileC, address)[0]
+
+    def rLong(self, address: int):
+        """Returns a Long"""
+        return struct.unpack_from(self.endian + "q", self.fileC, address)[0]
+
+    def rULong(self, address: int):
+        """Returns an unsigned Long"""
+        return struct.unpack_from(self.endian + "Q", self.fileC, address)[0]
+
+    def rDouble(self, address: int):
+        """Returns a Double"""
+        return struct.unpack_from(self.endian + "d", self.fileC, address)[0]
+
+    def rString(self, address: int):
+        string = []
+        i = self.fileC[address]
+        while i != 0:
+            string.append(i)
+            address += 1
+            i = self.fileC[address]
+        string.append(i) # adding the 0
+
+
+        return bytes(string).decode('utf-8')

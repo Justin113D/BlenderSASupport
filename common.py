@@ -22,7 +22,27 @@ def RadToBAMS(v: float) -> int:
     return round((math.degrees(v) / 360.0) * 0xFFFF)
 
 def BAMSToRad(v: float) -> int:
-    return v / (65536 / 360.0)
+    return math.radians( v / (0xFFFF / 360.0))
+
+def getDistinctwID(items: list):
+
+    distinct = list()
+    IDs = [0] * len(items)
+
+    for i, o in enumerate(items):
+        found = None
+        for j, d in enumerate(distinct):
+            if o == d:
+                found = j
+                break
+        if found is None:
+            distinct.append(o)
+            IDs[i] = len(distinct) - 1
+        else:
+            IDs[i] = found
+
+    return distinct, IDs
+
 
 class ColorARGB:
     """4 Channel Color (ARGB)
@@ -41,6 +61,15 @@ class ColorARGB:
         self.g = round(c[1] * 255)
         self.b = round(c[2] * 255)
 
+    def fromRGBA(value: int):
+        col = ColorARGB()
+        
+        col.r = (value >> 24) & 0xFF
+        col.g = (value >> 16) & 0xFF
+        col.b = (value >> 8) & 0xFF
+        col.a = value & 0xFF
+        return col
+
     def writeRGBA(self, fileW):
         """writes data to file"""
         fileW.wByte(self.a)        
@@ -48,12 +77,23 @@ class ColorARGB:
         fileW.wByte(self.g)
         fileW.wByte(self.r)
 
+    def fromARGB(value: int):
+        col = ColorARGB()
+        col.a = (value >> 24) & 0xFF
+        col.r = (value >> 16) & 0xFF
+        col.g = (value >> 8) & 0xFF
+        col.b = value & 0xFF
+        return col
+
     def writeARGB(self, fileW):
         """writes data to file"""
         fileW.wByte(self.b)
         fileW.wByte(self.g)
         fileW.wByte(self.r)
         fileW.wByte(self.a)
+
+    def toBlenderTuple(self):
+        return (self.r / 255.0, self.g / 255.0, self.b / 255.0, self.a / 255.0)
 
     def __eq__(self, other):
         return self.a == other.a and self.r == other.r and self.g == other.g and self.b == other.b
@@ -75,6 +115,9 @@ class UV:
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
+
+    def getBlenderUV(self):
+        return (self.x / 256.0, 1-(self.y / 256.0))
 
     def write(self, fileW: fileWriter.FileWriter):
         """Writes data to file"""
@@ -104,6 +147,7 @@ class BAMSRotation(mathutils.Vector):
         self.x = RadToBAMS(self.x)
         self.y = RadToBAMS(self.y)
         self.z = RadToBAMS(self.z)
+
 
     def write(self, fileW):
         """Writes data to file"""
@@ -189,6 +233,7 @@ class ModelData:
     hierarchyDepth: int
     partOfArmature: bool
 
+    worldMatrix: mathutils.Matrix
     position: Vector3
     rotation: BAMSRotation
     scale: Vector3
@@ -235,19 +280,31 @@ class ModelData:
 
         self.origObject = bObject
 
+        self.worldMatrix = bObject.matrix_world if bObject is not None else mathutils.Matrix.Identity(4)
+
         self.children = list()
         self.parent = parent
         if parent is not None:
             self.parent.children.append(self)
+            matrix = parent.worldMatrix.inverted() @ self.worldMatrix
+        else:
+            matrix = self.worldMatrix
 
         # settings space data
-        worldMatrix = bObject.matrix_world if bObject is not None else mathutils.Matrix.Identity(4)
 
-        obj_mat: mathutils.Matrix = global_matrix @ worldMatrix
-        rot: mathutils.Euler = worldMatrix.to_euler('XZY')
+        obj_mat: mathutils.Matrix = global_matrix @ matrix
+        #print("xyz:", matrix.to_euler('XYZ'))
+        
+        rot: mathutils.Euler = matrix.to_euler('XZY')
+        #print("xzy:", rot)
+
+        rot = global_matrix @ mathutils.Vector((rot.x, rot.y, rot.z))
+        #print("applied:", str(rot))
 
         self.position = Vector3(obj_mat.to_translation())
-        self.rotation = BAMSRotation( global_matrix @ mathutils.Vector((rot.x, rot.y, rot.z)))
+        self.rotation = BAMSRotation(rot)
+        #print("reversed:", BAMSToRad(self.rotation.x), BAMSToRad(self.rotation.y), BAMSToRad(self.rotation.z))
+
         self.scale = Vector3(obj_mat.to_scale())
 
         # settings the unknowns
@@ -374,7 +431,14 @@ class ModelData:
 
     def writeObject(self, fileW: fileWriter.FileWriter, labels: dict, lvl: bool = False):
         """Writes object data"""
-        labels["o_" + self.name] = fileW.tell()
+        name = self.name
+        if name[0].isdigit() and name[1].isdigit and name[2].isdigit:
+            if name[4] == '_':
+                name = name[4:]
+            else:
+                name = name[3:]
+
+        labels["o_" + name] = fileW.tell()
         self.objectPtr = fileW.tell()
 
         fileW.wUInt(self.getObjectFlags().value)
@@ -406,6 +470,7 @@ class ModelData:
             fileW.wUInt(self.objectPtr)
             fileW.wUInt(self.unknown3)
             fileW.wUInt(self.getSA1SurfaceFlags().value | int("0x" + self.saProps["userFlags"], 0))
+
 
 class BoneMesh:
 
@@ -524,7 +589,14 @@ class Bone:
           
     def write(self, fileW: fileWriter.FileWriter, labels: dict):
         """Writes bone data in form of object data"""
-        labels["b_" + self.name] = fileW.tell()
+        name = self.name
+        if name[0].isdigit() and name[1].isdigit and name[2].isdigit:
+            if name[3] == '_':
+                name = name[4:]
+            else:
+                name = name[3:]
+
+        labels["b_" + name] = fileW.tell()
         self.objectPtr = fileW.tell()
 
         objFlags = enums.ObjectFlags.NoMorph
@@ -1023,4 +1095,136 @@ def writeMethaData(fileW: fileWriter.FileWriter,
 
     fileW.wUInt(enums.Chunktypes.End.value)
     fileW.wUInt(0)
+  
+
+# for reading only
+class Model:
     
+    name: str
+    objFlags: enums.ObjectFlags
+    meshPtr: int
+
+    matrix_world: mathutils.Matrix
+    matrix_local: mathutils.Matrix
+
+    child = None
+    sibling = None
+
+    parent = None
+    children = list()
+    meshes = list()
+
+    def __init__(self,
+                 name: str,
+                 objFlags: enums.ObjectFlags,
+                 meshPtr: int,
+                 matrix_world: mathutils.Matrix,
+                 matrix_local: mathutils.Matrix,
+                 parent):
+        self.name = name
+        self.objFlags = objFlags
+        self.meshPtr = meshPtr
+        self.matrix_world = matrix_world
+        self.matrix_local = matrix_local
+        self.parent = parent
+        if parent is not None:
+            parent.children.append(self)
+        self.children = list()
+        self.meshes = list()
+
+    def debug(self):
+        print("  Model:", self.name)
+        print("    objectFlags:", self.objFlags)
+        print("    meshPtr:", hex4(self.meshPtr))
+        print("    position:", str(Vector3(self.matrix_local.to_translation())))
+        rot = self.matrix_local.to_euler()
+        print("    rotation:", "(", str(rot.x) + ",", str(rot.y) + ",", str(rot.z), ")")
+        print("    scale:", str(Vector3(self.matrix_local.to_scale())))
+
+def readObjects(fileR: fileWriter.FileReader, address: int, objID: int, hierarchyDepth: int, parent, labels: dict, result: list, tempOBJ: bpy.types.Object) -> int:
+
+    if address in labels:
+        label: str = labels[address]
+
+        if label.startswith("b_") or label.startswith("o_"):
+            label = label[2:]
+
+        name = '{0:0=3d}'.format(objID) + "_" + label
+    else:
+        name = '{0:0=3d}'.format(objID) + "_node_" + hex4(address)
+
+    objFlags = enums.ObjectFlags(fileR.rUInt(address))
+    meshPtr = fileR.rUInt(address + 4)
+
+    position = Vector3((fileR.rFloat(address + 8), -fileR.rFloat(address + 16), fileR.rFloat(address + 12)))
+    scale = Vector3((fileR.rFloat(address + 32), fileR.rFloat(address + 40), fileR.rFloat(address + 36)))
+
+    # getting the rotation is a bit more difficult
+    xRot = BAMSToRad(fileR.rInt(address + 20))
+    yRot = BAMSToRad(fileR.rInt(address + 24))
+    zRot = BAMSToRad(fileR.rInt(address + 28))
+
+    rotation = mathutils.Euler((xRot, -zRot, yRot), 'XZY')
+    rotation = rotation.to_matrix().to_euler('XYZ')
+
+    tempOBJ.location = position
+    tempOBJ.rotation_euler = rotation
+    tempOBJ.scale = scale
+    matrix_local =  tempOBJ.matrix_basis.copy()
+
+
+    if parent is not None:
+        matrix_world = parent.matrix_world @ matrix_local
+    else:
+        matrix_world = tempOBJ.matrix_basis.copy()
+
+    model = Model(name, objFlags, meshPtr, matrix_world, matrix_local, parent)
+    result.append(model)
+
+    childPtr = fileR.rUInt(address + 44)
+    if childPtr > 0:
+        objID, child = readObjects(fileR, childPtr, objID + 1, hierarchyDepth + 1, model, labels, result, tempOBJ)
+        model.child = child
+    
+    siblingPtr = fileR.rUInt(address + 48)
+    if siblingPtr > 0:
+        objID, sibling = readObjects(fileR, siblingPtr, objID + 1, hierarchyDepth, parent, labels, result, tempOBJ)
+        model.sibling = sibling
+
+    return objID, model
+
+def getDefaultMatDict() -> dict:
+    d = dict()
+    d["b_Diffuse"] = (1.0, 1.0, 1.0, 1.0)
+    d["b_Specular"] = (1.0, 1.0, 1.0, 1.0)
+    d["b_Ambient"] =(1.0, 1.0, 1.0, 1.0)
+    d["b_Exponent"] = 1
+    d["b_TextureID"] = 0
+    d["b_d_025"] = False
+    d["b_d_050"] = False
+    d["b_d_100"] = False
+    d["b_d_200"] = False
+    d["b_use_Anisotropy"] = False
+    d["b_texFilter"] = 'BILINEAR'
+    d["b_clampV"] = False
+    d["b_clampU"] = False
+    d["b_mirrorV"] = False
+    d["b_mirrorU"] = False
+    d["b_ignoreSpecular"] = False
+    d["b_useAlpha"] = False
+    d["b_srcAlpha"] = 'SRC'
+    d["b_destAlpha"] = 'INV_SRC'
+    d["b_useTexture"] = True
+    d["b_useEnv"] = False
+    d["b_doubleSided"] = True
+    d["b_flatShading"] = False
+    d["b_ignoreLighting"] = False
+    d["b_ignoreAmbient"] = False
+    d["gc_shadowStencil"] = 1
+    d["gc_texMatrixID"] = 'IDENTITY'
+    d["gc_texGenSourceMtx"] = 'TEX0'
+    d["gc_texGenSourceBmp"] = 'TEXCOORD0'
+    d["gc_texGenSourceSRTG"] = 'COLOR0'
+    d["gc_texGenType"] = 'MTX2X4'
+    d["gc_texCoordID"] = 'TEXCOORD0'
+    return d

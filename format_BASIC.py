@@ -386,17 +386,7 @@ class Attach:
             distinct = list()
             IDs = [0] * len(l)
 
-            for i, o in enumerate(l):
-                found = None
-                for j, d in enumerate(distinct):
-                    if o == d:
-                        found = j
-                        break
-                if found is None:
-                    distinct.append(o)
-                    IDs[i] = len(distinct) - 1
-                else:
-                    IDs[i] = found
+            distinct, IDs = common.getDistinctwID(l)
 
             stripIndices = stripf.Strippify(IDs, doSwaps=False, concat=False)
 

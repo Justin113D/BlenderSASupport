@@ -43,13 +43,7 @@ from bpy.props import (
     EnumProperty,
     StringProperty
     )
-from bpy_extras.io_utils import (
-    #ImportHelper,
-    ExportHelper,
-    orientation_helper,
-    path_reference_mode,
-    axis_conversion,
-    )
+from bpy_extras.io_utils import ExportHelper, ImportHelper#, path_reference_mode
 
 class TOPBAR_MT_SA_export(bpy.types.Menu):
     bl_label = "SA Formats"
@@ -67,7 +61,8 @@ class TOPBAR_MT_SA_export(bpy.types.Menu):
         layout.operator("export_scene.sa2lvl")
         layout.operator("export_scene.sa2blvl")
 
-@orientation_helper(axis_forward='Z', axis_up='Y')    
+# export operators
+
 class ExportSA1MDL(bpy.types.Operator, ExportHelper):
     """Export Objects into an SA1 model file"""
     bl_idname = "export_scene.sa1mdl"
@@ -107,24 +102,20 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
 
     def execute(self, context):
         from . import export_mdl
-        from mathutils import Matrix
-        keywords = self.as_keywords(ignore=("global_scale",
-                                    "check_existing",
-                                    "filter_glob",
-                                    "axis_forward",
-                                    "axis_up"
-                                    ))
-        
-        global_matrix = (Matrix.Scale(self.global_scale, 4) @
-                         axis_conversion(to_forward=self.axis_forward,
-                                         to_up=self.axis_up,
-                                         ).to_4x4())
-        
-        keywords["global_matrix"] = global_matrix
+        keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA1'
         return export_mdl.write(context, **keywords)
 
-@orientation_helper(axis_forward='Z', axis_up='Y')    
+    def draw(self, context):
+        layout: bpy.types.UILayout = self.layout
+        layout.alignment = 'RIGHT'
+
+        layout.prop(self, "global_scale")
+        layout.prop(self, "use_selection")
+        layout.prop(self, "apply_modifs")
+        layout.separator()
+        layout.prop(self, "console_debug_output")
+ 
 class ExportSA2MDL(bpy.types.Operator, ExportHelper):
     """Export Objects into an SA2 model file"""
     bl_idname = "export_scene.sa2mdl"
@@ -164,24 +155,20 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
 
     def execute(self, context):
         from . import export_mdl
-        from mathutils import Matrix
-        keywords = self.as_keywords(ignore=("global_scale",
-                                    "check_existing",
-                                    "filter_glob",
-                                    "axis_forward",
-                                    "axis_up"
-                                    ))
-        
-        global_matrix = (Matrix.Scale(self.global_scale, 4) @
-                         axis_conversion(to_forward=self.axis_forward,
-                                         to_up=self.axis_up,
-                                         ).to_4x4())
-        
-        keywords["global_matrix"] = global_matrix
+        keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2'
         return export_mdl.write(context, **keywords)
 
-@orientation_helper(axis_forward='Z', axis_up='Y')    
+    def draw(self, context):
+        layout: bpy.types.UILayout = self.layout
+        layout.alignment = 'RIGHT'
+
+        layout.prop(self, "global_scale")
+        layout.prop(self, "use_selection")
+        layout.prop(self, "apply_modifs")
+        layout.separator()
+        layout.prop(self, "console_debug_output")
+
 class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
     """Export Objects into an SA2B model file"""
     bl_idname = "export_scene.sa2bmdl"
@@ -221,24 +208,20 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
 
     def execute(self, context):
         from . import export_mdl
-        from mathutils import Matrix
-        keywords = self.as_keywords(ignore=("global_scale",
-                                    "check_existing",
-                                    "filter_glob",
-                                    "axis_forward",
-                                    "axis_up"
-                                    ))
-        
-        global_matrix = (Matrix.Scale(self.global_scale, 4) @
-                         axis_conversion(to_forward=self.axis_forward,
-                                         to_up=self.axis_up,
-                                         ).to_4x4())
-        
-        keywords["global_matrix"] = global_matrix
+        keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2B'
         return export_mdl.write(context, **keywords)
 
-@orientation_helper(axis_forward='Z', axis_up='Y')  
+    def draw(self, context):
+        layout: bpy.types.UILayout = self.layout
+        layout.alignment = 'RIGHT'
+
+        layout.prop(self, "global_scale")
+        layout.prop(self, "use_selection")
+        layout.prop(self, "apply_modifs")
+        layout.separator()
+        layout.prop(self, "console_debug_output")
+
 class ExportSA1LVL(bpy.types.Operator, ExportHelper):
     """Export scene into an SA1 level file"""
     bl_idname = "export_scene.sa1lvl"
@@ -278,24 +261,20 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
     
     def execute(self, context):
         from . import export_lvl
-        from mathutils import Matrix
-        keywords = self.as_keywords(ignore=("global_scale",
-                                    "check_existing",
-                                    "filter_glob",
-                                    "axis_forward",
-                                    "axis_up",
-                                    ))
-        
-        global_matrix = (Matrix.Scale(self.global_scale, 4) @
-                         axis_conversion(to_forward=self.axis_forward,
-                                         to_up=self.axis_up,
-                                         ).to_4x4())
-        
-        keywords["global_matrix"] = global_matrix
+        keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA1'
         return export_lvl.write(context, **keywords)
 
-@orientation_helper(axis_forward='Z', axis_up='Y')  
+    def draw(self, context):
+        layout: bpy.types.UILayout = self.layout
+        layout.alignment = 'RIGHT'
+
+        layout.prop(self, "global_scale")
+        layout.prop(self, "use_selection")
+        layout.prop(self, "apply_modifs")
+        layout.separator()
+        layout.prop(self, "console_debug_output")
+ 
 class ExportSA2LVL(bpy.types.Operator, ExportHelper):
     """Export scene into an SA2 level file"""
     bl_idname = "export_scene.sa2lvl"
@@ -335,24 +314,20 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
     
     def execute(self, context):
         from . import export_lvl
-        from mathutils import Matrix
-        keywords = self.as_keywords(ignore=("global_scale",
-                                    "check_existing",
-                                    "filter_glob",
-                                    "axis_forward",
-                                    "axis_up",
-                                    ))
-        
-        global_matrix = (Matrix.Scale(self.global_scale, 4) @
-                         axis_conversion(to_forward=self.axis_forward,
-                                         to_up=self.axis_up,
-                                         ).to_4x4())
-        
-        keywords["global_matrix"] = global_matrix
+        keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2'
         return export_lvl.write(context, **keywords)
 
-@orientation_helper(axis_forward='Z', axis_up='Y')  
+    def draw(self, context):
+        layout: bpy.types.UILayout = self.layout
+        layout.alignment = 'RIGHT'
+
+        layout.prop(self, "global_scale")
+        layout.prop(self, "use_selection")
+        layout.prop(self, "apply_modifs")
+        layout.separator()
+        layout.prop(self, "console_debug_output")
+
 class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
     """Export scene into an SA2B level file"""
     bl_idname = "export_scene.sa2blvl"
@@ -392,24 +367,46 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
     
     def execute(self, context):
         from . import export_lvl
-        from mathutils import Matrix
-        keywords = self.as_keywords(ignore=("global_scale",
-                                    "check_existing",
-                                    "filter_glob",
-                                    "axis_forward",
-                                    "axis_up",
-                                    ))
+        keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         
-        global_matrix = (Matrix.Scale(self.global_scale, 4) @
-                         axis_conversion(to_forward=self.axis_forward,
-                                         to_up=self.axis_up,
-                                         ).to_4x4())
-        
-        keywords["global_matrix"] = global_matrix
         keywords["export_format"] = 'SA2B'
         return export_lvl.write(context, **keywords)
 
-#operators
+    def draw(self, context):
+        layout: bpy.types.UILayout = self.layout
+        layout.alignment = 'RIGHT'
+
+        layout.prop(self, "global_scale")
+        layout.prop(self, "use_selection")
+        layout.prop(self, "apply_modifs")
+        layout.separator()
+        layout.prop(self, "console_debug_output")
+
+# import operators
+
+class ImportMDL(bpy.types.Operator, ImportHelper):
+    """Imports any adventure mdl file"""
+    bl_idname = "import_scene.mdl"
+    bl_label = "Adv model (.*mdl)"
+    bl_options = {'PRESET', 'UNDO'}
+
+    filter_glob: StringProperty(
+        default="*.sa1mdl;*.sa2mdl;*.sa2bmdl;",
+        options={'HIDDEN'},
+        )
+
+    console_debug_output: BoolProperty(
+            name = "Console Output",
+            description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
+            default = False,
+            )
+
+    def execute(self, context):
+        from . import export_mdl
+
+        return export_mdl.read(context, self.filepath, self.console_debug_output)
+
+# operators
 class StrippifyTest(bpy.types.Operator):
     bl_idname = "object.strippifytest"
     bl_label = "Strippify (testing)"
@@ -647,7 +644,7 @@ class qmeReset(bpy.types.Operator):
 
         return {'FINISHED'}
 
-#property groups
+# property groups
 class SAObjectSettings(bpy.types.PropertyGroup):
     """hosts all properties to edit the surface flags of a COL"""
     # used in both
@@ -1003,7 +1000,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
                 ('DST', 'Destination', ""),
                 ('INV_DST', 'Inverted destination', ""),
               ),
-        default='DST'
+        default='INV_SRC'
         )
 
     b_useTexture: BoolProperty(
@@ -1148,6 +1145,76 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         default='TEXCOORD0'
         )
 
+    def toDictionary(self) -> dict:
+        d = dict()
+        d["b_Diffuse"] = self.b_Diffuse
+        d["b_Specular"] = self.b_Specular
+        d["b_Ambient"] = self.b_Ambient
+        d["b_Exponent"] = self.b_Exponent
+        d["b_TextureID"] = self.b_TextureID
+        d["b_d_025"] = self.b_d_025
+        d["b_d_050"] = self.b_d_050
+        d["b_d_100"] = self.b_d_100
+        d["b_d_200"] = self.b_d_200
+        d["b_use_Anisotropy"] = self.b_use_Anisotropy
+        d["b_texFilter"] = self.b_texFilter
+        d["b_clampV"] = self.b_clampV
+        d["b_clampU"] = self.b_clampU
+        d["b_mirrorV"] = self.b_mirrorV
+        d["b_mirrorU"] = self.b_mirrorU
+        d["b_ignoreSpecular"] = self.b_ignoreSpecular
+        d["b_useAlpha"] = self.b_useAlpha
+        d["b_srcAlpha"] = self.b_srcAlpha
+        d["b_destAlpha"] = self.b_destAlpha
+        d["b_useTexture"] = self.b_useTexture
+        d["b_useEnv"] = self.b_useEnv
+        d["b_doubleSided"] = self.b_doubleSided
+        d["b_flatShading"] = self.b_flatShading
+        d["b_ignoreLighting"] = self.b_ignoreLighting
+        d["b_ignoreAmbient"] = self.b_ignoreAmbient
+        d["gc_shadowStencil"] = self.gc_shadowStencil
+        d["gc_texMatrixID"] = self.gc_texMatrixID
+        d["gc_texGenSourceMtx"] = self.gc_texGenSourceMtx
+        d["gc_texGenSourceBmp"] = self.gc_texGenSourceBmp
+        d["gc_texGenSourceSRTG"] = self.gc_texGenSourceSRTG
+        d["gc_texGenType"] = self.gc_texGenType
+        d["gc_texCoordID"] = self.gc_texCoordID
+        return d
+
+    def readMatDict(self, d):
+        self.b_Diffused = d["b_Diffuse"]
+        self.b_Specular = d["b_Specular"]
+        self.b_Ambient = d["b_Ambient"]
+        self.b_Exponent = d["b_Exponent"]
+        self.b_TextureID = d["b_TextureID"]
+        self.b_d_025 = d["b_d_025"]
+        self.b_d_050 = d["b_d_050"]
+        self.b_d_100 = d["b_d_100"]
+        self.b_d_200 = d["b_d_200"]
+        self.b_use_Anisotropy = d["b_use_Anisotropy"]
+        self.b_texFilter = d["b_texFilter"]
+        self.b_clampV = d["b_clampV"]
+        self.b_clampU = d["b_clampU"]
+        self.b_mirrorV = d["b_mirrorV"]
+        self.b_mirrorU = d["b_mirrorU"]
+        self.b_ignoreSpecular = d["b_ignoreSpecular"]
+        self.b_useAlpha = d["b_useAlpha"]
+        self.b_srcAlpha = d["b_srcAlpha"]
+        self.b_destAlpha = d["b_destAlpha"]
+        self.b_useTexture = d["b_useTexture"]
+        self.b_useEnv = d["b_useEnv"]
+        self.b_doubleSided = d["b_doubleSided"]
+        self.b_flatShading = d["b_flatShading"]
+        self.b_ignoreLighting = d["b_ignoreLighting"]
+        self.b_ignoreAmbient = d["b_ignoreAmbient"]
+        self.gc_shadowStencil = d["gc_shadowStencil"]
+        self.gc_texMatrixID = d["gc_texMatrixID"]
+        self.gc_texGenSourceMtx = d["gc_texGenSourceMtx"]
+        self.gc_texGenSourceBmp = d["gc_texGenSourceBmp"]
+        self.gc_texGenSourceSRTG = d["gc_texGenSourceSRTG"]
+        self.gc_texGenType = d["gc_texGenType"]
+        self.gc_texCoordID = d["gc_texCoordID"]
+
 class SAMaterialPanelSettings(bpy.types.PropertyGroup):
     """Menu settings for the material edit menus determining which menu should be visible"""
 
@@ -1210,7 +1277,7 @@ class SAMeshSettings(bpy.types.PropertyGroup):
         default = 'VC'
         )
 
-#panels
+# panels
 
 def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, qe = False):
     split = layout.split(factor=0.6)
@@ -1533,6 +1600,9 @@ class SA3DPanel(bpy.types.Panel):
 def menu_func_exportsa(self, context):
     self.layout.menu("TOPBAR_MT_SA_export")
 
+def menu_func_importsa(self, context):
+    self.layout.operator("import_scene.mdl")
+
 classes = (
     TOPBAR_MT_SA_export,
     ExportSA1MDL,
@@ -1541,6 +1611,7 @@ classes = (
     ExportSA1LVL,
     ExportSA2LVL,
     ExportSA2BLVL,
+    ImportMDL,
 
     StrippifyTest,
     qmeReset,
@@ -1574,9 +1645,11 @@ def register():
     bpy.types.Mesh.saSettings = bpy.props.PointerProperty(type=SAMeshSettings)
 
     bpy.types.TOPBAR_MT_file_export.append(menu_func_exportsa)
+    bpy.types.TOPBAR_MT_file_import.append(menu_func_importsa)
 
 def unregister():
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportsa)
+    bpy.types.TOPBAR_MT_file_import.remove(menu_func_importsa)
 
     for cls in classes:
         bpy.utils.unregister_class(cls)

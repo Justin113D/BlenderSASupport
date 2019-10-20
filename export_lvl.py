@@ -1,5 +1,6 @@
 import bpy
 import os
+import mathutils
 from . import fileWriter, enums, common, format_BASIC, format_GC, format_CHUNK
 
 DO = False # Debug out
@@ -15,7 +16,7 @@ def write(context,
          export_format,
          use_selection,
          apply_modifs,
-         global_matrix,
+         global_scale,
          console_debug_output
          ):
      from .common import ModelData
@@ -57,6 +58,8 @@ def write(context,
      fileW.wUInt(0) # landtable address
      fileW.wUInt(0) # methadata address
      labels = dict() # for labels methadata
+
+     global_matrix = (mathutils.Matrix.Scale(global_scale, 4) @ axis_conversion(to_forward='-Z', to_up='Y',).to_4x4())
 
      # creating and getting variables to use in the export process
      if export_format == 'SA1':

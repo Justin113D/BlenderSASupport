@@ -16,14 +16,21 @@ class LVLFormatIndicator(Enum):
 
 class Chunktypes(Enum):
     """Meta Data type"""
+    null = 0x0
     Label = 0x4C42414C # LABl
-    Animation = 0x4C42414C # ANIM
+    Animation = 0x4d494e41 # ANIM
     Morph = 0x46524F4D # MORF
     Author = 0x48545541 # AUTH
     Tool = 0x4C4F4F54 # TOOL
     Description = 0x43534544 # DESC
     Texture = 0x00584554 # TEX
     End = 0x00444E45 # END
+
+    @classmethod
+    def _missing_(cls, value):
+        print("invalid chunk type:", '{:04x}'.format(value))
+        return Chunktypes.null
+
 
 class ObjectFlags(Flag):
     """Object flags used in models"""
@@ -384,6 +391,7 @@ class WeightStatus(Enum):
     Middle = 1
     End = 2
 
+
 class SA2AlphaInstructions(Flag):
     null = 0x0
     # Destination alpha blending
@@ -404,6 +412,7 @@ class SA2AlphaInstructions(Flag):
     SA_INV_DST = SA_ONE | SA_OTHER | SA_SRC
 
 class MipMapDistanceAdjust(Flag):
+    null = 0x0
     D_025 = 0x1
     D_050 = 0x2
     D_100 = 0x4
