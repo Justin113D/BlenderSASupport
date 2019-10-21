@@ -1232,10 +1232,17 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
             uvLayer = bm.loops.layers.uv.new("UV0")
             for i, p in enumerate(polygons):
                 verts = []
+                indices = []
                 for l in p:
                     vID = vertexIndices[ l.vIndex() ]
                     verts.append(bm.verts[vID])
-                face = bm.faces.new(verts)
+                    indices.append(vID)
+                try:
+                    face = bm.faces.new(verts)
+                except ValueError as err:
+                    if DO:
+                        print("concat?", indices)
+                    continue
 
                 for l, pc in zip(face.loops, p):
                     l[uvLayer].uv = pc.uv.getBlenderUV()

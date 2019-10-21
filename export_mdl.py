@@ -166,10 +166,11 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
          if file_format == 'SA2':
             attaches[o.meshPtr] = format_CHUNK.Attach.read(fileR, o.meshPtr, meshID, labels)
             meshID += 1
-
+            
+   isArmature = False
    if file_format == 'SA2':
       # checking whether the file is an armature (weighted model)
-      isArmature = False
+      
       for a in attaches.values():
          for v in a.vertexChunks:
             if v.chunkType == enums.ChunkType.Vertex_VertexNormalNinjaFlags:
