@@ -58,6 +58,7 @@ def write(context,
      fileW.wUInt(0) # landtable address
      fileW.wUInt(0) # methadata address
      labels = dict() # for labels methadata
+     meshDict = dict()
 
      global_matrix = (mathutils.Matrix.Scale(global_scale, 4) @ axis_conversion(to_forward='-Z', to_up='Y',).to_4x4())
 
@@ -77,7 +78,7 @@ def write(context,
           for m in meshes:
                mesh = format_BASIC.Attach.fromMesh(m, global_matrix, bscMaterials)
                if mesh is not None:
-                    mesh.write(fileW, labels)
+                    mesh.write(fileW, labels, meshDict)
           if DO:
                print(" - - - - \n")
      else:
@@ -99,7 +100,7 @@ def write(context,
           for m in cMeshes:
                mesh = format_BASIC.Attach.fromMesh(m, global_matrix, [], isCollision=True)
                if mesh is not None:
-                    mesh.write(fileW, labels)
+                    mesh.write(fileW, labels, meshDict)
 
           #writing visual meshes
           if export_format == 'SA2':
@@ -108,17 +109,17 @@ def write(context,
                for m in vMeshes:
                     mesh = format_CHUNK.Attach.fromMesh(m, global_matrix, materials)
                     if mesh is not None:
-                         mesh.write(fileW, labels)
+                         mesh.write(fileW, labels, meshDict)
           else:
                if DO:
                     print(" == Writing GC attaches == \n")
                for m in vMeshes:
                     mesh = format_GC.Attach.fromMesh(m, global_matrix, materials)
                     if mesh is not None:
-                         mesh.write(fileW, labels)
+                         mesh.write(fileW, labels, meshDict)
      
      # writing model data
-     ModelData.updateMeshPointer(objects, labels)
+     ModelData.updateMeshPointer(objects, meshDict)
      ModelData.writeObjectList(objects, fileW, labels, True)
 
      #write COLs
@@ -148,7 +149,7 @@ def write(context,
      fileW.align(4)
 
      landTableAddress = fileW.tell()
-     labels[texFileName + "_Table"] = landTableAddress
+     labels[landTableAddress] = "tbl_" + os.path.splitext(os.path.basename(filepath))[0]
 
      #landtable info
      fileW.wUShort(COLcount) # COL count

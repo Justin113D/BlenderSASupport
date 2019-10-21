@@ -320,11 +320,11 @@ class ModelData:
                     if m.name == o.origObject.data.name:
                         o.processedMesh = m
 
-    def updateMeshPointer(objList: list, labels: dict):
-        """Updates the mesh pointer of a ModelData list utilizing the labels"""
+    def updateMeshPointer(objList: list, meshDict: dict):
+        """Updates the mesh pointer of a ModelData list utilizing a meshDict"""
         for o in objList:
             if o.processedMesh is not None:
-                    o.meshPtr = labels[o.fmt + "_" + o.processedMesh.name]
+                    o.meshPtr = meshDict[o.processedMesh.name]
             else:
                 o.meshPtr = 0
 
@@ -432,15 +432,18 @@ class ModelData:
     def writeObject(self, fileW: fileWriter.FileWriter, labels: dict, lvl: bool = False):
         """Writes object data"""
         name = self.name
-        if name[0].isdigit() and name[1].isdigit and name[2].isdigit:
-            if name[4] == '_':
-                name = name[4:]
-            else:
-                name = name[3:]
+        numberCount = 0
+        while name[numberCount].isdigit():
+            numberCount += 1
 
-        labels["o_" + name] = fileW.tell()
+        if name[numberCount + 1] == '_':
+            name = name[numberCount + 1:]
+        else:
+            name = name[numberCount:]
+
         self.objectPtr = fileW.tell()
-
+        labels[self.objectPtr] = name
+        
         fileW.wUInt(self.getObjectFlags().value)
         fileW.wUInt(self.meshPtr)
         self.position.write(fileW)
@@ -455,7 +458,18 @@ class ModelData:
         if self.meshPtr == 0:
             return
 
-        labels["col_" + self.name] = fileW.tell()
+        name = self.name
+        
+        numberCount = 0
+        while name[numberCount].isdigit():
+            numberCount += 1
+
+        if name[numberCount + 1] == '_':
+            name = name[numberCount + 1:]
+        else:
+            name = name[numberCount:]
+
+        labels[fileW.tell()] = self.name
 
         if SA2:
             self.bounds.write(fileW)
@@ -590,14 +604,18 @@ class Bone:
     def write(self, fileW: fileWriter.FileWriter, labels: dict):
         """Writes bone data in form of object data"""
         name = self.name
-        if name[0].isdigit() and name[1].isdigit and name[2].isdigit:
-            if name[3] == '_':
-                name = name[4:]
-            else:
-                name = name[3:]
+        numberCount = 0
+        while name[numberCount].isdigit():
+            numberCount += 1
 
-        labels["b_" + name] = fileW.tell()
+        if name[numberCount] == '_':
+            name = name[numberCount + 1:]
+        else:
+            name = name[numberCount:]
+
+        
         self.objectPtr = fileW.tell()
+        labels[self.objectPtr] = name
 
         objFlags = enums.ObjectFlags.NoMorph
         if self.meshPtr == 0:
@@ -1027,8 +1045,8 @@ def writeMethaData(fileW: fileWriter.FileWriter,
     global DO
     if DO:
         print(" == Labels ==")
-        for k,v in labels.items():
-            print("  ", k + ":", '{:08x}'.format(v))
+        for v,k in labels.items():
+            print("  ", k + ":", hex4(v))
         print("")
 
     #placeholders
@@ -1039,7 +1057,7 @@ def writeMethaData(fileW: fileWriter.FileWriter,
     fileW.wLong(-1)
 
     # writing the strings
-    for key, val in labels.items():
+    for val, key in labels.items():
         newLabels[val] = fileW.tell() - sizeLoc - 4
         strKey = str(key)
         strKey = strKey.replace('.', '_')
@@ -1141,17 +1159,14 @@ class Model:
         print("    rotation:", "(", str(rot.x) + ",", str(rot.y) + ",", str(rot.z), ")")
         print("    scale:", str(Vector3(self.matrix_local.to_scale())))
 
-def readObjects(fileR: fileWriter.FileReader, address: int, objID: int, hierarchyDepth: int, parent, labels: dict, result: list, tempOBJ: bpy.types.Object) -> int:
+def readObjects(fileR: fileWriter.FileReader, address: int, hierarchyDepth: int, parent, labels: dict, result: list, tempOBJ: bpy.types.Object) -> int:
 
     if address in labels:
         label: str = labels[address]
 
-        if label.startswith("b_") or label.startswith("o_"):
-            label = label[2:]
-
-        name = '{0:0=3d}'.format(objID) + "_" + label
+        name = label
     else:
-        name = '{0:0=3d}'.format(objID) + "_node_" + hex4(address)
+        name = "node_" + hex4(address)
 
     objFlags = enums.ObjectFlags(fileR.rUInt(address))
     meshPtr = fileR.rUInt(address + 4)
@@ -1183,15 +1198,15 @@ def readObjects(fileR: fileWriter.FileReader, address: int, objID: int, hierarch
 
     childPtr = fileR.rUInt(address + 44)
     if childPtr > 0:
-        objID, child = readObjects(fileR, childPtr, objID + 1, hierarchyDepth + 1, model, labels, result, tempOBJ)
+        child = readObjects(fileR, childPtr, hierarchyDepth + 1, model, labels, result, tempOBJ)
         model.child = child
     
     siblingPtr = fileR.rUInt(address + 48)
     if siblingPtr > 0:
-        objID, sibling = readObjects(fileR, siblingPtr, objID + 1, hierarchyDepth, parent, labels, result, tempOBJ)
+        sibling = readObjects(fileR, siblingPtr, hierarchyDepth, parent, labels, result, tempOBJ)
         model.sibling = sibling
 
-    return objID, model
+    return model
 
 def getDefaultMatDict() -> dict:
     d = dict()

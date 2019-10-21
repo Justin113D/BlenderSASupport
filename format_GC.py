@@ -867,7 +867,8 @@ class Attach:
             
     def write(self, 
               fileW: fileWriter.FileWriter, 
-              labels: dict):
+              labels: dict,
+              meshDict: dict = None):
         # writing vertex data first
         for l in self.vertices:
             l.writeData(fileW)
@@ -901,7 +902,10 @@ class Attach:
 
         # writing attach info
 
-        labels["gc_" + self.name] = fileW.tell()
+        attachPtr = fileW.tell()
+        labels[attachPtr] = "gc_" + self.name
+        if meshDict is not None:
+            meshDict[self.name] = attachPtr
         fileW.wUInt(vertPtr)
         fileW.wUInt(0) # gap
         fileW.wUInt(opaquePtr)

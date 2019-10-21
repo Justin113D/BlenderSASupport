@@ -156,12 +156,16 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
    objects = list()
    tempOBJ = bpy.data.objects.new("##TEMP##", None)
    context.scene.collection.objects.link(tempOBJ)
-   common.readObjects(fileR, fileR.rUInt(8), 0, 0, None, labels, objects, tempOBJ)
+   common.readObjects(fileR, fileR.rUInt(8), 0, None, labels, objects, tempOBJ)
    bpy.data.objects.remove(tempOBJ)
 
    attaches = dict()
    meshID = 0
+   objID = 0
+   numberCount = max(3, len(str(len(objects))))
    for o in objects:
+      o.name = str(objID).zfill(numberCount) + "_" + o.name 
+      objID += 1
       if o.meshPtr > 0 and o.meshPtr not in attaches:
          if file_format == 'SA2':
             attaches[o.meshPtr] = format_CHUNK.Attach.read(fileR, o.meshPtr, meshID, labels)
@@ -290,12 +294,11 @@ def write(context,
 
    fileW.wUInt(0) # placeholder for the model properties address
    fileW.wUInt(0) # placeholder for the labels address     
-   labels = dict() # for labels methadata
+   labels: Dict[int, str] = dict() # for labels methadata
 
    from bpy_extras.io_utils import axis_conversion
 
    global_matrix = (mathutils.Matrix.Scale(global_scale, 4) @ axis_conversion(to_forward='-Z', to_up='Y',).to_4x4())
-   print(global_matrix)
 
    # creating and getting variables to use in the export process
    objects, meshes, materials, mObjects = common.convertObjectData(context, use_selection, apply_modifs, global_matrix, export_format, False)
@@ -303,6 +306,9 @@ def write(context,
       fileW.close()
       return {'CANCELLED'}
 
+   meshDict: Dict[bpy.types.Mesh, addr] = dict()
+
+   # writing mesh data
    if export_format == 'SA1':
       # writing material data first
       bscMaterials = format_BASIC.Material.writeMaterials(fileW, materials, labels)
@@ -310,26 +316,27 @@ def write(context,
       for m in meshes:
          mesh = format_BASIC.Attach.fromMesh(m, global_matrix, bscMaterials)
          if mesh is not None:
-               mesh.write(fileW, labels)
+               mesh.write(fileW, labels, meshDict)
 
    elif export_format == 'SA2':
+      # armature meshes get written differently
       if not (len(objects) == 1 and isinstance(objects[0], common.Armature)):
          for m in meshes:
             mesh = format_CHUNK.Attach.fromMesh(m, global_matrix, materials)
             if mesh is not None:
-               mesh.write(fileW, labels)
+               mesh.write(fileW, labels, meshDict)
 
    else:
       for m in meshes:
           mesh = format_GC.Attach.fromMesh(m, global_matrix, materials)
           if mesh is not None:
-              mesh.write(fileW, labels)
+              mesh.write(fileW, labels, meshDict)
 
    # writing model data
-   if export_format == 'SA2' and len(objects) == 1 and isinstance(objects[0], common.Armature):
+   if export_format == 'SA2' and len(objects) == 1 and isinstance(objects[0], common.Armature): # writing an armature
       modelPtr = objects[0].writeArmature(fileW, global_matrix, materials, labels)
    else:
-      ModelData.updateMeshPointer(objects, labels)
+      ModelData.updateMeshPointer(objects, meshDict)
       modelPtr = ModelData.writeObjectList(objects, fileW, labels)
 
    labelsAddress = fileW.tell()

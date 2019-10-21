@@ -161,7 +161,7 @@ class Material:
         return mats
 
     def write(self, fileW, labels):
-        labels["mat_" + self.name] = fileW.tell()
+        labels[fileW.tell()] = "mat_" + self.name
         self.diffuse.writeRGBA(fileW)
         self.specular.writeRGBA(fileW)
         fileW.wFloat(self.exponent)
@@ -284,13 +284,13 @@ class MeshSet:
         #setting the labels
         name = "bsc_" + self.mesh.name + "_"
         if self.polyPtr > 0:
-            labels[name + "p" + str(self.meshSetID)] = self.polyPtr
+            labels[self.polyPtr] = name + "p" + str(self.meshSetID)
         if self.polyNormalPtr > 0:
-            labels[name + "nrm" + str(self.meshSetID)] = self.polyNormalPtr
+            labels[self.polyNormalPtr] = name + "nrm" + str(self.meshSetID)
         if self.ColorPtr > 0:
-            labels[name + "vc" + str(self.meshSetID) + "_" + self.mesh.vertex_colors[0].name] = self.ColorPtr
+            labels[self.ColorPtr] = name + "vc" + str(self.meshSetID)
         if self.UVPtr > 0:
-            labels[name + "uv" + str(self.meshSetID) + "_" + self.mesh.uv_layers[0].name] = self.UVPtr
+            labels[self.UVPtr] = name + "uv" + str(self.meshSetID)
 
 class Attach:
     """Attach for the BASIC format"""
@@ -435,16 +435,16 @@ class Attach:
             return None
         return Attach(mesh.name, positions, normals, meshsets, usePolyNormals, useColor, useUV, materials, bounds)
     
-    def write(self, fileW: fileWriter.FileWriter, labels: dict):
+    def write(self, fileW: fileWriter.FileWriter, labels: dict, meshDict: dict = None):
         global DO
 
         posPtr = fileW.tell()
-        labels["bsc_" + self.name + "_pos"] = posPtr
+        labels[posPtr] = "bsc_" + self.name + "_pos"
         for p in self.positions:
             p.write(fileW)
         
         nrmPtr = fileW.tell()
-        labels["bsc_" + self.name + "_nrm"] = nrmPtr
+        labels[nrmPtr] = "bsc_" + self.name + "_nrm"
         for n in self.normals:
             n.write(fileW)
 
@@ -452,12 +452,15 @@ class Attach:
             m.writePolys(fileW, self.usePolyNormals, self.useColor, self.useUV)
 
         setPtr = fileW.tell()
-        labels["bsc_" + self.name + "_set"] = setPtr
+        labels[setPtr] = "bsc_" + self.name + "_set"
         for m in self.meshSets:
             m.writeSet(fileW, labels)
 
         # writing attach info
-        labels["bsc_" + self.name] = fileW.tell()
+        attachPtr = fileW.tell()
+        labels[attachPtr] = "bsc_" + self.name
+        if meshDict is not None:
+            meshDict[self.name] = attachPtr
         fileW.wUInt(posPtr)
         fileW.wUInt(nrmPtr)
         fileW.wUInt(len(self.positions))

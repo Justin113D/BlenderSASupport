@@ -788,7 +788,8 @@ class Attach:
 
     def write(self, 
               fileW: fileWriter.FileWriter,
-              labels: dict):
+              labels: dict,
+              meshDict: dict = None):
         global DO
         
         # writing vertex chunks
@@ -807,9 +808,11 @@ class Attach:
         fileW.wUShort(enums.ChunkType.End.value)
 
         attachPtr = fileW.tell()
-        labels["cnk_" + self.name] = attachPtr
-        labels["cnk_" + self.name + "_vtx"] = vertexChunkPtr
-        labels["cnk_" + self.name + "_poly"] = polyChunkPtr
+        if meshDict is not None:
+            meshDict[self.name] = attachPtr
+        labels[attachPtr] = "cnk_" + self.name
+        labels[vertexChunkPtr] = "cnk_" + self.name + "_vtx"
+        labels[polyChunkPtr] = "cnk_" + self.name + "_poly"
 
         fileW.wUInt(vertexChunkPtr)
         fileW.wUInt(polyChunkPtr)
