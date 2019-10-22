@@ -1421,7 +1421,7 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
             
 class SAObjectPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_saProperties"
-    bl_label = "SA Material Properties"
+    bl_label = "SA Object Properties"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "object"
