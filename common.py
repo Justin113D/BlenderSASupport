@@ -436,7 +436,7 @@ class ModelData:
         while name[numberCount].isdigit():
             numberCount += 1
 
-        if name[numberCount + 1] == '_':
+        if name[numberCount] == '_':
             name = name[numberCount + 1:]
         else:
             name = name[numberCount:]
@@ -464,7 +464,7 @@ class ModelData:
         while name[numberCount].isdigit():
             numberCount += 1
 
-        if name[numberCount + 1] == '_':
+        if name[numberCount] == '_':
             name = name[numberCount + 1:]
         else:
             name = name[numberCount:]

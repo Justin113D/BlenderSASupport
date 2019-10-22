@@ -808,6 +808,8 @@ class Attach:
         if DO:
             print("  Chunk mesh:", self.name)
             print("    Vertex chunks:", len(self.vertexChunks))
+            for v in self.vertexChunks:
+                print("     vertices:", len(v.vertices))
             print("    Vertex chunk ptr:", vertexChunkPtr)
             print("    Poly chunks:", len(self.polyChunks))
             print("    Poly chunk ptr:", polyChunkPtr, "\n")
