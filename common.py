@@ -1021,14 +1021,75 @@ def convertMesh(obj: bpy.types.Object, depsgraph: bpy.types.Depsgraph, apply_mod
 
     return me, obj.data.materials
 
-def trianglulateMesh(me: bpy.types.Mesh) -> bpy.types.Mesh:
+def trianglulateMesh(mesh: bpy.types.Mesh) -> bpy.types.Mesh:
     """Transforms a mesh into a mesh only consisting of triangles, so that it can be stripped"""
+    
+    # if we use custom normals, we gotta correct them manually, since blenders triangulate is shit
+    if mesh.use_auto_smooth:
+        # calculate em, so that we can collect the correct normals
+        mesh.calc_normals_split()
+        
+        # and now store them, together with the vertex indices, since those will be the only identical data after triangulating
+        normalData = list()
+        for p in mesh.polygons:
+            indices = list()
+            normals = list()
+
+            for l in p.loop_indices:
+                loop = mesh.loops[l]
+                nrm = loop.normal
+                normals.append((nrm.x, nrm.y, nrm.z))
+                indices.append(loop.vertex_index)
+                
+            normalData.append((indices,normals))
+                
+        # free the split data
+        #mesh.free_normals_split()
+            
     import bmesh
     bm = bmesh.new()
-    bm.from_mesh(me)
+    bm.from_mesh(mesh)
     bmesh.ops.triangulate(bm, faces=bm.faces, quad_method='FIXED', ngon_method='EAR_CLIP')
-    bm.to_mesh(me)
+    bm.to_mesh(mesh)
     bm.free()
+
+    if mesh.use_auto_smooth:
+        polygons = list()
+        for p in mesh.polygons:
+            polygons.append(p)
+        
+        splitNormals = [None] * len(mesh.loops)
+
+        for nd in normalData:
+            foundTris = 0
+            toFind = len(nd[0])-2
+            
+            out = False
+            toRemove = list()
+            
+            for p in polygons:
+                found = 0
+                for l in p.loop_indices:
+                    if mesh.loops[l].vertex_index in nd[0]:
+                        found += 1
+                        
+                if found == 3:
+                    foundTris += 1
+                    
+                    for l in p.loop_indices:
+                        splitNormals[l] = nd[1][nd[0].index(mesh.loops[l].vertex_index)]
+                        
+                    toRemove.append(p)
+                    if foundTris == toFind:
+                        break
+                    
+            for p in toRemove:
+                polygons.remove(p)
+            
+        if len(polygons) > 0:
+            print("\ntriangulating went wrong?", len(polygons))
+        else:
+            mesh.normals_split_custom_set(splitNormals)
 
 def writeMethaData(fileW: fileWriter.FileWriter,
                    labels: dict,

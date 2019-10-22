@@ -633,6 +633,27 @@ class Attach:
         vertices: List[Vertex] = list()
         polyVerts: List[PolyVert] = list()
 
+        # getting normals
+        normals = list()
+        if mesh.use_auto_smooth:
+            mesh.calc_normals_split()
+            for v in mesh.vertices:
+                normal = mathutils.Vector((0,0,0))
+                normalCount = 0
+                for l in mesh.loops:
+                    if l.vertex_index == v.index:
+                        normal += l.normal
+                        normalCount += 1
+                if normalCount == 0:
+                    normals.append(v.normal)
+                else:
+                    normals.append(normal / normalCount)
+
+            mesh.free_normals_split()
+        else:
+            for v in mesh.vertices:
+                normals.append(v.normal)
+
         if vertexType == 'VC':
             verts: List[List[Vertex]] = [[] for v in mesh.vertices]
             
@@ -665,7 +686,7 @@ class Attach:
 
         else: # normals are a lot simpler to generate (luckily)
             for v in mesh.vertices:
-                vertices.append( Vertex(v.index, v.index, Vector3(export_matrix @ v.co), Vector3(export_matrix @ v.normal), ColorARGB(), 0) )
+                vertices.append( Vertex(v.index, v.index, Vector3(export_matrix @ v.co), Vector3(export_matrix @ normals[v.index]), ColorARGB(), 0) )
 
             for l in mesh.loops:
                 uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
@@ -699,24 +720,26 @@ class Attach:
 
             mesh = m.model.processedMesh
             
-
             # getting normals
             normals = list()
-            nMesh = m.model.origObject.data if len(m.model.origObject.data.vertices) == len(mesh.vertices) else mesh
-            nMesh.calc_normals_split()
-            for v in nMesh.vertices:
-                normal = mathutils.Vector((0,0,0))
-                normalCount = 0
-                for l in nMesh.loops:
-                    if l.vertex_index == v.index:
-                        normal += l.normal
-                        normalCount += 1
-                if normalCount == 0:
-                    normals.append(v.normal)
-                else:
-                    normals.append(normal / normalCount)
+            if mesh.use_auto_smooth:
+                mesh.calc_normals_split()
+                for v in mesh.vertices:
+                    normal = mathutils.Vector((0,0,0))
+                    normalCount = 0
+                    for l in mesh.loops:
+                        if l.vertex_index == v.index:
+                            normal += l.normal
+                            normalCount += 1
+                    if normalCount == 0:
+                        normals.append(v.normal)
+                    else:
+                        normals.append(normal / normalCount)
 
-            nMesh.free_normals_split()
+                mesh.free_normals_split()
+            else:
+                for v in mesh.vertices:
+                    normals.append(v.normal)
 
             vertices: List[Vertex] = list()
             vChunkType = enums.ChunkType.Vertex_VertexNormalNinjaFlags
