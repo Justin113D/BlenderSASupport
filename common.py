@@ -342,7 +342,7 @@ class ModelData:
             if self.rotation == BAMSRotation((0,0,0)):
                 flags |= ObjectFlags.NoRotate
             if self.scale == Vector3((1,1,1)):
-            flags |= ObjectFlags.NoScale
+                flags |= ObjectFlags.NoScale
         if self.meshPtr == 0:
             flags |= ObjectFlags.NoDisplay
         if len(self.children) == 0:
