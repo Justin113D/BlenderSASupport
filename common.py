@@ -328,18 +328,20 @@ class ModelData:
             else:
                 o.meshPtr = 0
 
-    def getObjectFlags(self) -> enums.ObjectFlags:
+    def getObjectFlags(self, lvl) -> enums.ObjectFlags:
         """Calculates the Objectflags"""
         from .enums import ObjectFlags
         flags = ObjectFlags.null
-        flags |= ObjectFlags.NoAnimate # default
+        
         flags |= ObjectFlags.NoMorph # default
 
-        if self.position == Vector3((0,0,0)):
-            flags |= ObjectFlags.NoPosition
-        if self.rotation == BAMSRotation((0,0,0)):
-            flags |= ObjectFlags.NoRotate
-        if self.scale == Vector3((0,0,0)):
+        if lvl:
+            flags |= ObjectFlags.NoAnimate # default
+            if self.position == Vector3((0,0,0)):
+                flags |= ObjectFlags.NoPosition
+            if self.rotation == BAMSRotation((0,0,0)):
+                flags |= ObjectFlags.NoRotate
+            if self.scale == Vector3((1,1,1)):
             flags |= ObjectFlags.NoScale
         if self.meshPtr == 0:
             flags |= ObjectFlags.NoDisplay
@@ -444,7 +446,7 @@ class ModelData:
         self.objectPtr = fileW.tell()
         labels[self.objectPtr] = name
         
-        fileW.wUInt(self.getObjectFlags().value)
+        fileW.wUInt(self.getObjectFlags(lvl).value)
         fileW.wUInt(self.meshPtr)
         self.position.write(fileW)
         self.rotation.write(fileW)
