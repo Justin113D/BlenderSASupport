@@ -515,9 +515,10 @@ class Attach:
         if writeNRM:
             nrmData = list()
             nrmIDs = [0] * len(mesh.vertices)
+            normals = common.getNormalData(mesh)
             for i, v in enumerate(mesh.vertices):
                 found = None
-                nrm = Vector3(export_matrix @ v.normal)
+                nrm = Vector3(export_matrix @ normals[i])
                 for j, n in enumerate(nrmData):
                     if n == nrm:
                         found = j
@@ -625,9 +626,10 @@ class Attach:
             if s is None:
                 continue
             mat = None
-            for m in materials:
-                if m.name == mesh.materials[i].name:
-                    mat = m
+            if len(mesh.materials) > 0:
+                for m in materials:
+                    if m.name == mesh.materials[i].name:
+                        mat = m
 
             # generating parameters
             parameters = list()

@@ -1091,6 +1091,28 @@ def trianglulateMesh(mesh: bpy.types.Mesh) -> bpy.types.Mesh:
         else:
             mesh.normals_split_custom_set(splitNormals)
 
+def getNormalData(mesh: bpy.types.Mesh) -> list():
+    normals = list()
+    if mesh.use_auto_smooth:
+        mesh.calc_normals_split()
+        for v in mesh.vertices:
+            normal = mathutils.Vector((0,0,0))
+            normalCount = 0
+            for l in mesh.loops:
+                if l.vertex_index == v.index:
+                    normal += l.normal
+                    normalCount += 1
+            if normalCount == 0:
+                normals.append(v.normal)
+            else:
+                normals.append(normal / normalCount)
+
+        mesh.free_normals_split()
+    else:
+        for v in mesh.vertices:
+            normals.append(v.normal)
+    return normals
+
 def writeMethaData(fileW: fileWriter.FileWriter,
                    labels: dict,
                    scene: bpy.types.Scene,

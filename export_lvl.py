@@ -60,6 +60,7 @@ def write(context,
      labels = dict() # for labels methadata
      meshDict = dict()
 
+     from bpy_extras.io_utils import axis_conversion
      global_matrix = (mathutils.Matrix.Scale(global_scale, 4) @ axis_conversion(to_forward='-Z', to_up='Y',).to_4x4())
 
      # creating and getting variables to use in the export process

@@ -634,25 +634,7 @@ class Attach:
         polyVerts: List[PolyVert] = list()
 
         # getting normals
-        normals = list()
-        if mesh.use_auto_smooth:
-            mesh.calc_normals_split()
-            for v in mesh.vertices:
-                normal = mathutils.Vector((0,0,0))
-                normalCount = 0
-                for l in mesh.loops:
-                    if l.vertex_index == v.index:
-                        normal += l.normal
-                        normalCount += 1
-                if normalCount == 0:
-                    normals.append(v.normal)
-                else:
-                    normals.append(normal / normalCount)
-
-            mesh.free_normals_split()
-        else:
-            for v in mesh.vertices:
-                normals.append(v.normal)
+        normals = common.getNormalData(mesh)
 
         if vertexType == 'VC':
             verts: List[List[Vertex]] = [[] for v in mesh.vertices]
@@ -721,25 +703,7 @@ class Attach:
             mesh = m.model.processedMesh
             
             # getting normals
-            normals = list()
-            if mesh.use_auto_smooth:
-                mesh.calc_normals_split()
-                for v in mesh.vertices:
-                    normal = mathutils.Vector((0,0,0))
-                    normalCount = 0
-                    for l in mesh.loops:
-                        if l.vertex_index == v.index:
-                            normal += l.normal
-                            normalCount += 1
-                    if normalCount == 0:
-                        normals.append(v.normal)
-                    else:
-                        normals.append(normal / normalCount)
-
-                mesh.free_normals_split()
-            else:
-                for v in mesh.vertices:
-                    normals.append(v.normal)
+            normals = common.getNormalData(mesh)
 
             vertices: List[Vertex] = list()
             vChunkType = enums.ChunkType.Vertex_VertexNormalNinjaFlags

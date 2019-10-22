@@ -337,11 +337,11 @@ class Attach:
 
         # gettings the positions and normals
         positions = [None] * len(mesh.vertices)
-        normals = [None] * len(mesh.vertices)
+        normals = common.getNormalData(mesh)
 
         for i, v in enumerate(mesh.vertices):
             positions[i] = Vector3(export_matrix @ v.co)
-            normals[i] = Vector3(export_matrix @ v.normal)
+            normals[i] = Vector3(export_matrix @ normals[i])
 
         # calculating bounds
         bounds = BoundingBox(mesh.vertices)
@@ -420,13 +420,14 @@ class Attach:
                 if p == None:
                     continue
                 matID = 0
-                try:
-                    for mid, m in enumerate(materials):
-                        if m.name == mesh.materials[i].name:
-                            matID = mid
-                            break
-                except ValueError:
-                    print(" material", mesh.materials[i].name, "not found")
+                if len(mesh.materials) > 0:
+                    try:
+                        for mid, m in enumerate(materials):
+                            if m.name == mesh.materials[i].name:
+                                matID = mid
+                                break
+                    except ValueError:
+                        print(" material", mesh.materials[i].name, "not found")
 
                 meshsets.append(MeshSet(mesh, matID, i, p[0], p[1]))
 
