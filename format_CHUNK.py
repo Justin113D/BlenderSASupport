@@ -615,7 +615,9 @@ class Attach:
                     stripFlags |= enums.StripFlags.FLAT_SHADING
                 if matProps.b_useEnv:
                     stripFlags |= enums.StripFlags.ENV_MAPPING
-            
+                if matProps.b_unknown:
+                    stripFlags |= enums.StripFlags.Unknown
+
             polyChunks.append(PolyChunk_Strip(writeUVs, stripFlags, l))
 
         return polyChunks
@@ -1103,6 +1105,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                     tmpMat["b_doubleSided"] = (c.flags & enums.StripFlags.DOUBLE_SIDE).value > 0
                     tmpMat["b_flatShading"] = (c.flags & enums.StripFlags.FLAT_SHADING).value > 0
                     tmpMat["b_useEnv"] = (c.flags & enums.StripFlags.ENV_MAPPING).value > 0
+                    tmpMat["b_unknown"] = (c.flags & enums.StripFlags.Unknown).value > 0
 
                     material = None
 

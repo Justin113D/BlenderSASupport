@@ -444,3 +444,4 @@ class StripFlags(Flag):
     DOUBLE_SIDE = 0x10
     FLAT_SHADING = 0x20
     ENV_MAPPING = 0x40
+    Unknown = 0x80

@@ -1318,6 +1318,7 @@ def getDefaultMatDict() -> dict:
     d["b_flatShading"] = False
     d["b_ignoreLighting"] = False
     d["b_ignoreAmbient"] = False
+    d["b_unknown"] = False
     d["gc_shadowStencil"] = 1
     d["gc_texMatrixID"] = 'IDENTITY'
     d["gc_texGenSourceMtx"] = 'TEX0'

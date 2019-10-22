@@ -1039,6 +1039,12 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         default=False
         )
 
+    b_unknown: BoolProperty(
+        name="unknown",
+        description="to be figured out",
+        default = False
+        )
+
     # GC features (parameters)
 
     gc_shadowStencil: IntProperty(
@@ -1172,6 +1178,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         d["b_flatShading"] = self.b_flatShading
         d["b_ignoreLighting"] = self.b_ignoreLighting
         d["b_ignoreAmbient"] = self.b_ignoreAmbient
+        d["b_unknown"] = self.b_unknown
         d["gc_shadowStencil"] = self.gc_shadowStencil
         d["gc_texMatrixID"] = self.gc_texMatrixID
         d["gc_texGenSourceMtx"] = self.gc_texGenSourceMtx
@@ -1207,6 +1214,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         self.b_flatShading = d["b_flatShading"]
         self.b_ignoreLighting = d["b_ignoreLighting"]
         self.b_ignoreAmbient = d["b_ignoreAmbient"]
+        self.b_unknown = d["b_unknown"]
         self.gc_shadowStencil = d["gc_shadowStencil"]
         self.gc_texMatrixID = d["gc_texMatrixID"]
         self.gc_texGenSourceMtx = d["gc_texGenSourceMtx"]
@@ -1374,6 +1382,7 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
             box.prop(matProps, "b_ignoreLighting")
             box.prop(matProps, "b_ignoreAmbient")
             box.prop(matProps, "b_flatShading")
+            box.prop(matProps, "b_unknown")
             
         box = menu.box()
         box.prop(menuProps, "expandedGC",
