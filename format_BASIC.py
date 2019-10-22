@@ -4,7 +4,7 @@ import mathutils
 import math
 from typing import List
 
-from . import enums, fileWriter, strippifier, common
+from . import enums, fileHelper, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox
 
 # note: In sa2's case, the BASIC model format is only used for collisions.
@@ -138,7 +138,7 @@ class Material:
         print("    Texture ID:", self.textureID)
         print("    Flags:", self.mFlags, "\n")
 
-    def writeMaterials(fileW: fileWriter.FileWriter, materials: List[bpy.types.Material], labels: dict):
+    def writeMaterials(fileW: fileHelper.FileWriter, materials: List[bpy.types.Material], labels: dict):
         """writes materials as BASIC materal data"""
         mats = list()
 
@@ -232,7 +232,7 @@ class MeshSet:
         self.polyAttribs = polyAttribs
         self.polycount = len(polys) if polyType == enums.PolyType.Strips or polyType == enums.PolyType.NPoly else round(len(polys[0]) / 3)
 
-    def writePolys(self, fileW: fileWriter.FileWriter, usePolyNormals: bool, useColor: bool, useUV: bool):
+    def writePolys(self, fileW: fileHelper.FileWriter, usePolyNormals: bool, useColor: bool, useUV: bool):
 
         #writing poly indices
         self.polyPtr = fileW.tell()
@@ -436,7 +436,7 @@ class Attach:
             return None
         return Attach(mesh.name, positions, normals, meshsets, usePolyNormals, useColor, useUV, materials, bounds)
     
-    def write(self, fileW: fileWriter.FileWriter, labels: dict, meshDict: dict = None):
+    def write(self, fileW: fileHelper.FileWriter, labels: dict, meshDict: dict = None):
         global DO
 
         posPtr = fileW.tell()

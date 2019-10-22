@@ -6,7 +6,7 @@ import copy
 import math
 from typing import List, Dict
 
-from . import enums, fileWriter, strippifier, common
+from . import enums, fileHelper, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox, BoneMesh
 from .__init__ import SAMaterialSettings
 
@@ -58,15 +58,15 @@ class Vertex:
         cVal = max(0, min(0xFF,  round(255 * val)))
         self.ninjaFlags |= cVal << 16
 
-    def writeVC(self, fileW: fileWriter.FileWriter):
+    def writeVC(self, fileW: fileHelper.FileWriter):
         self.pos.write(fileW)
         self.col.writeARGB(fileW)
         
-    def writeNRM(self, fileW: fileWriter.FileWriter):
+    def writeNRM(self, fileW: fileHelper.FileWriter):
         self.pos.write(fileW)
         self.nrm.write(fileW)
 
-    def writeNRMW(self, fileW: fileWriter.FileWriter):
+    def writeNRMW(self, fileW: fileHelper.FileWriter):
         self.pos.write(fileW)
         self.nrm.write(fileW)
         fileW.wUInt(self.ninjaFlags)
@@ -89,7 +89,7 @@ class VertexChunk:
         self.indexBufferOffset = indexBufferOffset
         self.vertices = vertices
 
-    def write(self, fileW: fileWriter.FileWriter):
+    def write(self, fileW: fileHelper.FileWriter):
         fileW.wByte(self.chunkType.value)
         fileW.wByte(self.weightType.value)
         
@@ -158,7 +158,7 @@ class PolyChunk:
     def __init__(self, chunkType: enums.ChunkType):
         self.chunkType = chunkType
 
-    def write(self, fileW: fileWriter.FileWriter):
+    def write(self, fileW: fileHelper.FileWriter):
         fileW.wByte(self.chunkType.value)
 
 class PolyChunk_Bit(PolyChunk):
@@ -170,7 +170,7 @@ class PolyChunk_Bit(PolyChunk):
         super(PolyChunk_Bit, self).__init__(chunkType)
         self.data = 0
 
-    def write(self, fileW: fileWriter.FileWriter):
+    def write(self, fileW: fileHelper.FileWriter):
         super(PolyChunk_Bit, self).write(fileW)
         fileW.wByte(self.data)
 
@@ -268,7 +268,7 @@ class PolyChunk_Texture(PolyChunk):
         self.anisotropy = anisotropy
         self.filtering = filtering
 
-    def read(fileR: fileWriter.FileReader, address: int):
+    def read(fileR: fileHelper.FileReader, address: int):
         flags = enums.TextureIDFlags(fileR.rByte(address))
         header = fileR.rUShort(address + 1)
         texID = header & 0x1FFF
@@ -276,7 +276,7 @@ class PolyChunk_Texture(PolyChunk):
         filtering = enums.TextureFiltering( header >> 14 )
         return PolyChunk_Texture(texID, flags, aniso, filtering), address + 3
      
-    def write(self, fileW: fileWriter.FileWriter):
+    def write(self, fileW: fileHelper.FileWriter):
         super(PolyChunk_Texture, self).write(fileW)
         fileW.wByte(self.flags.value)
         value = min(self.texID, 0x1FFF)
@@ -301,7 +301,7 @@ class PolyChunk_Material(PolyChunk):
         self.ambient = ambient
         self.specular = specular
 
-    def read(fileR: fileWriter.FileReader, chunkType: enums.ChunkType, address: int):
+    def read(fileR: fileHelper.FileReader, chunkType: enums.ChunkType, address: int):
         address += 3 # skipping gap and size
 
         diffuse = ColorARGB()
@@ -322,7 +322,7 @@ class PolyChunk_Material(PolyChunk):
         return PolyChunk_Material(diffuse, ambient, specular), address
 
 
-    def write(self, fileW: fileWriter.FileWriter):
+    def write(self, fileW: fileHelper.FileWriter):
         super(PolyChunk_Material, self).write(fileW)
         fileW.wByte(0) # gap, usually flags, but those are unused in sa2
         fileW.wUShort(6) # size (amount of 2 byte sets)
@@ -352,7 +352,7 @@ class PolyChunk_Strip(PolyChunk):
         else:
             self.reversedStrips = reversedStrips
     
-    def read(fileR: fileWriter.FileReader, chunkType: enums.ChunkType, address: int):
+    def read(fileR: fileHelper.FileReader, chunkType: enums.ChunkType, address: int):
         
         flags = enums.StripFlags(fileR.rByte(address))
         address += 1
@@ -417,7 +417,7 @@ class PolyChunk_Strip(PolyChunk):
 
         return PolyChunk_Strip(hasUV, flags, polyVerts, reversedStrips), address
 
-    def write(self, fileW: fileWriter.FileWriter):
+    def write(self, fileW: fileHelper.FileWriter):
         super(PolyChunk_Strip, self).write(fileW)
         fileW.wByte(self.flags.value)
         size = 1
@@ -774,7 +774,7 @@ class Attach:
         return Attach(boneName, vertexChunks, polyChunks, bounds)
 
     def write(self, 
-              fileW: fileWriter.FileWriter,
+              fileW: fileHelper.FileWriter,
               labels: dict,
               meshDict: dict = None):
         global DO
@@ -814,7 +814,7 @@ class Attach:
 
         return attachPtr
 
-    def read(fileR: fileWriter.FileReader, address: int, meshID: int, labels: dict):
+    def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
 
         if address in labels:
             name: str = labels[address]

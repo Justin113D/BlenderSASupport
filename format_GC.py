@@ -3,7 +3,7 @@ import math
 import mathutils
 from typing import List
 
-from . import fileWriter, enums, strippifier, common
+from . import fileHelper, enums, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox
 from .__init__ import SAMaterialSettings
 
@@ -25,7 +25,7 @@ class Parameter:
         self.pType = pType
         self.data = 0
 
-    def write(self, fileW: fileWriter.FileWriter):
+    def write(self, fileW: fileHelper.FileWriter):
         fileW.wUInt(self.pType.value)
         fileW.wUInt(self.data)
 
@@ -335,13 +335,13 @@ class Geometry:
         if self.indexAttributes is None:
             print("Index attributes not found")
 
-    def writeParams(self, fileW: fileWriter.FileWriter):
+    def writeParams(self, fileW: fileHelper.FileWriter):
         """Writes the parameters of the geometry"""
         self.paramPtr = fileW.tell()
         for p in self.params:
             p.write(fileW)
 
-    def writePolygons(self, fileW: fileWriter.FileWriter):
+    def writePolygons(self, fileW: fileHelper.FileWriter):
         """Writes the polygon data of the geometry"""
         self.polygonPtr = fileW.tell()
         fileW.setBigEndian(True)
@@ -380,7 +380,7 @@ class Geometry:
         fileW.setBigEndian(False)
         self.polygonSize = fileW.tell() - self.polygonPtr
 
-    def writeGeom(self, fileW: fileWriter.FileWriter):
+    def writeGeom(self, fileW: fileHelper.FileWriter):
         """Writes geometry data (requires params and polygons to be written)"""
         fileW.wUInt(self.paramPtr)
         fileW.wUInt(len(self.params))
@@ -436,7 +436,7 @@ class Vertices:
         print("   Size:", len(self.data) * self.getCompSize())
         print(" - - - - \n")
 
-    def writeData(self, fileW: fileWriter.FileWriter):
+    def writeData(self, fileW: fileHelper.FileWriter):
         """Writes the data and saves the pointer"""
         self.dataPtr = fileW.tell()
 
@@ -447,7 +447,7 @@ class Vertices:
             for e in self.data:
                 e.write(fileW)
 
-    def writeAttrib(self, fileW: fileWriter.FileWriter):
+    def writeAttrib(self, fileW: fileHelper.FileWriter):
         """Writes the attribute of the vertices (requires data to be written)"""
         fileW.wByte(self.vType.value)
         fileW.wByte(self.fracBitCount)
@@ -868,7 +868,7 @@ class Attach:
         return Attach(mesh.name, vertices, opaqueGeom, transparentGeom, bounds)
             
     def write(self, 
-              fileW: fileWriter.FileWriter, 
+              fileW: fileHelper.FileWriter, 
               labels: dict,
               meshDict: dict = None):
         # writing vertex data first

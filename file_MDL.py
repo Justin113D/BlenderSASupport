@@ -1,7 +1,7 @@
 import bpy
 import os
 import mathutils
-from . import fileWriter, enums, common, format_BASIC, format_CHUNK, format_GC
+from . import fileHelper, enums, common, format_BASIC, format_CHUNK, format_GC
 from .common import ModelData
 from typing import Dict, List
 
@@ -21,7 +21,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
    if DO:
       os.system("cls")
 
-   fileR = fileWriter.FileReader(filepath)
+   fileR = fileHelper.FileReader(filepath)
 
    if fileR.filepath is None:
       print("no valid filepath")
@@ -272,7 +272,7 @@ def write(context,
          os.system("cls")
 
    # create the file
-   fileW = fileWriter.FileWriter(filepath=filepath)
+   fileW = fileHelper.FileWriter(filepath=filepath)
 
    # write the header
    fileVersion = 3

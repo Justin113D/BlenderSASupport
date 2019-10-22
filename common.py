@@ -7,7 +7,7 @@ import queue
 from typing import List, Dict
 
 
-from . import fileWriter, enums
+from . import fileHelper, enums
 
 DO = False # Debug Out
 
@@ -119,7 +119,7 @@ class UV:
     def getBlenderUV(self):
         return (self.x / 256.0, 1-(self.y / 256.0))
 
-    def write(self, fileW: fileWriter.FileWriter):
+    def write(self, fileW: fileHelper.FileWriter):
         """Writes data to file"""
         fileW.wShort(self.x)
         fileW.wShort(self.y)
@@ -422,14 +422,14 @@ class ModelData:
         
         return flags
 
-    def writeObjectList(objects: list, fileW: fileWriter.FileWriter, labels: dict, lvl: bool = False):
+    def writeObjectList(objects: list, fileW: fileHelper.FileWriter, labels: dict, lvl: bool = False):
         
         for o in reversed(objects):
             o.writeObject(fileW, labels, lvl)
 
         return objects[0].objectPtr
 
-    def writeObject(self, fileW: fileWriter.FileWriter, labels: dict, lvl: bool = False):
+    def writeObject(self, fileW: fileHelper.FileWriter, labels: dict, lvl: bool = False):
         """Writes object data"""
         name = self.name
         numberCount = 0
@@ -452,7 +452,7 @@ class ModelData:
         fileW.wUInt(0 if self.child is None or lvl else self.child.objectPtr)
         fileW.wUInt(0 if self.sibling is None or lvl else self.sibling.objectPtr)
 
-    def writeCOL(self, fileW: fileWriter.FileWriter, labels: dict, SA2: bool):
+    def writeCOL(self, fileW: fileHelper.FileWriter, labels: dict, SA2: bool):
         """writes COL data"""
         # a COL always needs a mesh
         if self.meshPtr == 0:
@@ -587,7 +587,7 @@ class Bone:
     def writeMesh(self,
                   export_matrix: mathutils.Matrix,
                   materials: List[bpy.types.Material],
-                  fileW: fileWriter.FileWriter,
+                  fileW: fileHelper.FileWriter,
                   labels: dict):
         self.meshPtr = 0  
         if len(self.weightedMeshes) > 0:
@@ -601,7 +601,7 @@ class Bone:
             if mesh is not None:
                 self.meshPtr = mesh.write(fileW, labels)
           
-    def write(self, fileW: fileWriter.FileWriter, labels: dict):
+    def write(self, fileW: fileHelper.FileWriter, labels: dict):
         """Writes bone data in form of object data"""
         name = self.name
         numberCount = 0
@@ -636,7 +636,7 @@ class Armature(ModelData):
     bones: List[Bone]
 
     def writeArmature(self,
-                      fileW: fileWriter.FileWriter,
+                      fileW: fileHelper.FileWriter,
                       export_matrix: mathutils.Matrix,
                       materials: List[bpy.types.Material],
                       labels: dict
@@ -1113,7 +1113,7 @@ def getNormalData(mesh: bpy.types.Mesh) -> list():
             normals.append(v.normal)
     return normals
 
-def writeMethaData(fileW: fileWriter.FileWriter,
+def writeMethaData(fileW: fileHelper.FileWriter,
                    labels: dict,
                    scene: bpy.types.Scene,
                    ):
@@ -1242,7 +1242,7 @@ class Model:
         print("    rotation:", "(", str(rot.x) + ",", str(rot.y) + ",", str(rot.z), ")")
         print("    scale:", str(Vector3(self.matrix_local.to_scale())))
 
-def readObjects(fileR: fileWriter.FileReader, address: int, hierarchyDepth: int, parent, labels: dict, result: list, tempOBJ: bpy.types.Object) -> int:
+def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int, parent, labels: dict, result: list, tempOBJ: bpy.types.Object) -> int:
 
     if address in labels:
         label: str = labels[address]

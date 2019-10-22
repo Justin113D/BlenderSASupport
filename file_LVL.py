@@ -1,7 +1,7 @@
 import bpy
 import os
 import mathutils
-from . import fileWriter, enums, common, format_BASIC, format_GC, format_CHUNK
+from . import fileHelper, enums, common, format_BASIC, format_GC, format_CHUNK
 
 DO = False # Debug out
 
@@ -34,7 +34,7 @@ def write(context,
           os.system("cls")
 
      # create the file
-     fileW = fileWriter.FileWriter(filepath=filepath)
+     fileW = fileHelper.FileWriter(filepath=filepath)
 
      # write the file header
      fileVersion = 3

@@ -13,10 +13,10 @@ bl_info = {
 
 if "bpy" in locals():
     import importlib
-    if "export_mdl" in locals():
-        importlib.reload(export_mdl)
-    if "export_lvl" in locals():
-        importlib.reload(export_lvl)
+    if "file_MDL" in locals():
+        importlib.reload(file_MDL)
+    if "file_LVL" in locals():
+        importlib.reload(file_LVL)
     if "format_BASIC" in locals():
         importlib.reload(format_BASIC)
     if "format_GC" in locals():
@@ -25,8 +25,8 @@ if "bpy" in locals():
         importlib.reload(format_CHUNK)
     if "strippifier" in locals():
         importlib.reload(strippifier)   
-    if "fileWriter" in locals():
-        importlib.reload(fileWriter)
+    if "fileHelper" in locals():
+        importlib.reload(fileHelper)
     if "enums" in locals():
         importlib.reload(enums)
     if "common" in locals():
@@ -101,10 +101,10 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
         )
 
     def execute(self, context):
-        from . import export_mdl
+        from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA1'
-        return export_mdl.write(context, **keywords)
+        return file_MDL.write(context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -154,10 +154,10 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         )
 
     def execute(self, context):
-        from . import export_mdl
+        from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2'
-        return export_mdl.write(context, **keywords)
+        return file_MDL.write(context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -207,10 +207,10 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
         )
 
     def execute(self, context):
-        from . import export_mdl
+        from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2B'
-        return export_mdl.write(context, **keywords)
+        return file_MDL.write(context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -260,10 +260,10 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
         )
     
     def execute(self, context):
-        from . import export_lvl
+        from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA1'
-        return export_lvl.write(context, **keywords)
+        return file_LVL.write(context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -313,10 +313,10 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
         )
     
     def execute(self, context):
-        from . import export_lvl
+        from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2'
-        return export_lvl.write(context, **keywords)
+        return file_LVL.write(context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -366,11 +366,11 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         )
     
     def execute(self, context):
-        from . import export_lvl
+        from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         
         keywords["export_format"] = 'SA2B'
-        return export_lvl.write(context, **keywords)
+        return file_LVL.write(context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -402,9 +402,9 @@ class ImportMDL(bpy.types.Operator, ImportHelper):
             )
 
     def execute(self, context):
-        from . import export_mdl
+        from . import file_MDL
 
-        return export_mdl.read(context, self.filepath, self.console_debug_output)
+        return file_MDL.read(context, self.filepath, self.console_debug_output)
 
 # operators
 class StrippifyTest(bpy.types.Operator):
