@@ -752,8 +752,9 @@ class Attach:
                 vChunkType = enums.ChunkType.Vertex_VertexNormal
             elif m.weightIndex == -2: # do those with no weights
                 for v in mesh.vertices:
-                    if len(v.groups) == 0:
-                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, 1) )
+                    if len(v.groups) == 0 or enums.WeightStatus.Start:
+                        weight = 0 if enums.WeightStatus.Start else 1
+                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, weight) )
 
                         vert = Container()
                         vert.co = Vector3(matrix @ v.co)
