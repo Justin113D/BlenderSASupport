@@ -95,6 +95,9 @@ class ColorARGB:
     def toBlenderTuple(self):
         return (self.r / 255.0, self.g / 255.0, self.b / 255.0, self.a / 255.0)
 
+    def isWhite(self):
+        return self.a == 255 and self.r == 255 and self.g == 255 and self.b == 255
+
     def __eq__(self, other):
         return self.a == other.a and self.r == other.r and self.g == other.g and self.b == other.b
 

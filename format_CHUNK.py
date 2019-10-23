@@ -670,7 +670,7 @@ class Attach:
 
         else: # normals are a lot simpler to generate (luckily)
             for v in mesh.vertices:
-                vertices.append( Vertex(v.index, v.index, Vector3(export_matrix @ v.co), Vector3(export_matrix @ normals[v.index]), ColorARGB(), 0) )
+                vertices.append( Vertex(v.index, v.index, Vector3(export_matrix @ v.co), Vector3(export_matrix @ normals[v.index]), None, 0) )
 
             for l in mesh.loops:
                 uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
@@ -721,7 +721,7 @@ class Attach:
                                 weight = g.weight
                         if weightsAdded > 0:
                                 weight = weight / weightsAdded
-                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), ColorARGB(), weight) )
+                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, weight) )
 
                         vert = Container()
                         vert.co = Vector3(matrix @ v.co)
@@ -737,14 +737,14 @@ class Attach:
                         if weight is not None:
                             if weightsAdded > 0:
                                 weight = weight / weightsAdded
-                            vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), ColorARGB(), weight) )
+                            vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, weight) )
 
                             vert = Container()
                             vert.co = Vector3(matrix @ v.co)
                             allVertices.append(vert)
             elif m.weightIndex == -1: # do all
                 for v in mesh.vertices:
-                    vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), ColorARGB(), 0) )
+                    vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, 0) )
 
                     vert = Container()
                     vert.co = Vector3(matrix @ v.co)
@@ -753,7 +753,7 @@ class Attach:
             elif m.weightIndex == -2: # do those with no weights
                 for v in mesh.vertices:
                     if len(v.groups) == 0:
-                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), ColorARGB(), 1) )
+                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, 1) )
 
                         vert = Container()
                         vert.co = Vector3(matrix @ v.co)
@@ -842,7 +842,6 @@ class Attach:
                 indexBufferOffset = fileR.rUShort(tmpAddr + 4)
                 vertexCount = fileR.rUShort(tmpAddr + 6)
                 
-
                 vertices = list()
                 if DO:
                     print("ChunkType:", chunkType)
@@ -852,7 +851,6 @@ class Attach:
                     print("  index buffer offset:", indexBufferOffset)
                     print("  vCount:", vertexCount)
 
-                    
                 tmpAddr += 8
 
                 for i in range(vertexCount):
@@ -863,7 +861,7 @@ class Attach:
                     pos = Vector3((posX, -posZ, posY))
                     tmpAddr += 12
 
-                    col = ColorARGB()
+                    col = None
 
                     # getting color
                     if chunkType == enums.ChunkType.Vertex_VertexDiffuse8:
@@ -979,23 +977,17 @@ class BufferedVertex:
     def getWorldPos(self):
         pos = Vector3((0,0,0))
         for v in self.vertices:
-            pos += v.model.matrix_world @ v.position
-        pos = pos / len(self.vertices)
+            pos += (v.model.matrix_world @ v.position) * v.weight
         return (pos.x, pos.y, pos.z)
 
     def getWorldNormals(self):
         nrm = Vector3((0,0,0))
-        nrmCount = 0
         for v in self.vertices:
             if v.normal is not None:
-                nrm += v.model.matrix_world.to_3x3() @ v.normal
-                nrmCount += 1
+                nrm += (v.model.matrix_world.to_3x3() @ v.normal) * v.weight
+        nrm.normalize()
         
-        if nrmCount == 0:
-            return (0,0,0)
-        else:
-            nrm /= nrmCount
-            return (nrm.x, nrm.y, nrm.z)
+        return (nrm.x, nrm.y, nrm.z) 
 
     def getLocalPos(self):
         """only use if only one item in self.vertices"""
@@ -1009,6 +1001,20 @@ class BufferedVertex:
             return (0,0,0)
         else:
             return (nrm.x, nrm.y, nrm.z)
+
+    def hasColor(self):
+        for v in self.vertices:
+            if v.color is not None:
+                return True
+        return False
+
+    def getColor(self):
+        if len(self.vertices) == 0 or len(self.vertices) > 1:
+            print("Vertex count invalid:", len(self.vertices))
+            return mathutils.Vector(ColorARGB().toBlenderTuple())
+        elif len(self.vertices) == 1:
+            return mathutils.Vector(self.vertices[0].color.toBlenderTuple())
+        
 
 def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], isArmature: bool):
     
@@ -1073,16 +1079,22 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                     if vtx.model not in affectedBy:
                         affectedBy.append(vtx.model)
 
-            #weighted = len(affectedBy) > 1
-            
+            hasColor = False
+
             # getting distinct vertices, so that we can weld them and prevent doubles
             vertexSets = list()
             if isArmature:
                 for v in vertices:
                     vertexSets.append((v.getWorldPos(), v.getWorldNormals()))
+                    if v.hasColor():
+                        hasColor = True
             else:
                 for v in vertices:
                     vertexSets.append((v.getLocalPos(), v.getLocalNrm()))
+                    if v.hasColor():
+                        hasColor = True
+
+            print("has color?", hasColor)
 
             # getting the distinct positions and adding them to the py data:
 
@@ -1135,9 +1147,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                                 polygons.append((s[p+1], s[p], s[p+2]))
                         else:
                             for p in range(len(s) - 2):
-                                polygons.append((s[p], s[p+1], s[p+2])) 
-
-                    
+                                polygons.append((s[p], s[p+1], s[p+2]))  
                 elif c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular:
                     tmpMat["b_Diffuse"] = c.diffuse.toBlenderTuple()
                     tmpMat["b_Ambient"] = c.ambient.toBlenderTuple()
@@ -1215,6 +1225,9 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
             for m in meshMaterials:
                 mesh.materials.append(m)
 
+            if not hasColor:
+                mesh.saSettings.sa2ExportType = 'NRM'
+
             bm = bmesh.new()
             bm.from_mesh(mesh)
 
@@ -1224,7 +1237,10 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
             bm.verts.index_update()
 
             matIndex = 0
+
             uvLayer = bm.loops.layers.uv.new("UV0")
+            if hasColor:
+                colorLayer = bm.loops.layers.color.new("COL0")       
             for i, p in enumerate(polygons):
                 verts = []
                 indices = []
@@ -1241,6 +1257,8 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
 
                 for l, pc in zip(face.loops, p):
                     l[uvLayer].uv = pc.uv.getBlenderUV()
+                    if hasColor:
+                        l[colorLayer] = vertexBuffer[pc.vIndex()].getColor()
 
                 if i in matMarkers:
                     matIndex = matMarkers[i]
