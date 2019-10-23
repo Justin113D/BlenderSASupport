@@ -773,7 +773,7 @@ class Attach:
 
         bounds = BoundingBox(allVertices)
                 
-        return Attach(boneName, vertexChunks, polyChunks, bounds)
+        return Attach(None, vertexChunks, polyChunks, bounds)
 
     def write(self, 
               fileW: fileHelper.FileWriter,
@@ -795,6 +795,9 @@ class Attach:
                 
         # writing poly chunk terminator
         fileW.wUShort(enums.ChunkType.End.value)
+
+        if self.name is None:
+            self.name = "attach_" + common.hex4(fileW.tell())
 
         attachPtr = fileW.tell()
         if meshDict is not None:
