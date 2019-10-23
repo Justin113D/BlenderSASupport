@@ -1097,8 +1097,6 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                     if v.hasColor():
                         hasColor = True
 
-            print("has color?", hasColor)
-
             # getting the distinct positions and adding them to the py data:
 
             vDistinct, vIDs = common.getDistinctwID(vertexSets)
@@ -1187,37 +1185,37 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                     instr = c.alphaInstruction
                     from .enums import SA2AlphaInstructions
                     
-                    if instr & SA2AlphaInstructions.SA_ONE:
-                        tmpMat["b_srcAlpha"] = 'ONE'
-                    elif instr & SA2AlphaInstructions.SA_OTHER:
-                        tmpMat["b_srcAlpha"] = 'OTHER'
-                    elif instr & SA2AlphaInstructions.SA_INV_OTHER:
-                        tmpMat["b_srcAlpha"] = 'INV_OTHER'
+                    if instr & SA2AlphaInstructions.SA_INV_DST == SA2AlphaInstructions.SA_INV_DST:
+                        tmpMat["b_srcAlpha"] = 'INV_DST'
+                    elif instr & SA2AlphaInstructions.SA_DST == SA2AlphaInstructions.SA_DST:
+                        tmpMat["b_srcAlpha"] = 'DST'
+                    elif instr & SA2AlphaInstructions.SA_INV_SRC == SA2AlphaInstructions.SA_INV_SRC:
+                        tmpMat["b_srcAlpha"] = 'INV_SRC'
+                    elif instr & SA2AlphaInstructions.SA_INV_OTHER == SA2AlphaInstructions.SA_INV_OTHER:
+                        tmpMat["b_srcAlpha"] = 'INV_OTHER'                        
                     elif instr & SA2AlphaInstructions.SA_SRC:
                         tmpMat["b_srcAlpha"] = 'SRC'
-                    elif instr & SA2AlphaInstructions.SA_INV_SRC:
-                        tmpMat["b_srcAlpha"] = 'INV_SRC'
-                    elif instr & SA2AlphaInstructions.SA_DST:
-                        tmpMat["b_srcAlpha"] = 'DST'
-                    elif instr & SA2AlphaInstructions.SA_INV_DST:
-                        tmpMat["b_srcAlpha"] = 'INV_DST'
+                    elif instr & SA2AlphaInstructions.SA_OTHER:
+                        tmpMat["b_srcAlpha"] = 'OTHER'
+                    elif instr & SA2AlphaInstructions.SA_ONE:
+                        tmpMat["b_srcAlpha"] = 'ONE'
                     else:
                         tmpMat["b_srcAlpha"] = 'ZERO'
 
-                    if instr & SA2AlphaInstructions.DA_ONE:
-                        tmpMat["b_destAlpha"] = 'ONE'
-                    elif instr & SA2AlphaInstructions.DA_OTHER:
-                        tmpMat["b_destAlpha"] = 'OTHER'
-                    elif instr & SA2AlphaInstructions.DA_INV_OTHER:
+                    if instr & SA2AlphaInstructions.DA_INV_DST == SA2AlphaInstructions.DA_INV_DST:
+                        tmpMat["b_destAlpha"] = 'INV_DST'
+                    elif instr & SA2AlphaInstructions.DA_DST == SA2AlphaInstructions.DA_DST:
+                        tmpMat["b_destAlpha"] = 'DST'
+                    elif instr & SA2AlphaInstructions.DA_INV_SRC == SA2AlphaInstructions.DA_INV_SRC:
+                        tmpMat["b_destAlpha"] = 'INV_SRC'
+                    elif instr & SA2AlphaInstructions.DA_INV_OTHER == SA2AlphaInstructions.DA_INV_OTHER:
                         tmpMat["b_destAlpha"] = 'INV_OTHER'
                     elif instr & SA2AlphaInstructions.DA_SRC:
                         tmpMat["b_destAlpha"] = 'SRC'
-                    elif instr & SA2AlphaInstructions.DA_INV_SRC:
-                        tmpMat["b_destAlpha"] = 'INV_SRC'
-                    elif instr & SA2AlphaInstructions.DA_DST:
-                        tmpMat["b_destAlpha"] = 'DST'
-                    elif instr & SA2AlphaInstructions.DA_INV_DST:
-                        tmpMat["b_destAlpha"] = 'INV_DST'
+                    elif instr & SA2AlphaInstructions.DA_OTHER:
+                        tmpMat["b_destAlpha"] = 'OTHER'
+                    elif instr & SA2AlphaInstructions.DA_ONE:
+                        tmpMat["b_destAlpha"] = 'ONE'
                     else:
                         tmpMat["b_destAlpha"] = 'ZERO'
 
@@ -1236,6 +1234,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
 
             for v in vDistinct:
                 vert = bm.verts.new(v[0])
+                vert.normal = v[1]
             bm.verts.ensure_lookup_table()
             bm.verts.index_update()
 
@@ -1268,19 +1267,25 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                 face.smooth = True
                 face.material_index = matIndex
 
-            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-
             bm.to_mesh(mesh)
-            bm.free()
+            bm.clear()
+
+            for p in mesh.polygons:
+                normal = mathutils.Vector((0,0,0))
+                for v in p.vertices:
+                    normal += mathutils.Vector(vDistinct[v][1])
+                normal /= 3
+                if normal.dot(p.normal) < 0:
+                    p.flip()
 
             mesh.create_normals_split()
-            
-            mesh.validate(clean_customdata=False)  # *Very* important to not remove lnors here!
-            mesh.update()
-
             split_normal = [vDistinct[l.vertex_index][1] for l in mesh.loops]
             mesh.normals_split_custom_set(split_normal)
             mesh.use_auto_smooth = True
+
+
+                
+
 
             # dont ask me why, but blender likes to add sharp edges- we dont need those at all in this case
             for e in mesh.edges:
