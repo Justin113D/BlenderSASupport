@@ -506,6 +506,58 @@ class StrippifyTest(bpy.types.Operator):
 
         return {'FINISHED'}
 
+class ArmatureFromObjects(bpy.types.Operator):
+    bl_idname = "object.armaturefromobjects"
+    bl_label = "Armature from objects"
+    bl_description = "Generate an armature from object. Select the parent of all objects, which will represent the root"
+
+    def addChildren(parent, result):
+        result.append(parent)
+        for c in parent.children:
+            ArmatureFromObjects.addChildren(c, result)
+
+    def execute(self, context):
+        
+        if len(context.selected_objects) == 0:
+            return {'CANCELLED'}
+        active = context.active_object  
+
+        objects = list()
+
+        ArmatureFromObjects.addChildren(active, objects)
+
+        if len(objects) == 1:
+            return {'CANCELLED'}
+
+        armature = bpy.data.armatures.new("ARM_" + active.name)
+        armatureObj = bpy.data.objects.new("ARM_" + active.name, armature)
+        armatureObj.parent = active.parent
+        armatureObj.matrix_local = active.matrix_local
+        globalMatrix = active.matrix_world
+
+        context.scene.collection.objects.link(armatureObj)
+
+        context.view_layer.objects.active = armatureObj
+        bpy.ops.object.mode_set(mode='EDIT', toggle=False)
+
+        edit_bones = armatureObj.data.edit_bones
+        boneMap = dict()
+        bones = objects[1:]
+        for b in bones:
+            bone = edit_bones.new(b.name)
+            bone.layers[0] = True
+            bone.head = (0,0,0)
+            bone.tail = (1,0,0)
+            bone.matrix = globalMatrix.inverted() @ b.matrix_world
+
+            if b.parent in bones:
+                bone.parent = boneMap[b.parent]
+            boneMap[b] = bone
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        return {'FINISHED'}
+
 def qmeUpdate(context, newValue):
     
     matQProps = context.scene.saSettings.matQProps
@@ -1285,6 +1337,13 @@ class SAMeshSettings(bpy.types.PropertyGroup):
         default = 'VC'
         )
 
+    sa2IndexOffset: IntProperty(
+        name = "(SA2) Additional Vertex Offset",
+        description = "Additional vertex offset for specific model mods",
+        min=0, max = 32767,
+        default = 0
+    )
+
 # panels
 
 def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, qe = False):
@@ -1527,6 +1586,10 @@ class SAMeshPanel(bpy.types.Panel):
         split = layout.split(factor=0.4)
         split.label(text="SA2 Export Type")
         split.prop(meshprops, "sa2ExportType", text = "")
+        split = layout.split(factor=0.4)
+        split.label(text="(SA2) Additional Vertex Offset")
+        split.prop(meshprops, "sa2IndexOffset", text = "")
+
 
 class SAMaterialPanel(bpy.types.Panel):
     bl_idname = "MATERIAL_PT_saProperties"
@@ -1604,7 +1667,9 @@ class SA3DPanel(bpy.types.Panel):
             box.operator(qmeReset.bl_idname)
             drawMaterialPanel(box, settings.matQEditor, settings.matQProps, qe=True)
 
+        layout.operator(ArmatureFromObjects.bl_idname)
         layout.operator(StrippifyTest.bl_idname)
+        
 
 def menu_func_exportsa(self, context):
     self.layout.menu("TOPBAR_MT_SA_export")
@@ -1623,6 +1688,7 @@ classes = (
     ImportMDL,
 
     StrippifyTest,
+    ArmatureFromObjects,
     qmeReset,
     qmeUpdateSet,
     qmeUpdateUnset,
@@ -1664,4 +1730,4 @@ def unregister():
         bpy.utils.unregister_class(cls)
 
 if __name__ == "__main__":
-   register()
+    register()

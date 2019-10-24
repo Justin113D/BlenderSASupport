@@ -76,16 +76,19 @@ class VertexChunk:
 
     chunkType: enums.ChunkType
     weightType: enums.WeightStatus
+    weightContinue: bool
     indexBufferOffset: int
     vertices: List[Vertex]
 
     def __init__(self,
                  chunkType: enums.ChunkType,
                  weightType: enums.WeightStatus,
+                 weightContinue: bool,
                  indexBufferOffset: int,
                  vertices: List[Vertex]):
         self.chunkType = chunkType
         self.weightType = weightType
+        self.weightContinue = weightContinue
         self.indexBufferOffset = indexBufferOffset
         self.vertices = vertices
 
@@ -333,6 +336,8 @@ class PolyChunk_Material(PolyChunk):
 class PolyChunk_Strip(PolyChunk):
 
     flags: enums.StripFlags
+    readSize: int
+    readUserFlags: int
     strips: List[List[PolyVert]] # list of strips
     reversedStrips: List[bool]
 
@@ -361,8 +366,8 @@ class PolyChunk_Strip(PolyChunk):
         header = fileR.rUShort(address)
         stripCount = header & 0x3FFF
         userFlagCount = header >> 14 
-        if userFlagCount > 0:
-            print("  Userflag count:", userFlagCount)
+        #if userFlagCount > 0:
+        #    print("  Userflag count:", userFlagCount)
         address += 2
 
         polyVerts = list()
@@ -373,12 +378,6 @@ class PolyChunk_Strip(PolyChunk):
         hasNRM = 1 if c >= 67 and c <= 69 else 0
         hasCOL = 1 if c >= 70 and c <= 72 else 0
 
-        if DO:
-            print("  UV:", hasUV, ", NRM:", hasNRM, " COL:", hasCOL)
-            print("  flags:", flags)
-            print("  size:", size)
-            print("  stripCount:", stripCount)
-            print("  userflags:", userFlagCount)
 
         for i in range(stripCount):
             strip = list()
@@ -414,8 +413,11 @@ class PolyChunk_Strip(PolyChunk):
             reversedStrips.append(reverse)
             polyVerts.append(strip)
 
+        polyChunk = PolyChunk_Strip(hasUV, flags, polyVerts, reversedStrips)
+        polyChunk.readSize = size
+        polyChunk.readUserFlags = userFlagCount
 
-        return PolyChunk_Strip(hasUV, flags, polyVerts, reversedStrips), address
+        return polyChunk, address
 
     def write(self, fileW: fileHelper.FileWriter):
         super(PolyChunk_Strip, self).write(fileW)
@@ -629,6 +631,8 @@ class Attach:
         vertexType = mesh.saSettings.sa2ExportType
         if vertexType == 'VC' and len(mesh.vertex_colors) == 0:
             vertexType = 'NRM'
+        extraOffset = mesh.saSettings.sa2IndexOffset
+
 
         writeUVs = len(mesh.uv_layers) > 0
         
@@ -668,18 +672,21 @@ class Attach:
                     vertices.append(vt)
                     i += 1
 
+            for p in polyVerts:
+                p.vertex = p.vertex.index + extraOffset
+
         else: # normals are a lot simpler to generate (luckily)
             for v in mesh.vertices:
                 vertices.append( Vertex(v.index, v.index, Vector3(export_matrix @ v.co), Vector3(export_matrix @ normals[v.index]), None, 0) )
 
             for l in mesh.loops:
                 uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
-                polyVert = PolyVert(vertices[l.vertex_index], uv)
+                polyVert = PolyVert(l.vertex_index + extraOffset, uv)
                 polyVerts.append(polyVert)
 
         # creating the vertex chunk
         chunkType = enums.ChunkType.Vertex_VertexDiffuse8 if vertexType == 'VC' else enums.ChunkType.Vertex_VertexNormal
-        vertexChunks: List[VertexChunk] = [VertexChunk(chunkType, enums.WeightStatus.Start, 0, vertices)]
+        vertexChunks: List[VertexChunk] = [VertexChunk(chunkType, enums.WeightStatus.Start, False, extraOffset, vertices)]
 
         polyChunks = Attach.getPolygons(mesh, writeUVs, polyVerts, materials)
                 
@@ -760,7 +767,7 @@ class Attach:
                         vert.co = Vector3(matrix @ v.co)
                         allVertices.append(vert)
             
-            vertexChunks.append(VertexChunk(vChunkType, m.weightStatus, m.indexBufferOffset, vertices))
+            vertexChunks.append(VertexChunk(vChunkType, m.weightStatus, False, m.indexBufferOffset, vertices))
 
             if m.weightIndex == -1 or m.weightStatus == enums.WeightStatus.End: # write polygons
                 writeUVs = len(mesh.uv_layers) > 0
@@ -847,13 +854,6 @@ class Attach:
                 vertexCount = fileR.rUShort(tmpAddr + 6)
                 
                 vertices = list()
-                if DO:
-                    print("ChunkType:", chunkType)
-                    print("  weightstatus:", weightStatus)
-                    print("  otherFlags:", '{:02x}'.format(otherFlags))
-                    print("  size:", size)
-                    print("  index buffer offset:", indexBufferOffset)
-                    print("  vCount:", vertexCount)
 
                 tmpAddr += 8
 
@@ -891,12 +891,9 @@ class Attach:
 
                     vertices.append(Vertex(index, index, pos, nrm, col, weight))
 
-                vertexChunks.append( VertexChunk(chunkType, weightStatus, indexBufferOffset, vertices))
+                vertexChunks.append( VertexChunk(chunkType, weightStatus, (otherFlags & 0x80) > 0, indexBufferOffset, vertices))
 
                 chunkType = enums.ChunkType(fileR.rByte(tmpAddr))
-        else:
-            if DO:
-                print("Attach has no Vertex chunk")
         # reading polygons chunks
 
         polygonChunks = list()
@@ -905,8 +902,6 @@ class Attach:
             chunkType = enums.ChunkType(fileR.rByte(tmpAddr))
             while chunkType != enums.ChunkType.End:
                 chunk = PolyChunk(chunkType)
-                if DO:
-                    print("Chunktype:", chunkType)
 
                 tmpAddr += 1
                 if chunkType == enums.ChunkType.Bits_BlendAlpha:
@@ -930,15 +925,11 @@ class Attach:
                     chunk.data = fileR.rByte(tmpAddr)
                     tmpAddr += 1
 
-                    if (chunkType == enums.ChunkType.Bits_CachePolygonList or chunkType == enums.ChunkType.Bits_DrawPolygonList) and DO:
-                        print(chunk.data)
+                    #if (chunkType == enums.ChunkType.Bits_CachePolygonList or chunkType == enums.ChunkType.Bits_DrawPolygonList) and DO:
+                    #    print(chunk.data)
 
-                
                 polygonChunks.append(chunk)
                 chunkType = enums.ChunkType(fileR.rByte(tmpAddr))
-        else:
-            if DO:
-                print("Attach has no poly chunk")
 
         return Attach(name, vertexChunks, polygonChunks, None)
 
@@ -1036,6 +1027,17 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
         if o.meshPtr == 0:
             continue
         attach = attaches[o.meshPtr]
+        if DO:
+            print("  Object:", o.name)
+            print("  Attach:", attach.name, "\n")
+            print("  Vertex Chunks:\n")
+            for v in attach.vertexChunks:
+                print("     Type:", v.chunkType)
+                print("     WeightType:", v.weightType)
+                print("     WeightContinue:", v.weightContinue)
+                print("     Index Offset:", v.indexBufferOffset)
+                print("     VertexCount:", len(v.vertices), "\n")
+
 
         for vtxCnk in attach.vertexChunks:
             if vtxCnk.weightType == enums.WeightStatus.Start:
@@ -1061,6 +1063,21 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                     polyChunks.append(polyCnk)
             
         if len(polyChunks) > 0:
+            if DO:
+                print(" Active Poly Chunks:\n")
+                for p in polyChunks:
+                    print("    Chunktype:", p.chunkType)
+                    c = p.chunkType.value
+                    if c > 63 and c < 76:
+                        hasUV = c == 65 or c == 66 or c == 68 or c == 69 or c == 71 or c == 72
+                        hasNRM = c >= 67 and c <= 69
+                        hasCOL = c >= 70 and c <= 72
+                        print("     UV:", hasUV, ", NRM:", hasNRM, ", COL:", hasCOL)
+                        print("     flags:", p.flags)
+                        print("     size:", p.readSize)
+                        print("     stripCount:", len(p.strips))
+                        print("     userflags:", p.readUserFlags, "\n")
+                    
             # getting the vertice that the polygons require
             vertices: List[BufferedVertex] = list()
             vertexIndices = [0] * 0x7FFF
@@ -1086,21 +1103,23 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
             hasColor = False
 
             # getting distinct vertices, so that we can weld them and prevent doubles
-            vertexSets = list()
             if isArmature:
+                # removing double vertices kinda causes trouble...
+                vDistinct = list()
+                vIDs = list()
                 for v in vertices:
-                    vertexSets.append((v.getWorldPos(), v.getWorldNormals()))
+                    vDistinct.append((v.getWorldPos(), v.getWorldNormals()))
+                    vIDs.append(len(vIDs))
                     if v.hasColor():
                         hasColor = True
             else:
+                vertexSets = list()
                 for v in vertices:
                     vertexSets.append((v.getLocalPos(), v.getLocalNrm()))
                     if v.hasColor():
                         hasColor = True
-
+                vDistinct, vIDs = common.getDistinctwID(vertexSets)
             # getting the distinct positions and adding them to the py data:
-
-            vDistinct, vIDs = common.getDistinctwID(vertexSets)
 
             for i in range(len(vertexIndices)):
                 vertexIndices[i] = vIDs[vertexIndices[i]]
@@ -1307,4 +1326,5 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                 models[0].meshes.append(meshOBJ)
             else:
                 o.meshes.append(mesh)
-
+        if DO:
+            print(" - - - -\n")

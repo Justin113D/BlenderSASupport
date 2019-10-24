@@ -242,11 +242,6 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
       for o in objects:
          o.debug()
 
-      for a in attaches.values():
-         a.debug()
-      
-
-
    return {'FINISHED'}
 
 def write(context, 
