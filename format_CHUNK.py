@@ -1101,7 +1101,6 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                         affectedBy.append(vtx.model)
 
             hasColor = False
-
             # getting distinct vertices, so that we can weld them and prevent doubles
             if isArmature:
                 # removing double vertices kinda causes trouble...
@@ -1239,7 +1238,17 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                     else:
                         tmpMat["b_destAlpha"] = 'ZERO'
 
-                            
+            filteredPolygons: List[List[PolyVert]] = list()
+            for p in polygons:
+                indices = [p[0].vIndex(), p[1].vIndex(), p[2].vIndex()]
+                if len(set(indices)) == 3:
+                    filteredPolygons.append(p)
+            dif = len(polygons) - len(filteredPolygons)
+            if not DO and dif > 0:
+                print("  Invalid Polygons:", dif)
+
+            polygons = filteredPolygons
+
             # creating the mesh
 
             mesh = bpy.data.meshes.new(attach.name)
@@ -1254,7 +1263,6 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
 
             for v in vDistinct:
                 vert = bm.verts.new(v[0])
-                vert.normal = v[1]
             bm.verts.ensure_lookup_table()
             bm.verts.index_update()
 
@@ -1269,12 +1277,12 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                 for l in p:
                     vID = vertexIndices[ l.vIndex() ]
                     verts.append(bm.verts[vID])
-                    indices.append(vID)
+                    indices.append((vID, l.vIndex()))
                 try:
                     face = bm.faces.new(verts)
-                except ValueError as err:
-                    if DO:
-                        print("concat?", indices)
+                except Exception as e:
+                    if not str(e).endswith("exists"):
+                        print("Invalid triangle:", str(e))
                     continue
 
                 for l, pc in zip(face.loops, p):
@@ -1287,6 +1295,8 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                 face.smooth = True
                 face.material_index = matIndex
 
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
             bm.to_mesh(mesh)
             bm.clear()
 
@@ -1294,18 +1304,16 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                 normal = mathutils.Vector((0,0,0))
                 for v in p.vertices:
                     normal += mathutils.Vector(vDistinct[v][1])
-                normal /= 3
-                if normal.dot(p.normal) < 0:
-                    p.flip()
+                if normal != mathutils.Vector((0,0,0)):
+                    normal /= 3
+                    if normal.dot(p.normal) < 0:
+                        p.flip()
 
             mesh.create_normals_split()
             split_normal = [vDistinct[l.vertex_index][1] for l in mesh.loops]
             mesh.normals_split_custom_set(split_normal)
             mesh.use_auto_smooth = True
-
-
-                
-
+            mesh.auto_smooth_angle = 180
 
             # dont ask me why, but blender likes to add sharp edges- we dont need those at all in this case
             for e in mesh.edges:
