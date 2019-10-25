@@ -478,3 +478,5 @@ class Attach:
             print("    Vertices:", len(self.positions))
             print("    Mesh set Ptr:", common.hex4(setPtr))
             print("    Mesh sets:", len(self.meshSets), "\n")
+
+        

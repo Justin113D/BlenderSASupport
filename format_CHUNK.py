@@ -212,17 +212,16 @@ class PolyChunk_SpecularExponent(PolyChunk_Bit):
 
     def __init__(self, exponent: float):
         super(PolyChunk_SpecularExponent, self).__init__(enums.ChunkType.Bits_SpecularExponent)
-        self.data |= 0x10
         self.exponent = exponent
 
     @property
     def exponent(self) -> float:
-        return (self.data & 0xF) / 15.0
+        return (self.data & 0x1F) / 16.0
 
     @exponent.setter
     def exponent(self, val: float):
-        self.data &= ~0xF
-        self.data |= min(0xF, round(val * 15))
+        self.data &= ~0x1F
+        self.data |= min(16, round(val * 16))
 
 class PolyChunk_CachePolygonList(PolyChunk_Bit):
 
@@ -291,21 +290,29 @@ class PolyChunk_Texture(PolyChunk):
 class PolyChunk_Material(PolyChunk):
     """The material chunk with all 3 colors"""
 
+    alphaInstruction: enums.SA2AlphaInstructions
     diffuse: ColorARGB
     ambient: ColorARGB
     specular: ColorARGB
+    specularity: int
     
     def __init__(self,
+                 alphaInstruction: enums.AlphaInstruction,
                  diffuse: ColorARGB,
                  ambient: ColorARGB,
-                 specular: ColorARGB):
+                 specular: ColorARGB,
+                 specularity: int):
         super(PolyChunk_Material, self).__init__(enums.ChunkType.Material_DiffuseAmbientSpecular)
+        self.alphaInstruction = alphaInstruction
         self.diffuse = diffuse
         self.ambient = ambient
         self.specular = specular
+        self.specularity = specularity
 
     def read(fileR: fileHelper.FileReader, chunkType: enums.ChunkType, address: int):
-        address += 3 # skipping gap and size
+
+        alphaInstruction = enums.SA2AlphaInstructions(fileR.rByte(address))
+        address += 3 
 
         diffuse = ColorARGB()
         if chunkType.value & 0x1: # diffuse
@@ -318,20 +325,24 @@ class PolyChunk_Material(PolyChunk):
             address += 4
 
         specular = ColorARGB()
+        specularity = 255
         if chunkType.value & 0x4: # specular
             specular = ColorARGB.fromARGB(fileR.rUInt(address))
+            specularity = specular.a
+            specular.a = 255
             address += 4
         
-        return PolyChunk_Material(diffuse, ambient, specular), address
+        return PolyChunk_Material(alphaInstruction, diffuse, ambient, specular, specularity), address
 
 
     def write(self, fileW: fileHelper.FileWriter):
         super(PolyChunk_Material, self).write(fileW)
-        fileW.wByte(0) # gap, usually flags, but those are unused in sa2
+        fileW.wByte(self.alphaInstruction.value)
         fileW.wUShort(6) # size (amount of 2 byte sets)
         self.diffuse.writeARGB(fileW)
         self.ambient.writeARGB(fileW)
-        self.specular.writeARGB(fileW)
+        self.specular.writeRGB(fileW)
+        fileW.wByte(self.specularity)
     
 class PolyChunk_Strip(PolyChunk):
 
@@ -522,9 +533,7 @@ class Attach:
 
             if material is None:
                 polyChunks.append(PolyChunk_Texture(0, enums.TextureIDFlags.null, True, enums.TextureFiltering.Bilinear))
-                polyChunks.append(PolyChunk_Material(ColorARGB(), ColorARGB(), ColorARGB()))
-                polyChunks.append(PolyChunk_SpecularExponent(1))
-                polyChunks.append(PolyChunk_BlendAlpha(enums.SA2AlphaInstructions.SA_SRC | enums.SA2AlphaInstructions.DA_INV_SRC))
+                polyChunks.append(PolyChunk_Material(enums.SA2AlphaInstructions.SA_SRC | enums.SA2AlphaInstructions.DA_INV_SRC, ColorARGB(), ColorARGB(), ColorARGB(), 255))
             else:
                 matProps: SAMaterialSettings = material.saSettings
 
@@ -558,9 +567,7 @@ class Attach:
                     filtering = enums.TextureFiltering.Blend
 
                 polyChunks.append(PolyChunk_Texture(matProps.b_TextureID, textureFlags, matProps.b_use_Anisotropy, filtering))
-                polyChunks.append(PolyChunk_Material(ColorARGB(matProps.b_Diffuse), ColorARGB(matProps.b_Ambient), ColorARGB(matProps.b_Specular)))
-                polyChunks.append(PolyChunk_SpecularExponent(matProps.b_Exponent))
-
+                
                 # getting alpha
                 alphaflags = enums.SA2AlphaInstructions.null
                 if matProps.b_useAlpha:
@@ -600,7 +607,7 @@ class Attach:
                 else:
                     alphaflags = enums.SA2AlphaInstructions.SA_SRC | enums.SA2AlphaInstructions.DA_INV_SRC
                 
-                polyChunks.append(PolyChunk_BlendAlpha(alphaflags))
+                polyChunks.append(PolyChunk_Material(alphaflags, ColorARGB(matProps.b_Diffuse), ColorARGB(matProps.b_Ambient), ColorARGB(matProps.b_Specular), round(matProps.b_Exponent * 255)))
 
                 #getting strip flags
                 if matProps.b_ignoreLighting:
@@ -1168,39 +1175,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                         else:
                             for p in range(len(s) - 2):
                                 polygons.append((s[p], s[p+1], s[p+2]))  
-                elif c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular:
-                    tmpMat["b_Diffuse"] = c.diffuse.toBlenderTuple()
-                    tmpMat["b_Ambient"] = c.ambient.toBlenderTuple()
-                    tmpMat["b_Specular"] = c.specular.toBlenderTuple()
-                elif c.chunkType == enums.ChunkType.Tiny_TextureID:
-                    tmpMat["b_TextureID"] = c.texID
-                    tmpMat["b_use_Anisotropy"] = c.anisotropy
-
-                    if c.filtering == enums.TextureFiltering.Point:
-                        tmpMat["b_texFilter"] = 'POINT'
-                    elif c.filtering == enums.TextureFiltering.Bilinear:
-                        tmpMat["b_texFilter"] = 'BILINEAR'
-                    elif c.filtering == enums.TextureFiltering.Trilinear:
-                        tmpMat["b_texFilter"] = 'TRILINEAR'
-                    elif c.filtering == enums.TextureFiltering.Blend:
-                        tmpMat["b_texFilter"] = 'BLEND'
-
-                    tmpMat["b_d_025"] = (c.flags & enums.TextureIDFlags.D_025).value > 0
-                    tmpMat["b_d_050"] = (c.flags & enums.TextureIDFlags.D_050).value > 0
-                    tmpMat["b_d_100"] = (c.flags & enums.TextureIDFlags.D_100).value > 0
-                    tmpMat["b_d_200"] = (c.flags & enums.TextureIDFlags.D_200).value > 0
-                    tmpMat["b_clampU"] = (c.flags & enums.TextureIDFlags.CLAMP_U).value > 0
-                    tmpMat["b_clampV"] = (c.flags & enums.TextureIDFlags.CLAMP_V).value > 0
-                    tmpMat["b_mirrorU"] = (c.flags & enums.TextureIDFlags.FLIP_U).value > 0
-                    tmpMat["b_mirrorV"] = (c.flags & enums.TextureIDFlags.FLIP_V).value > 0
-                elif c.chunkType == enums.ChunkType.Bits_SpecularExponent:
-                    tmpMat["b_Exponent"] = c.exponent
-                elif c.chunkType == enums.ChunkType.Bits_MipmapDAdjust:
-                    tmpMat["b_d_025"] = (c.value & enums.MipMapDistanceAdjust.D_025).value > 0
-                    tmpMat["b_d_050"] = (c.value & enums.MipMapDistanceAdjust.D_050).value > 0
-                    tmpMat["b_d_100"] = (c.value & enums.MipMapDistanceAdjust.D_100).value > 0
-                    tmpMat["b_d_200"] = (c.value & enums.MipMapDistanceAdjust.D_200).value > 0
-                elif c.chunkType == enums.ChunkType.Bits_BlendAlpha:
+                elif c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular or c.chunkType == enums.ChunkType.Bits_BlendAlpha:
                     instr = c.alphaInstruction
                     from .enums import SA2AlphaInstructions
                     
@@ -1237,6 +1212,40 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                         tmpMat["b_destAlpha"] = 'ONE'
                     else:
                         tmpMat["b_destAlpha"] = 'ZERO'
+                    
+                    if c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular:
+                        tmpMat["b_Diffuse"] = c.diffuse.toBlenderTuple()
+                        tmpMat["b_Ambient"] = c.ambient.toBlenderTuple()
+                        tmpMat["b_Specular"] = c.specular.toBlenderTuple()
+                        tmpMat["b_Exponent"] = c.specularity / 255.0
+                elif c.chunkType == enums.ChunkType.Tiny_TextureID:
+                    tmpMat["b_TextureID"] = c.texID
+                    tmpMat["b_use_Anisotropy"] = c.anisotropy
+
+                    if c.filtering == enums.TextureFiltering.Point:
+                        tmpMat["b_texFilter"] = 'POINT'
+                    elif c.filtering == enums.TextureFiltering.Bilinear:
+                        tmpMat["b_texFilter"] = 'BILINEAR'
+                    elif c.filtering == enums.TextureFiltering.Trilinear:
+                        tmpMat["b_texFilter"] = 'TRILINEAR'
+                    elif c.filtering == enums.TextureFiltering.Blend:
+                        tmpMat["b_texFilter"] = 'BLEND'
+
+                    tmpMat["b_d_025"] = (c.flags & enums.TextureIDFlags.D_025).value > 0
+                    tmpMat["b_d_050"] = (c.flags & enums.TextureIDFlags.D_050).value > 0
+                    tmpMat["b_d_100"] = (c.flags & enums.TextureIDFlags.D_100).value > 0
+                    tmpMat["b_d_200"] = (c.flags & enums.TextureIDFlags.D_200).value > 0
+                    tmpMat["b_clampU"] = (c.flags & enums.TextureIDFlags.CLAMP_U).value > 0
+                    tmpMat["b_clampV"] = (c.flags & enums.TextureIDFlags.CLAMP_V).value > 0
+                    tmpMat["b_mirrorU"] = (c.flags & enums.TextureIDFlags.FLIP_U).value > 0
+                    tmpMat["b_mirrorV"] = (c.flags & enums.TextureIDFlags.FLIP_V).value > 0
+                elif c.chunkType == enums.ChunkType.Bits_SpecularExponent:
+                    tmpMat["b_Exponent"] = c.exponent
+                elif c.chunkType == enums.ChunkType.Bits_MipmapDAdjust:
+                    tmpMat["b_d_025"] = (c.value & enums.MipMapDistanceAdjust.D_025).value > 0
+                    tmpMat["b_d_050"] = (c.value & enums.MipMapDistanceAdjust.D_050).value > 0
+                    tmpMat["b_d_100"] = (c.value & enums.MipMapDistanceAdjust.D_100).value > 0
+                    tmpMat["b_d_200"] = (c.value & enums.MipMapDistanceAdjust.D_200).value > 0
 
             filteredPolygons: List[List[PolyVert]] = list()
             for p in polygons:

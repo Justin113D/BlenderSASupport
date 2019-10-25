@@ -92,6 +92,13 @@ class ColorARGB:
         fileW.wByte(self.r)
         fileW.wByte(self.a)
 
+    def writeRGB(self, fileW):
+        """writes data to file"""
+        fileW.wByte(self.b)
+        fileW.wByte(self.g)
+        fileW.wByte(self.r)
+
+
     def toBlenderTuple(self):
         return (self.r / 255.0, self.g / 255.0, self.b / 255.0, self.a / 255.0)
 
