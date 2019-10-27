@@ -132,7 +132,7 @@ class PolyVert:
         self.uv = uv
 
     def __eq__(self, other):
-        return self.vertex == other.vertex and self.uv == other.uv
+        return self.index == other.index and self.uv == other.uv
 
     def write(self, fileW):
         fileW.wUShort(self.index)
@@ -722,7 +722,7 @@ class Attach:
                             if g.group == m.weightIndex:
                                 weight = g.weight
                         if weightsAdded > 0:
-                                weight = weight / weightsAdded
+                            weight = weight / weightsAdded
                         vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, weight) )
 
                         vert = Container()
