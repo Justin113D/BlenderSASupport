@@ -964,17 +964,26 @@ class BufferedVertex:
     def add(self, vert: ProcessedVert):
         self.vertices.append(vert)
 
-    def getWorldPos(self):
+    def getWorldPos(self, armatureMatrix):
         pos = Vector3((0,0,0))
-        for v in self.vertices:
-            pos += (v.model.matrix_world @ v.position) * v.weight
+        if armatureMatrix is None:
+            for v in self.vertices:
+                pos += (v.model.matrix_world @ v.position) * v.weight
+        else:
+            for v in self.vertices:
+                pos += ((armatureMatrix.inverted() @ v.model.matrix_world) @ v.position) * v.weight
         return (pos.x, pos.y, pos.z)
 
-    def getWorldNormals(self):
+    def getWorldNormals(self, armatureMatrix):
         nrm = Vector3((0,0,0))
-        for v in self.vertices:
-            if v.normal is not None:
-                nrm += (v.model.matrix_world.to_3x3() @ v.normal) * v.weight
+        if armatureMatrix is None:
+            for v in self.vertices:
+                if v.normal is not None:
+                    nrm += (v.model.matrix_world.to_3x3() @ v.normal) * v.weight
+        else:
+            for v in self.vertices:
+                if v.normal is not None:
+                    nrm += ((armatureMatrix.inverted() @ v.model.matrix_world).to_3x3() @ v.normal) * v.weight
         nrm.normalize()
         
         return (nrm.x, nrm.y, nrm.z) 
@@ -1137,6 +1146,7 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
     matDicts: List[dict] = list()
 
     isArmature = armatureRoot != None
+    armatureMatrix = armatureRoot.matrix_world if isArmature else None
 
     for a in attaches:
         # getting distinct vertices, so that we can weld them and prevent doubles
@@ -1145,7 +1155,7 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
             vDistinct = list()
             vIDs = list()
             for v in a.vertices:
-                vDistinct.append((v.getWorldPos(), v.getWorldNormals()))
+                vDistinct.append((v.getWorldPos(armatureMatrix), v.getWorldNormals(armatureMatrix)))
                 vIDs.append(len(vIDs))
         else:
             vertexSets = list()
