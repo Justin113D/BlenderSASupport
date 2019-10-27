@@ -174,15 +174,17 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
    isArmature = False
    if file_format == 'SA2':
       # checking whether the file is an armature (weighted model)
-      
-      for a in attaches.values():
-         for v in a.vertexChunks:
-            if v.chunkType == enums.ChunkType.Vertex_VertexNormalNinjaFlags:
-               isArmature = True
-               break
-         if isArmature:
+
+      processedAttaches = format_CHUNK.OrderChunks(objects, attaches)
+
+      for a in processedAttaches:
+         if len(a.affectedBy) > 1:
+            isArmature = True
             break
-      format_CHUNK.ProcessChunkData(objects, attaches, isArmature)
+      root = None
+      if isArmature:
+         root = objects[0]
+      format_CHUNK.ProcessChunkData(processedAttaches, root)
 
    collection = bpy.data.collections.new("Import_" + os.path.splitext(os.path.basename(filepath))[0])
    context.scene.collection.children.link(collection)

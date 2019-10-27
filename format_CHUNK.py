@@ -122,35 +122,23 @@ class VertexChunk:
 class PolyVert:
     """A single polygon corner of a mesh"""
 
-    vertex: Vertex
+    index: int
     uv: UV
 
     def __init__(self, 
-                 vertex: Vertex, 
+                 index: int, 
                  uv: UV):
-        self.vertex = vertex
+        self.index = index
         self.uv = uv
 
     def __eq__(self, other):
         return self.vertex == other.vertex and self.uv == other.uv
 
-    def vIndex(self):
-        if isinstance(self.vertex, Vertex):
-            return self.vertex.index
-        else:
-            return self.vertex
-
     def write(self, fileW):
-        if isinstance(self.vertex, Vertex):
-            fileW.wUShort(self.vertex.index)
-        else:
-            fileW.wUShort(self.vertex)
+        fileW.wUShort(self.index)
 
     def writeUV(self, fileW):
-        if isinstance(self.vertex, Vertex):
-            fileW.wUShort(self.vertex.index)
-        else:
-            fileW.wUShort(self.vertex)
+        fileW.wUShort(self.index)
         self.uv.write(fileW)
 
 class PolyChunk:
@@ -680,7 +668,7 @@ class Attach:
                     i += 1
 
             for p in polyVerts:
-                p.vertex = p.vertex.index + extraOffset
+                p.index = p.index.index + extraOffset
 
         else: # normals are a lot simpler to generate (luckily)
             for v in mesh.vertices:
@@ -967,8 +955,8 @@ class BufferedVertex:
 
     vertices: List[ProcessedVert]
 
-    def __init__(self):
-        self.vertices = list()
+    def __init__(self, vertices = list()):
+        self.vertices = vertices
 
     def reset(self, newVert: ProcessedVert):
         self.vertices = [newVert]
@@ -1016,19 +1004,51 @@ class BufferedVertex:
             return mathutils.Vector(ColorARGB().toBlenderTuple())
         elif len(self.vertices) == 1:
             return mathutils.Vector(self.vertices[0].color.toBlenderTuple())
-        
 
-def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], isArmature: bool):
-    
+class processedAttach:
+    attachID: int
+    attachName: str
+    vertices: List[BufferedVertex]
+    vertexIndices: List[int]
+    polyChunks: List[PolyChunk]
+    affectedBy: List[common.Model]
+
+    hasColor: bool
+
+    def __init__(self,
+                 attachID: int,
+                 attachName: str,
+                 vertices: List[BufferedVertex],
+                 vertexIndices: List[int],
+                 polyChunks: List[PolyChunk],
+                 hasColor: bool):
+        self.attachID = attachID
+        self.attachName = attachName
+        self.vertices = vertices
+        self.vertexIndices = vertexIndices
+        self.polyChunks = polyChunks
+        self.hasColor = hasColor
+
+        self.affectedBy = list()
+
+        for bv in vertices:
+            for v in bv.vertices:
+                if v.model not in self.affectedBy:
+                    self.affectedBy.append(v.model)
+
+    def name(self, isArmature: bool) -> str:
+        if isArmature:
+            return "Mesh_" + str(self.attachID).zfill(2)
+        else:
+            return self.attachName
+            
+
+def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> List[processedAttach]:
+
     vertexBuffer: List[BufferedVertex] = [BufferedVertex() for v in range(0x7FFF)]
     polyCaches: List[List[PolyChunk]] = [[] for i in range(16)] # lets hope nothing uses 17 caches
-    import bmesh
 
-    tmpMat = common.getDefaultMatDict()
-
-    materials: List[bpy.types.Material] = list()
-    matDicts: List[dict] = list()
-
+    pAttaches = list()
 
     for o in models:
         if o.meshPtr == 0:
@@ -1044,8 +1064,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                 print("     WeightContinue:", v.weightContinue)
                 print("     Index Offset:", v.indexBufferOffset)
                 print("     VertexCount:", len(v.vertices), "\n")
-
-
+        
         for vtxCnk in attach.vertexChunks:
             if vtxCnk.weightType == enums.WeightStatus.Start:
                 for v in vtxCnk.vertices:
@@ -1055,7 +1074,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                     vertexBuffer[vtxCnk.indexBufferOffset + v.index].add(ProcessedVert(o, v))
 
         polyChunks = list() # the chunks that we are about to process
-
+            
         cacheIndex = -1
         for polyCnk in attach.polyChunks:
             if cacheIndex > -1:
@@ -1068,7 +1087,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                     polyChunks.extend(polyCaches[polyCnk.data])
                 else:
                     polyChunks.append(polyCnk)
-            
+
         if len(polyChunks) > 0:
             if DO:
                 print(" Active Poly Chunks:\n")
@@ -1084,264 +1103,273 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, Attach], is
                         print("     size:", p.readSize)
                         print("     stripCount:", len(p.strips))
                         print("     userflags:", p.readUserFlags, "\n")
-                    
-            # getting the vertice that the polygons require
+                        # getting the vertice that the polygons require
+
             vertices: List[BufferedVertex] = list()
             vertexIndices = [0] * 0x7FFF
+
+            hasColor = False
 
             for c in polyChunks:
                 if c.chunkType.value > 63 and c.chunkType.value < 76: # its a strip
                     for s in c.strips:
                         for p in s:
-                            vert = vertexBuffer[p.vIndex()]
+                            vert = vertexBuffer[p.index]
                             if vert not in vertices:
                                 vertices.append(vert)
-                                vertexIndices[p.vIndex()] = len(vertices) - 1
+                                if len(vert.vertices) == 1:
+                                    vert.vertices[0].weight = 1
+                                vertexIndices[p.index] = len(vertices) - 1
+                                if not hasColor and vert.hasColor():
+                                    hasColor = True
 
-            affectedBy: List[model] = list()
+            pAttaches.append(processedAttach(len(pAttaches), attach.name, [BufferedVertex(v.vertices.copy()) for v in vertices], vertexIndices, polyChunks, hasColor))
 
-            for v in vertices:
-                if len(v.vertices) == 1:
-                    v.vertices[0].weight = 1
-                for vtx in v.vertices:
-                    if vtx.model not in affectedBy:
-                        affectedBy.append(vtx.model)
+    return pAttaches
 
-            hasColor = False
-            # getting distinct vertices, so that we can weld them and prevent doubles
-            if isArmature:
-                # removing double vertices kinda causes trouble...
-                vDistinct = list()
-                vIDs = list()
-                for v in vertices:
-                    vDistinct.append((v.getWorldPos(), v.getWorldNormals()))
-                    vIDs.append(len(vIDs))
-                    if v.hasColor():
-                        hasColor = True
-            else:
-                vertexSets = list()
-                for v in vertices:
-                    vertexSets.append((v.getLocalPos(), v.getLocalNrm()))
-                    if v.hasColor():
-                        hasColor = True
-                vDistinct, vIDs = common.getDistinctwID(vertexSets)
-            # getting the distinct positions and adding them to the py data:
+def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model):
 
-            for i in range(len(vertexIndices)):
-                vertexIndices[i] = vIDs[vertexIndices[i]]
+    import bmesh
 
-            # getting the polygon data
+    tmpMat = common.getDefaultMatDict()
 
-            polygons: List[List[PolyVert]] = list()
-            matMarkers = dict()
-            meshMaterials = list()
-            for c in polyChunks:
-                if c.chunkType.value > 63 and c.chunkType.value < 76: # its a strip
-                    tmpMat["b_ignoreLighting"] = (c.flags & enums.StripFlags.IGNORE_LIGHT).value > 0
-                    tmpMat["b_ignoreSpecular"] = (c.flags & enums.StripFlags.INGORE_SPECULAR).value > 0
-                    tmpMat["b_ignoreAmbient"] = (c.flags & enums.StripFlags.IGNORE_AMBIENT).value > 0
-                    tmpMat["b_useAlpha"] = (c.flags & enums.StripFlags.USE_ALPHA).value > 0
-                    tmpMat["b_doubleSided"] = (c.flags & enums.StripFlags.DOUBLE_SIDE).value > 0
-                    tmpMat["b_flatShading"] = (c.flags & enums.StripFlags.FLAT_SHADING).value > 0
-                    tmpMat["b_useEnv"] = (c.flags & enums.StripFlags.ENV_MAPPING).value > 0
-                    tmpMat["b_unknown"] = (c.flags & enums.StripFlags.Unknown).value > 0
+    materials: List[bpy.types.Material] = list()
+    matDicts: List[dict] = list()
 
-                    material = None
+    isArmature = armatureRoot != None
 
-                    for i, key in enumerate(matDicts):
-                        if key == tmpMat:
-                            material = materials[i]
-                            break
+    for a in attaches:
+        # getting distinct vertices, so that we can weld them and prevent doubles
+        if isArmature:
+            # removing double vertices kinda causes trouble...
+            vDistinct = list()
+            vIDs = list()
+            for v in a.vertices:
+                vDistinct.append((v.getWorldPos(), v.getWorldNormals()))
+                vIDs.append(len(vIDs))
+        else:
+            vertexSets = list()
+            for v in a.vertices:
+                vertexSets.append((v.getLocalPos(), v.getLocalNrm()))
+                if v.hasColor():
+                    hasColor = True
+            vDistinct, vIDs = common.getDistinctwID(vertexSets)
+
+        vertexIndices = a.vertexIndices
+
+        for i in range(len(vertexIndices)):
+            vertexIndices[i] = vIDs[vertexIndices[i]]
+
+        # getting the polygon data
+
+        polygons: List[List[PolyVert]] = list()
+        matMarkers = dict()
+        meshMaterials = list()
+        for c in a.polyChunks:
+            if c.chunkType.value > 63 and c.chunkType.value < 76: # its a strip
+                tmpMat["b_ignoreLighting"] = (c.flags & enums.StripFlags.IGNORE_LIGHT).value > 0
+                tmpMat["b_ignoreSpecular"] = (c.flags & enums.StripFlags.INGORE_SPECULAR).value > 0
+                tmpMat["b_ignoreAmbient"] = (c.flags & enums.StripFlags.IGNORE_AMBIENT).value > 0
+                tmpMat["b_useAlpha"] = (c.flags & enums.StripFlags.USE_ALPHA).value > 0
+                tmpMat["b_doubleSided"] = (c.flags & enums.StripFlags.DOUBLE_SIDE).value > 0
+                tmpMat["b_flatShading"] = (c.flags & enums.StripFlags.FLAT_SHADING).value > 0
+                tmpMat["b_useEnv"] = (c.flags & enums.StripFlags.ENV_MAPPING).value > 0
+                tmpMat["b_unknown"] = (c.flags & enums.StripFlags.Unknown).value > 0
+
+                material = None
+
+                for i, key in enumerate(matDicts):
+                    if key == tmpMat:
+                        material = materials[i]
+                        break
+                
+                if material is None:
+                    material = bpy.data.materials.new(name="material_" + str(len(materials)))
+                    material.saSettings.readMatDict(tmpMat)
                     
-                    if material is None:
-                        material = bpy.data.materials.new(name="material_" + str(len(materials)))
-                        material.saSettings.readMatDict(tmpMat)
-                        
-                        materials.append(material)
-                        matDicts.append(copy.deepcopy(tmpMat))
+                    materials.append(material)
+                    matDicts.append(copy.deepcopy(tmpMat))
 
-                    
-                    if material not in meshMaterials:
-                        meshMaterials.append(material)
+                
+                if material not in meshMaterials:
+                    meshMaterials.append(material)
 
-                    matIndex = meshMaterials.index(material)
-                    matMarkers[len(polygons)] = matIndex
+                matIndex = meshMaterials.index(material)
+                matMarkers[len(polygons)] = matIndex
 
-                    for si, s in enumerate(c.strips):
-                        rev = c.reversedStrips[si]
-                        if rev:
-                            for p in range(len(s) - 2):
-                                polygons.append((s[p+1], s[p], s[p+2]))
-                        else:
-                            for p in range(len(s) - 2):
-                                polygons.append((s[p], s[p+1], s[p+2]))  
-                elif c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular or c.chunkType == enums.ChunkType.Bits_BlendAlpha:
-                    instr = c.alphaInstruction
-                    from .enums import SA2AlphaInstructions
-                    
-                    if instr & SA2AlphaInstructions.SA_INV_DST == SA2AlphaInstructions.SA_INV_DST:
-                        tmpMat["b_srcAlpha"] = 'INV_DST'
-                    elif instr & SA2AlphaInstructions.SA_DST == SA2AlphaInstructions.SA_DST:
-                        tmpMat["b_srcAlpha"] = 'DST'
-                    elif instr & SA2AlphaInstructions.SA_INV_SRC == SA2AlphaInstructions.SA_INV_SRC:
-                        tmpMat["b_srcAlpha"] = 'INV_SRC'
-                    elif instr & SA2AlphaInstructions.SA_INV_OTHER == SA2AlphaInstructions.SA_INV_OTHER:
-                        tmpMat["b_srcAlpha"] = 'INV_OTHER'                        
-                    elif instr & SA2AlphaInstructions.SA_SRC:
-                        tmpMat["b_srcAlpha"] = 'SRC'
-                    elif instr & SA2AlphaInstructions.SA_OTHER:
-                        tmpMat["b_srcAlpha"] = 'OTHER'
-                    elif instr & SA2AlphaInstructions.SA_ONE:
-                        tmpMat["b_srcAlpha"] = 'ONE'
+                for si, s in enumerate(c.strips):
+                    rev = c.reversedStrips[si]
+                    if rev:
+                        for p in range(len(s) - 2):
+                            polygons.append((s[p+1], s[p], s[p+2]))
                     else:
-                        tmpMat["b_srcAlpha"] = 'ZERO'
+                        for p in range(len(s) - 2):
+                            polygons.append((s[p], s[p+1], s[p+2]))  
+            elif c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular or c.chunkType == enums.ChunkType.Bits_BlendAlpha:
+                instr = c.alphaInstruction
+                from .enums import SA2AlphaInstructions
+                
+                if instr & SA2AlphaInstructions.SA_INV_DST == SA2AlphaInstructions.SA_INV_DST:
+                    tmpMat["b_srcAlpha"] = 'INV_DST'
+                elif instr & SA2AlphaInstructions.SA_DST == SA2AlphaInstructions.SA_DST:
+                    tmpMat["b_srcAlpha"] = 'DST'
+                elif instr & SA2AlphaInstructions.SA_INV_SRC == SA2AlphaInstructions.SA_INV_SRC:
+                    tmpMat["b_srcAlpha"] = 'INV_SRC'
+                elif instr & SA2AlphaInstructions.SA_INV_OTHER == SA2AlphaInstructions.SA_INV_OTHER:
+                    tmpMat["b_srcAlpha"] = 'INV_OTHER'                        
+                elif instr & SA2AlphaInstructions.SA_SRC:
+                    tmpMat["b_srcAlpha"] = 'SRC'
+                elif instr & SA2AlphaInstructions.SA_OTHER:
+                    tmpMat["b_srcAlpha"] = 'OTHER'
+                elif instr & SA2AlphaInstructions.SA_ONE:
+                    tmpMat["b_srcAlpha"] = 'ONE'
+                else:
+                    tmpMat["b_srcAlpha"] = 'ZERO'
 
-                    if instr & SA2AlphaInstructions.DA_INV_DST == SA2AlphaInstructions.DA_INV_DST:
-                        tmpMat["b_destAlpha"] = 'INV_DST'
-                    elif instr & SA2AlphaInstructions.DA_DST == SA2AlphaInstructions.DA_DST:
-                        tmpMat["b_destAlpha"] = 'DST'
-                    elif instr & SA2AlphaInstructions.DA_INV_SRC == SA2AlphaInstructions.DA_INV_SRC:
-                        tmpMat["b_destAlpha"] = 'INV_SRC'
-                    elif instr & SA2AlphaInstructions.DA_INV_OTHER == SA2AlphaInstructions.DA_INV_OTHER:
-                        tmpMat["b_destAlpha"] = 'INV_OTHER'
-                    elif instr & SA2AlphaInstructions.DA_SRC:
-                        tmpMat["b_destAlpha"] = 'SRC'
-                    elif instr & SA2AlphaInstructions.DA_OTHER:
-                        tmpMat["b_destAlpha"] = 'OTHER'
-                    elif instr & SA2AlphaInstructions.DA_ONE:
-                        tmpMat["b_destAlpha"] = 'ONE'
-                    else:
-                        tmpMat["b_destAlpha"] = 'ZERO'
-                    
-                    if c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular:
-                        tmpMat["b_Diffuse"] = c.diffuse.toBlenderTuple()
-                        tmpMat["b_Ambient"] = c.ambient.toBlenderTuple()
-                        tmpMat["b_Specular"] = c.specular.toBlenderTuple()
-                        tmpMat["b_Exponent"] = c.specularity / 255.0
-                elif c.chunkType == enums.ChunkType.Tiny_TextureID:
-                    tmpMat["b_TextureID"] = c.texID
-                    tmpMat["b_use_Anisotropy"] = c.anisotropy
+                if instr & SA2AlphaInstructions.DA_INV_DST == SA2AlphaInstructions.DA_INV_DST:
+                    tmpMat["b_destAlpha"] = 'INV_DST'
+                elif instr & SA2AlphaInstructions.DA_DST == SA2AlphaInstructions.DA_DST:
+                    tmpMat["b_destAlpha"] = 'DST'
+                elif instr & SA2AlphaInstructions.DA_INV_SRC == SA2AlphaInstructions.DA_INV_SRC:
+                    tmpMat["b_destAlpha"] = 'INV_SRC'
+                elif instr & SA2AlphaInstructions.DA_INV_OTHER == SA2AlphaInstructions.DA_INV_OTHER:
+                    tmpMat["b_destAlpha"] = 'INV_OTHER'
+                elif instr & SA2AlphaInstructions.DA_SRC:
+                    tmpMat["b_destAlpha"] = 'SRC'
+                elif instr & SA2AlphaInstructions.DA_OTHER:
+                    tmpMat["b_destAlpha"] = 'OTHER'
+                elif instr & SA2AlphaInstructions.DA_ONE:
+                    tmpMat["b_destAlpha"] = 'ONE'
+                else:
+                    tmpMat["b_destAlpha"] = 'ZERO'
+                
+                if c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular:
+                    tmpMat["b_Diffuse"] = c.diffuse.toBlenderTuple()
+                    tmpMat["b_Ambient"] = c.ambient.toBlenderTuple()
+                    tmpMat["b_Specular"] = c.specular.toBlenderTuple()
+                    tmpMat["b_Exponent"] = c.specularity / 255.0
+            elif c.chunkType == enums.ChunkType.Tiny_TextureID:
+                tmpMat["b_TextureID"] = c.texID
+                tmpMat["b_use_Anisotropy"] = c.anisotropy
 
-                    if c.filtering == enums.TextureFiltering.Point:
-                        tmpMat["b_texFilter"] = 'POINT'
-                    elif c.filtering == enums.TextureFiltering.Bilinear:
-                        tmpMat["b_texFilter"] = 'BILINEAR'
-                    elif c.filtering == enums.TextureFiltering.Trilinear:
-                        tmpMat["b_texFilter"] = 'TRILINEAR'
-                    elif c.filtering == enums.TextureFiltering.Blend:
-                        tmpMat["b_texFilter"] = 'BLEND'
+                if c.filtering == enums.TextureFiltering.Point:
+                    tmpMat["b_texFilter"] = 'POINT'
+                elif c.filtering == enums.TextureFiltering.Bilinear:
+                    tmpMat["b_texFilter"] = 'BILINEAR'
+                elif c.filtering == enums.TextureFiltering.Trilinear:
+                    tmpMat["b_texFilter"] = 'TRILINEAR'
+                elif c.filtering == enums.TextureFiltering.Blend:
+                    tmpMat["b_texFilter"] = 'BLEND'
 
-                    tmpMat["b_d_025"] = (c.flags & enums.TextureIDFlags.D_025).value > 0
-                    tmpMat["b_d_050"] = (c.flags & enums.TextureIDFlags.D_050).value > 0
-                    tmpMat["b_d_100"] = (c.flags & enums.TextureIDFlags.D_100).value > 0
-                    tmpMat["b_d_200"] = (c.flags & enums.TextureIDFlags.D_200).value > 0
-                    tmpMat["b_clampU"] = (c.flags & enums.TextureIDFlags.CLAMP_U).value > 0
-                    tmpMat["b_clampV"] = (c.flags & enums.TextureIDFlags.CLAMP_V).value > 0
-                    tmpMat["b_mirrorU"] = (c.flags & enums.TextureIDFlags.FLIP_U).value > 0
-                    tmpMat["b_mirrorV"] = (c.flags & enums.TextureIDFlags.FLIP_V).value > 0
-                elif c.chunkType == enums.ChunkType.Bits_SpecularExponent:
-                    tmpMat["b_Exponent"] = c.exponent
-                elif c.chunkType == enums.ChunkType.Bits_MipmapDAdjust:
-                    tmpMat["b_d_025"] = (c.value & enums.MipMapDistanceAdjust.D_025).value > 0
-                    tmpMat["b_d_050"] = (c.value & enums.MipMapDistanceAdjust.D_050).value > 0
-                    tmpMat["b_d_100"] = (c.value & enums.MipMapDistanceAdjust.D_100).value > 0
-                    tmpMat["b_d_200"] = (c.value & enums.MipMapDistanceAdjust.D_200).value > 0
+                tmpMat["b_d_025"] = (c.flags & enums.TextureIDFlags.D_025).value > 0
+                tmpMat["b_d_050"] = (c.flags & enums.TextureIDFlags.D_050).value > 0
+                tmpMat["b_d_100"] = (c.flags & enums.TextureIDFlags.D_100).value > 0
+                tmpMat["b_d_200"] = (c.flags & enums.TextureIDFlags.D_200).value > 0
+                tmpMat["b_clampU"] = (c.flags & enums.TextureIDFlags.CLAMP_U).value > 0
+                tmpMat["b_clampV"] = (c.flags & enums.TextureIDFlags.CLAMP_V).value > 0
+                tmpMat["b_mirrorU"] = (c.flags & enums.TextureIDFlags.FLIP_U).value > 0
+                tmpMat["b_mirrorV"] = (c.flags & enums.TextureIDFlags.FLIP_V).value > 0
+            elif c.chunkType == enums.ChunkType.Bits_SpecularExponent:
+                tmpMat["b_Exponent"] = c.exponent
+            elif c.chunkType == enums.ChunkType.Bits_MipmapDAdjust:
+                tmpMat["b_d_025"] = (c.value & enums.MipMapDistanceAdjust.D_025).value > 0
+                tmpMat["b_d_050"] = (c.value & enums.MipMapDistanceAdjust.D_050).value > 0
+                tmpMat["b_d_100"] = (c.value & enums.MipMapDistanceAdjust.D_100).value > 0
+                tmpMat["b_d_200"] = (c.value & enums.MipMapDistanceAdjust.D_200).value > 0
 
-            filteredPolygons: List[List[PolyVert]] = list()
-            for p in polygons:
-                indices = [p[0].vIndex(), p[1].vIndex(), p[2].vIndex()]
-                if len(set(indices)) == 3:
-                    filteredPolygons.append(p)
-            dif = len(polygons) - len(filteredPolygons)
-            if not DO and dif > 0:
-                print("  Invalid Polygons:", dif)
+        filteredPolygons: List[List[PolyVert]] = list()
+        for p in polygons:
+            indices = [p[0].index, p[1].index, p[2].index]
+            if len(set(indices)) == 3:
+                filteredPolygons.append(p)
+        dif = len(polygons) - len(filteredPolygons)
+        if not DO and dif > 0:
+            print("  Invalid Polygons:", dif)
 
-            polygons = filteredPolygons
+        polygons = filteredPolygons
 
-            # creating the mesh
+        # creating the mesh
 
-            mesh = bpy.data.meshes.new(attach.name)
-            for m in meshMaterials:
-                mesh.materials.append(m)
+        mesh = bpy.data.meshes.new(a.name(isArmature))
+        for m in meshMaterials:
+            mesh.materials.append(m)
 
-            if not hasColor:
-                mesh.saSettings.sa2ExportType = 'NRM'
+        if not a.hasColor:
+            mesh.saSettings.sa2ExportType = 'NRM'
 
-            bm = bmesh.new()
-            bm.from_mesh(mesh)
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
 
-            for v in vDistinct:
-                vert = bm.verts.new(v[0])
-            bm.verts.ensure_lookup_table()
-            bm.verts.index_update()
+        for v in vDistinct:
+            vert = bm.verts.new(v[0])
+        bm.verts.ensure_lookup_table()
+        bm.verts.index_update()
 
-            matIndex = 0
+        matIndex = 0
 
-            uvLayer = bm.loops.layers.uv.new("UV0")
-            if hasColor:
-                colorLayer = bm.loops.layers.color.new("COL0")       
-            for i, p in enumerate(polygons):
-                verts = []
-                indices = []
-                for l in p:
-                    vID = vertexIndices[ l.vIndex() ]
-                    verts.append(bm.verts[vID])
-                    indices.append((vID, l.vIndex()))
-                try:
-                    face = bm.faces.new(verts)
-                except Exception as e:
-                    if not str(e).endswith("exists"):
-                        print("Invalid triangle:", str(e))
-                    continue
+        uvLayer = bm.loops.layers.uv.new("UV0")
+        if a.hasColor:
+            colorLayer = bm.loops.layers.color.new("COL0")       
+        for i, p in enumerate(polygons):
+            verts = []
+            indices = []
+            for l in p:
+                vID = vertexIndices[ l.index ]
+                verts.append(bm.verts[vID])
+                indices.append((vID, l.index))
+            try:
+                face = bm.faces.new(verts)
+            except Exception as e:
+                if not str(e).endswith("exists"):
+                    print("Invalid triangle:", str(e))
+                continue
 
-                for l, pc in zip(face.loops, p):
-                    l[uvLayer].uv = pc.uv.getBlenderUV()
-                    if hasColor:
-                        l[colorLayer] = vertexBuffer[pc.vIndex()].getColor()
+            for l, pc in zip(face.loops, p):
+                l[uvLayer].uv = pc.uv.getBlenderUV()
+                if a.hasColor:
+                    l[colorLayer] = vertexBuffer[pc.index].getColor()
 
-                if i in matMarkers:
-                    matIndex = matMarkers[i]
-                face.smooth = True
-                face.material_index = matIndex
+            if i in matMarkers:
+                matIndex = matMarkers[i]
+            face.smooth = True
+            face.material_index = matIndex
 
-            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 
-            bm.to_mesh(mesh)
-            bm.clear()
+        bm.to_mesh(mesh)
+        bm.clear()
 
-            for p in mesh.polygons:
-                normal = mathutils.Vector((0,0,0))
-                for v in p.vertices:
-                    normal += mathutils.Vector(vDistinct[v][1])
-                if normal != mathutils.Vector((0,0,0)):
-                    normal /= 3
-                    if normal.dot(p.normal) < 0:
-                        p.flip()
+        for p in mesh.polygons:
+            normal = mathutils.Vector((0,0,0))
+            for v in p.vertices:
+                normal += mathutils.Vector(vDistinct[v][1])
+            if normal != mathutils.Vector((0,0,0)):
+                normal /= 3
+                if normal.dot(p.normal) < 0:
+                    p.flip()
 
-            mesh.create_normals_split()
-            split_normal = [vDistinct[l.vertex_index][1] for l in mesh.loops]
-            mesh.normals_split_custom_set(split_normal)
-            mesh.use_auto_smooth = True
-            mesh.auto_smooth_angle = 180
+        mesh.create_normals_split()
+        split_normal = [vDistinct[l.vertex_index][1] for l in mesh.loops]
+        mesh.normals_split_custom_set(split_normal)
+        mesh.use_auto_smooth = True
+        mesh.auto_smooth_angle = 180
 
-            # dont ask me why, but blender likes to add sharp edges- we dont need those at all in this case
-            for e in mesh.edges:
-                e.use_edge_sharp = False
+        # dont ask me why, but blender likes to add sharp edges- we dont need those at all in this case
+        for e in mesh.edges:
+            e.use_edge_sharp = False
 
-            if isArmature:
-                meshOBJ = bpy.data.objects.new(mesh.name, mesh)
+        if isArmature:
+            meshOBJ = bpy.data.objects.new(mesh.name, mesh)
 
-                #adding weights
-                weightGroups: Dict[common.Model, bpy.types.VertexGroup] = dict()
-                for o in affectedBy:
-                    weightGroups[o] = meshOBJ.vertex_groups.new(name=o.name)
+            #adding weights
+            weightGroups: Dict[common.Model, bpy.types.VertexGroup] = dict()
+            for o in a.affectedBy:
+                weightGroups[o] = meshOBJ.vertex_groups.new(name=o.name)
 
-                for v, bV in zip(vertices, mesh.vertices):
-                    for ov in v.vertices:
-                        weightGroups[ov.model].add([bV.index], ov.weight, 'REPLACE') 
+            for v, bV in zip(a.vertices, mesh.vertices):
+                for ov in v.vertices:
+                    weightGroups[ov.model].add([bV.index], ov.weight, 'REPLACE') 
 
-                models[0].meshes.append(meshOBJ)
-            else:
-                o.meshes.append(mesh)
-        if DO:
-            print(" - - - -\n")
+            armatureRoot.meshes.append(meshOBJ)
+        else:
+            a.affectedBy[0].meshes.append(mesh)
