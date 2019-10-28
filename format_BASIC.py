@@ -2,7 +2,7 @@ import bpy
 import mathutils
 
 import math
-from typing import List
+from typing import List, Dict
 
 from . import enums, fileHelper, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox
@@ -168,6 +168,14 @@ class Material:
         fileW.wInt(self.textureID)
         fileW.wUInt(self.mFlags.value)
 
+    def read(fileR: fileHelper.FileReader, address: int, index: int):
+        diffuse = ColorARGB.fromARGB(fileR.rUInt(address))
+        specular = ColorARGB.fromARGB(fileR.rUInt(address + 4))
+        specularExponent = fileR.rFloat(address + 8)
+        textureID = fileR.rUInt(address + 12)
+        flags = enums.MaterialFlags(fileR.rUInt(address + 16))
+        return Material("Material_" + str(index), diffuse, specular, specularExponent, textureID, flags)
+
 class PolyVert:
     """Face loops of a mesh
     
@@ -200,7 +208,7 @@ class PolyVert:
 class MeshSet:
     """A single mesh set in the model"""
 
-    mesh: bpy.types.Mesh
+    name: str
     materialID: int
     meshSetID: int
     polytype: enums.PolyType
@@ -217,14 +225,17 @@ class MeshSet:
     UVPtr: int
 
     def __init__(self,
-                 mesh: bpy.types.Mesh,
+                 name: str,
                  materialID: int,
                  meshSetID: int,
                  polyType: enums.PolyType,
                  polys: List[List[PolyVert]],
+                 usePolyNormals: bool,
+                 useColor: bool,
+                 useUV: bool,
                  polyAttribs: int = 0
                  ):
-        self.mesh = mesh
+        self.name = name
         self.materialID = materialID
         self.meshSetID = meshSetID
         self.polytype = polyType
@@ -232,7 +243,11 @@ class MeshSet:
         self.polyAttribs = polyAttribs
         self.polycount = len(polys) if polyType == enums.PolyType.Strips or polyType == enums.PolyType.NPoly else round(len(polys[0]) / 3)
 
-    def writePolys(self, fileW: fileHelper.FileWriter, usePolyNormals: bool, useColor: bool, useUV: bool):
+        self.polyNormalPtr = -1 if usePolyNormals else 0
+        self.ColorPtr = -1 if useColor else 0
+        self.UVPtr = -1 if useUV else 0
+
+    def writePolys(self, fileW: fileHelper.FileWriter):
 
         #writing poly indices
         self.polyPtr = fileW.tell()
@@ -245,24 +260,21 @@ class MeshSet:
         fileW.align(4)
 
         # writing poly normals (usually unused tho)
-        self.polyNormalPtr = 0
-        if usePolyNormals:
+        if self.polyNormalPtr == -1:
             self.polyNormalPtr = fileW.tell()
             for p in self.polys:
                 for l in p:
                     l.polyNormal.write(fileW)
         
         # writing colors
-        self.ColorPtr = 0
-        if useColor:
+        if self.ColorPtr == -1:
             self.ColorPtr = fileW.tell()
             for p in self.polys:
                 for l in p:
                     l.color.writeARGB(fileW)
 
         # writing uvs
-        self.UVPtr = 0
-        if useUV:
+        if self.UVPtr == -1:
             self.UVPtr = fileW.tell()
             for p in self.polys:
                 for l in p:
@@ -282,7 +294,7 @@ class MeshSet:
         fileW.wUInt(self.UVPtr)
 
         #setting the labels
-        name = "bsc_" + self.mesh.name + "_"
+        name = "bsc_" + self.name + "_"
         if self.polyPtr > 0:
             labels[self.polyPtr] = name + "p" + str(self.meshSetID)
         if self.polyNormalPtr > 0:
@@ -292,6 +304,63 @@ class MeshSet:
         if self.UVPtr > 0:
             labels[self.UVPtr] = name + "uv" + str(self.meshSetID)
 
+    def read(fileR: fileHelper.FileReader, address: int, meshName: str, setID: int):
+        
+
+        header = fileR.rUShort(address)
+        materialID = header & 0x3FFF
+        polyType = enums.PolyType((header & 0xC000) >> 14)
+
+        polyCount = fileR.rUShort(address + 2)
+        polyAttribs = fileR.rUInt(address + 8)
+
+        polyPtr = fileR.rUInt(address + 4)
+        polyNrmPtr = fileR.rUInt(address + 12)
+        colPtr = fileR.rUInt(address + 16)
+        uvPtr = fileR.rUInt(address + 20)
+
+        polys = list()
+
+        for p in range(polyCount):
+            vCount = 3
+            if polyType == enums.PolyType.Strips:
+                stripSize = fileR.rShort(polyPtr)
+                vCount = abs(stripSize)
+                polyPtr += 2
+            elif polyType == enums.PolyType.NPoly:
+                vCount = fileR.rUShort(polyPtr)
+                polyPtr += 2
+            elif polyType == enums.PolyType.Quads:
+                vCount = 4
+            
+            polyVerts = list()
+            for v in range(vCount):
+                
+                vIndex = fileR.rUShort(polyPtr)
+                polyPtr += 2
+
+                polyNormal = Vector3()
+                if polyNrmPtr:
+                    polyNormal = Vector3((fileR.rFloat(polyNrmPtr), fileR.rFloat(polyNrmPtr + 4), fileR.rFloat(polyNrmPtr + 8)))
+                    polyNrmPtr += 12
+
+                color = ColorARGB()
+                if colPtr:
+                    color = ColorARGB.fromARGB(fileR.rUInt(colPtr))
+                    colPtr += 4
+                
+                uv = UV()
+                if uvPtr:
+                    uv.x = fileR.rShort(uvPtr)
+                    uv.y = fileR.rShort(uvPtr + 2)
+                    uvPtr += 4
+                
+                polyVerts.append(PolyVert(vIndex, polyNormal, color, uv))
+            
+            polys.append(polyVerts)
+        
+        return MeshSet(meshName, materialID, setID, polyType, polys, polyNrmPtr > 0, colPtr > 0, uvPtr > 0, polyAttribs)
+            
 class Attach:
     """Attach for the BASIC format"""
 
@@ -299,10 +368,6 @@ class Attach:
     positions: List[Vector3]
     normals: List[Vector3]
     meshSets: List[MeshSet]
-
-    usePolyNormals: bool
-    useColor: bool
-    useUV: bool
 
     materials: List[Material]
     bounds: BoundingBox
@@ -312,9 +377,6 @@ class Attach:
                  positions: List[Vector3],
                  normals: List[Vector3],
                  meshSets: List[MeshSet],
-                 usePolyNormals: bool,
-                 useColor: bool,
-                 useUV: bool,
                  materials: List[Material],
                  bounds: BoundingBox):
 
@@ -322,9 +384,6 @@ class Attach:
         self.positions = positions
         self.normals = normals
         self.meshSets = meshSets
-        self.usePolyNormals = usePolyNormals
-        self.useColor = useColor
-        self.useUV = useUV
         self.materials = materials
         self.bounds = bounds
 
@@ -371,7 +430,6 @@ class Attach:
                 # we take the minimum number, this way if we use collisions, 
                 # it will always place them in list no. 0
         
-
         # strippifying
         stripf = strippifier.Strippifier()
         stripPolys = list()
@@ -411,10 +469,9 @@ class Attach:
         # creating the meshsets
         meshsets: List[meshsets] = list()
         
-
         if isCollision or len(materials) == 0:
             if stripPolys[0] is not None:
-                meshsets.append(MeshSet(mesh, 0, 0, stripPolys[0][0], stripPolys[0][1]))
+                meshsets.append(MeshSet(mesh.name, 0, 0, stripPolys[0][0], stripPolys[0][1], usePolyNormals, useColor, useUV))
         else:
             for i, p in enumerate(stripPolys):
                 if p == None:
@@ -429,12 +486,12 @@ class Attach:
                     except ValueError:
                         print(" material", mesh.materials[i].name, "not found")
 
-                meshsets.append(MeshSet(mesh, matID, i, p[0], p[1]))
+                meshsets.append(MeshSet(mesh.name, matID, i, p[0], p[1], usePolyNormals, useColor, useUV))
 
         if len(meshsets) == 0:
             print(" Mesh not valid (?); no meshsets could be created")
             return None
-        return Attach(mesh.name, positions, normals, meshsets, usePolyNormals, useColor, useUV, materials, bounds)
+        return Attach(mesh.name, positions, normals, meshsets, materials, bounds)
     
     def write(self, fileW: fileHelper.FileWriter, labels: dict, meshDict: dict = None):
         global DO
@@ -450,7 +507,7 @@ class Attach:
             n.write(fileW)
 
         for m in self.meshSets:
-            m.writePolys(fileW, self.usePolyNormals, self.useColor, self.useUV)
+            m.writePolys(fileW)
 
         setPtr = fileW.tell()
         labels[setPtr] = "bsc_" + self.name + "_set"
@@ -479,4 +536,78 @@ class Attach:
             print("    Mesh set Ptr:", common.hex4(setPtr))
             print("    Mesh sets:", len(self.meshSets), "\n")
 
+    def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
+
+        if address in labels:
+            name: str = labels[address]
+            if name.startswith("bsc_"):
+                name = name[4:]
+        else:
+            name = "Attach_" + str(meshID)
+
+        pos = fileR.rUInt(address)
+        nrm = fileR.rUInt(address + 4)
+        vCount = fileR.rUInt(address + 8)
+
+        positions: List[Vector3] = list()
+        normals: List[Vector3] = list()
+
+        for v in range(vCount):
+            positions.append(Vector3((fileR.rFloat(pos), fileR.rFloat(pos + 4), fileR.rFloat(pos + 8))))
+            normals.append(Vector3((fileR.rFloat(nrm), fileR.rFloat(nrm + 4), fileR.rFloat(nrm + 8))))
+            pos += 12
+            nrm += 12
         
+        tempAddr = fileR.rUInt(address + 12)
+        meshSetCount = fileR.rUShort(address + 20)
+        meshSets = list()
+
+        for m in range(meshSetCount):
+            meshSets.append(MeshSet.read(fileR, tempAddr, name, m))
+            tempAddr += 24
+
+        print(len(meshSets))
+
+        tempAddr = fileR.rUInt(address + 16)
+        materialCount = fileR.rUShort(address + 22)
+        materials: List[Material] = list()
+
+        for m in range(materialCount):
+            materials.append(Material.read(fileR, tempAddr, m))
+            tempAddr += 20
+
+        return Attach(name, positions, normals, meshSets, materials, None)
+
+def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
+    
+    import bmesh
+    meshes: Dict[int, bpy.types.Mesh] = dict()
+
+    materials: List[bpy.types.Material] = list()
+    matDicts: List[dict] = list()
+
+    for o in models:
+        if o.meshPtr == 0:
+            continue
+        elif o.meshPtr in meshes:
+            o.meshes.append(meshes[o.meshPtr])
+            continue
+
+        attach = attaches[o.meshPtr]
+
+        mesh = bpy.data.meshes.new(attach.name)
+
+
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+
+        for v in attach.positions:
+            bm.verts.new((v.x, -v.z, v.y))
+        bm.verts.ensure_lookup_table()
+        bm.verts.index_update()
+
+        bm.to_mesh(mesh)
+        bm.clear()
+
+        o.meshes.append(mesh)
+        meshes[o.meshPtr] = mesh

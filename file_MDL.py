@@ -153,14 +153,13 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
 
       print(" == Reading Models ==")
    
-   objects = list()
+   objects: List[common.Model] = list()
    tempOBJ = bpy.data.objects.new("##TEMP##", None)
    context.scene.collection.objects.link(tempOBJ)
    common.readObjects(fileR, fileR.rUInt(8), 0, None, labels, objects, tempOBJ)
    bpy.data.objects.remove(tempOBJ)
 
    attaches = dict()
-   meshID = 0
    objID = 0
    numberCount = max(3, len(str(len(objects))))
    for o in objects:
@@ -168,8 +167,10 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
       objID += 1
       if o.meshPtr > 0 and o.meshPtr not in attaches:
          if file_format == 'SA2':
-            attaches[o.meshPtr] = format_CHUNK.Attach.read(fileR, o.meshPtr, meshID, labels)
-            meshID += 1
+            attaches[o.meshPtr] = format_CHUNK.Attach.read(fileR, o.meshPtr, len(attaches), labels)
+         elif file_format == 'SA1':
+            attaches[o.meshPtr] = format_BASIC.Attach.read(fileR, o.meshPtr, len(attaches), labels)
+         
             
    isArmature = False
    if file_format == 'SA2':
@@ -185,6 +186,8 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
       if isArmature:
          root = objects[0]
       format_CHUNK.ProcessChunkData(processedAttaches, root)
+   elif file_format == 'SA1':
+      format_BASIC.process_BASIC(objects, attaches)
 
    collection = bpy.data.collections.new("Import_" + os.path.splitext(os.path.basename(filepath))[0])
    context.scene.collection.children.link(collection)

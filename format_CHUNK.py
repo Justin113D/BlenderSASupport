@@ -1311,7 +1311,7 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
         bm.from_mesh(mesh)
 
         for v in vDistinct:
-            vert = bm.verts.new(v[0])
+            bm.verts.new(v[0])
         bm.verts.ensure_lookup_table()
         bm.verts.index_update()
 
@@ -1337,7 +1337,7 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
             for l, pc in zip(face.loops, p):
                 l[uvLayer].uv = pc.uv.getBlenderUV()
                 if a.hasColor:
-                    l[colorLayer] = vertexBuffer[pc.index].getColor()
+                    l[colorLayer] = a.vertices[vertexIndices[pc.index]].getColor()
 
             if i in matMarkers:
                 matIndex = matMarkers[i]
