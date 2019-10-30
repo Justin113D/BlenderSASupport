@@ -63,7 +63,6 @@ class TOPBAR_MT_SA_export(bpy.types.Menu):
 
 # export operators
 
-
 def exportFile(op, mdl: bool, context, **keywords):
     try:
         if mdl:
@@ -74,7 +73,6 @@ def exportFile(op, mdl: bool, context, **keywords):
         op.report({'WARNING'}, "Export stopped!\n" + str(e))
         return {'CANCELLED'}
     return out
-
 
 class ExportSA1MDL(bpy.types.Operator, ExportHelper):
     """Export Objects into an SA1 model file"""
@@ -524,20 +522,26 @@ class ArmatureFromObjects(bpy.types.Operator):
     bl_label = "Armature from objects"
     bl_description = "Generate an armature from object. Select the parent of all objects, which will represent the root"
 
-    def addChildren(parent, result):
+    def addChildren(parent, result, resultMeshes):
+        if parent.type == 'MESH':
+            resultMeshes.append(len(result))
         result.append(parent)
+
         for c in parent.children:
-            ArmatureFromObjects.addChildren(c, result)
+            ArmatureFromObjects.addChildren(c, result, resultMeshes)
 
     def execute(self, context):
         
-        if len(context.selected_objects) == 0:
+        if len(context.selected_objects) == 0 or bpy.context.object.mode != 'OBJECT':
             return {'CANCELLED'}
         active = context.active_object  
 
         objects = list()
+        meshes = list()
 
-        ArmatureFromObjects.addChildren(active, objects)
+        ArmatureFromObjects.addChildren(active, objects, meshes)
+
+        zfillSize = max(2, len(str(len(meshes))))
 
         if len(objects) == 1:
             return {'CANCELLED'}
@@ -550,13 +554,17 @@ class ArmatureFromObjects(bpy.types.Operator):
 
         context.scene.collection.objects.link(armatureObj)
 
+        bpy.ops.object.select_all(action='DESELECT')
         context.view_layer.objects.active = armatureObj
         bpy.ops.object.mode_set(mode='EDIT', toggle=False)
 
         edit_bones = armatureObj.data.edit_bones
         boneMap = dict()
         bones = objects[1:]
+
+        
         for b in bones:
+            boneName = b.name
             bone = edit_bones.new(b.name)
             bone.layers[0] = True
             bone.head = (0,0,0)
@@ -568,6 +576,37 @@ class ArmatureFromObjects(bpy.types.Operator):
             boneMap[b] = bone
 
         bpy.ops.object.mode_set(mode='OBJECT')
+        meshCount = 0
+
+        for i in meshes:
+            boneObject = objects[i]
+
+            meshCopy = boneObject.data.copy()
+            meshCopy.name = "Mesh_" + str(meshCount).zfill(zfillSize)
+            meshObj = boneObject.copy()
+            meshObj.name = meshCopy.name
+            meshObj.data = meshCopy
+            context.scene.collection.objects.link(meshObj)
+
+            meshObj.parent = armatureObj
+            meshObj.matrix_local = globalMatrix.inverted() @ boneObject.matrix_world
+            
+            bpy.ops.object.mode_set(mode='OBJECT')
+            meshObj.select_set(True, view_layer=context.view_layer)
+            bpy.ops.object.transform_apply(location = True, scale = True, rotation = True)
+
+            modif = meshObj.modifiers.new("deform", 'ARMATURE')
+            modif.object = armatureObj            
+            
+            group = meshObj.vertex_groups.new(name=boneObject.name)
+            group.add([v.index for v in meshCopy.vertices], 1, 'ADD')
+
+            meshCount += 1
+            meshObj.select_set(False, view_layer=context.view_layer)
+
+                
+
+        
 
         return {'FINISHED'}
 
@@ -1717,7 +1756,6 @@ classes = (
     SAScenePanel,
     SA3DPanel,
     SAMeshPanel,
-    DialogOperator
     )
 
 def register():
