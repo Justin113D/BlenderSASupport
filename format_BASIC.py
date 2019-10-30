@@ -217,6 +217,7 @@ class MeshSet:
     # the polygon corners of the mesh
     # each list is a single poly
     polys: List[List[PolyVert]] 
+    reverse: List[bool]
 
     polyPtr: int
     polyAttribs: int
@@ -233,7 +234,8 @@ class MeshSet:
                  usePolyNormals: bool,
                  useColor: bool,
                  useUV: bool,
-                 polyAttribs: int = 0
+                 polyAttribs: int = 0,
+                 reverse: List[bool] = None
                  ):
         self.name = name
         self.materialID = materialID
@@ -242,6 +244,7 @@ class MeshSet:
         self.polys = polys
         self.polyAttribs = polyAttribs
         self.polycount = len(polys) if polyType == enums.PolyType.Strips or polyType == enums.PolyType.NPoly else round(len(polys[0]) / 3)
+        self.reverse = reverse
 
         self.polyNormalPtr = -1 if usePolyNormals else 0
         self.ColorPtr = -1 if useColor else 0
@@ -320,11 +323,12 @@ class MeshSet:
         uvPtr = fileR.rUInt(address + 20)
 
         polys = list()
-
+        reverse = list() if polyType == enums.PolyType.Strips else None
         for p in range(polyCount):
             vCount = 3
             if polyType == enums.PolyType.Strips:
                 stripSize = fileR.rShort(polyPtr)
+                reverse.append(stripSize < 0)
                 vCount = abs(stripSize)
                 polyPtr += 2
             elif polyType == enums.PolyType.NPoly:
@@ -359,7 +363,7 @@ class MeshSet:
             
             polys.append(polyVerts)
         
-        return MeshSet(meshName, materialID, setID, polyType, polys, polyNrmPtr > 0, colPtr > 0, uvPtr > 0, polyAttribs)
+        return MeshSet(meshName, materialID, setID, polyType, polys, polyNrmPtr > 0, colPtr > 0, uvPtr > 0, polyAttribs, reverse)
             
 class Attach:
     """Attach for the BASIC format"""
@@ -474,7 +478,7 @@ class Attach:
                 meshsets.append(MeshSet(mesh.name, 0, 0, stripPolys[0][0], stripPolys[0][1], usePolyNormals, useColor, useUV))
         else:
             for i, p in enumerate(stripPolys):
-                if p == None:
+                if p is None or len(p) == 0:
                     continue
                 matID = 0
                 if len(mesh.materials) > 0:
@@ -525,7 +529,7 @@ class Attach:
         fileW.wUInt(setPtr)
         fileW.wUInt(0x10) # material list is always at 0x00000010 in my exporter
         fileW.wUShort(len(self.meshSets))
-        fileW.wUShort(min(1, len(self.materials)))
+        fileW.wUShort(max(1, len(self.materials)))
         self.bounds.write(fileW)
 
         if DO:
@@ -566,8 +570,6 @@ class Attach:
             meshSets.append(MeshSet.read(fileR, tempAddr, name, m))
             tempAddr += 24
 
-        print(len(meshSets))
-
         tempAddr = fileR.rUInt(address + 16)
         materialCount = fileR.rUShort(address + 22)
         materials: List[Material] = list()
@@ -595,8 +597,134 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
 
         attach = attaches[o.meshPtr]
 
-        mesh = bpy.data.meshes.new(attach.name)
+        # creating materials
+        meshMaterials = list()
+        matIDs = list()
 
+        from .enums import MaterialFlags
+        for m in attach.materials:
+            d = common.getDefaultMatDict()
+
+            d["b_Diffuse"] = m.diffuse.toBlenderTuple()
+            d["b_Specular"] = m.specular.toBlenderTuple()
+            d["b_Exponent"] = m.exponent / 11
+            d["b_TextureID"] = m.textureID
+            f = m.mFlags
+            d["b_d_025"] = bool(f & MaterialFlags.D_025)
+            d["b_d_050"] = bool(f & MaterialFlags.D_050)
+            d["b_d_100"] = bool(f & MaterialFlags.D_100)
+            d["b_d_200"] = bool(f & MaterialFlags.D_200)
+            d["b_use_Anisotropy"] = bool(f & MaterialFlags.FLAG_USE_ANISOTROPIC)
+            d["b_clampV"] = bool(f & MaterialFlags.FLAG_CLAMP_V)
+            d["b_clampU"] = bool(f & MaterialFlags.FLAG_CLAMP_U)
+            d["b_mirrorV"] = bool(f & MaterialFlags.FLAG_FLIP_V)
+            d["b_mirrorU"] = bool(f & MaterialFlags.FLAG_FLIP_U)
+            d["b_ignoreSpecular"] = bool(f & MaterialFlags.FLAG_IGNORE_SPECULAR)
+            d["b_useAlpha"] = bool(f & MaterialFlags.FLAG_USE_ALPHA)
+            d["b_useTexture"] = bool(f & MaterialFlags.FLAG_USE_TEXTURE)
+            d["b_useEnv"] = bool(f & MaterialFlags.FLAG_USE_ENV)
+            d["b_doubleSided"] = bool(f & MaterialFlags.FLAG_DOUBLE_SIDE)
+            d["b_flatShading"] = bool(f & MaterialFlags.FLAG_USE_FLAT)
+            d["b_ignoreLighting"] = bool(f & MaterialFlags.FLAG_IGNORE_LIGHT)
+            d["b_ignoreAmbient"] = False
+
+            if f & MaterialFlags.FILTER_BLEND == MaterialFlags.FILTER_BLEND:
+                d["b_texFilter"] = 'BLEND'
+            elif f & MaterialFlags.FILTER_TRILINEAR:
+                d["b_texFilter"] = 'TRILINEAR'
+            elif f & MaterialFlags.FILTER_BILINEAR:
+                d["b_texFilter"] = 'BILINEAR'
+            else:
+                 d["b_texFilter"] = 'POINT'
+
+            if f & MaterialFlags.SA_INV_DST == MaterialFlags.SA_INV_DST:
+                d["b_srcAlpha"] = 'INV_DST'
+            elif f & MaterialFlags.SA_DST == MaterialFlags.SA_DST:
+                d["b_srcAlpha"] = 'DST'
+            elif f & MaterialFlags.SA_INV_SRC == MaterialFlags.SA_INV_SRC:
+                d["b_srcAlpha"] = 'INV_SRC'
+            elif f & MaterialFlags.SA_INV_OTHER == MaterialFlags.SA_INV_OTHER:
+                d["b_srcAlpha"] = 'INV_OTHER'                        
+            elif f & MaterialFlags.SA_SRC:
+                d["b_srcAlpha"] = 'SRC'
+            elif f & MaterialFlags.SA_OTHER:
+                d["b_srcAlpha"] = 'OTHER'
+            elif f & MaterialFlags.SA_ONE:
+                d["b_srcAlpha"] = 'ONE'
+            else:
+                d["b_srcAlpha"] = 'ZERO'
+
+            if f & MaterialFlags.DA_INV_DST == MaterialFlags.DA_INV_DST:
+                d["b_destAlpha"] = 'INV_DST'
+            elif f & MaterialFlags.DA_DST == MaterialFlags.DA_DST:
+                d["b_destAlpha"] = 'DST'
+            elif f & MaterialFlags.DA_INV_SRC == MaterialFlags.DA_INV_SRC:
+                d["b_destAlpha"] = 'INV_SRC'
+            elif f & MaterialFlags.DA_INV_OTHER == MaterialFlags.DA_INV_OTHER:
+                d["b_destAlpha"] = 'INV_OTHER'
+            elif f & MaterialFlags.DA_SRC:
+                d["b_destAlpha"] = 'SRC'
+            elif f & MaterialFlags.DA_OTHER:
+                d["b_destAlpha"] = 'OTHER'
+            elif f & MaterialFlags.DA_ONE:
+                d["b_destAlpha"] = 'ONE'
+            else:
+                d["b_destAlpha"] = 'ZERO'
+
+            material = None
+
+            for md, mt in zip(matDicts, materials):
+                if md == d:
+                    material = mt
+                    break
+            
+            if material is None:
+                material = bpy.data.materials.new(name="material_" + str(len(materials)))
+                material.saSettings.readMatDict(d)
+                
+                materials.append(material)
+                matDicts.append(d)
+
+            if material not in meshMaterials:
+                meshMaterials.append(material)
+            
+            matIDs.append(meshMaterials.index(material))
+
+        polySets: List[List[List[PolyVert]]] = [[] for m in meshMaterials]
+
+        hasColor = False
+        hasUV = False
+
+        for m in attach.meshSets:
+            if m.ColorPtr == -1:
+                hasColor = True
+            if m.UVPtr == -1:
+                hasUV = True
+
+            polySet: List[List[PolyVert]] = list()
+
+            if m.polytype == enums.PolyType.Strips:
+                for s, r in zip(m.polys, m.reverse):
+                    if r:
+                        for p in range(len(s) - 2):
+                            polySet.append((s[p+1], s[p], s[p+2]))
+                    else:
+                        for p in range(len(s) - 2):
+                            polySet.append((s[p], s[p+1], s[p+2]))
+            else:
+                polySet = m.polys
+
+            polySets[matIDs[m.materialID]].extend(polySet)
+
+        # creating mesh
+        mesh = bpy.data.meshes.new(attach.name)
+        matIDs = dict()
+        
+        for i, s in enumerate(polySets):
+            if len(s) > 0:
+                matIDs[i] = len(mesh.materials)
+                mesh.materials.append(meshMaterials[i])
+                
 
         bm = bmesh.new()
         bm.from_mesh(mesh)
@@ -606,8 +734,66 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
         bm.verts.ensure_lookup_table()
         bm.verts.index_update()
 
+        if hasUV:
+            uvLayer = bm.loops.layers.uv.new("UV0")
+        if hasColor:
+            colorLayer = bm.loops.layers.color.new("COL0")   
+
+        doubleFaces = 0
+
+        for i, polySet in enumerate(polySets):
+            if len(polySet) == 0:
+                continue
+            matID = matIDs[i]
+            for p in polySet:
+                if i == 1:
+                    print("doin")
+                verts = []
+                for l in p:
+                    verts.append(bm.verts[l.polyIndex])
+                try:
+                    face = bm.faces.new(verts)
+                except Exception as e:
+                    if not str(e).endswith("exists"):
+                        print("Invalid triangle:", str(e))
+                    else:
+                        doubleFaces += 1
+                    continue
+
+                for l, pc in zip(face.loops, p):
+                    if hasUV:
+                        l[uvLayer].uv = pc.uv.getBlenderUV()
+                    if hasColor:
+                        l[colorLayer] = pc.color.toBlenderTuple()
+
+                face.smooth = True
+                face.material_index = matID
+                
+
+        if doubleFaces > 0 and DO:
+            print("Double faces:", doubleFaces)
+            
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+            
         bm.to_mesh(mesh)
         bm.clear()
+
+        normals = [mathutils.Vector((n.x, -n.z, n.y)).normalized() for n in attach.normals]
+
+        for p in mesh.polygons:
+            normal = mathutils.Vector((0,0,0))
+            for v in p.vertices:
+                normal += normals[v]
+            if normal != mathutils.Vector((0,0,0)):
+                normal /= len(p.vertices)
+                if normal.dot(p.normal) < 0:
+                    p.flip()
+
+        mesh.create_normals_split()
+        split_normal = [normals[l.vertex_index] for l in mesh.loops]
+        mesh.normals_split_custom_set(split_normal)
+        mesh.use_auto_smooth = True
+        mesh.auto_smooth_angle = 180
 
         o.meshes.append(mesh)
         meshes[o.meshPtr] = mesh

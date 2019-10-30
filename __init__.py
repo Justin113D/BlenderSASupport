@@ -63,6 +63,19 @@ class TOPBAR_MT_SA_export(bpy.types.Menu):
 
 # export operators
 
+
+def exportFile(op, mdl: bool, context, **keywords):
+    try:
+        if mdl:
+            out = file_MDL.write(context, **keywords)
+        else:
+            out = file_LVL.write(context, **keywords)
+    except strippifier.TopologyError as e:
+        op.report({'WARNING'}, "Export stopped!\n" + str(e))
+        return {'CANCELLED'}
+    return out
+
+
 class ExportSA1MDL(bpy.types.Operator, ExportHelper):
     """Export Objects into an SA1 model file"""
     bl_idname = "export_scene.sa1mdl"
@@ -104,7 +117,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
         from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA1'
-        return file_MDL.write(context, **keywords)
+        return exportFile(self, True, context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -157,7 +170,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2'
-        return file_MDL.write(context, **keywords)
+        return exportFile(self, True, context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -210,7 +223,7 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
         from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2B'
-        return file_MDL.write(context, **keywords)
+        return exportFile(self, True, context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -263,7 +276,7 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA1'
-        return file_LVL.write(context, **keywords)
+        return exportFile(self, False, context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -316,7 +329,7 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2'
-        return file_LVL.write(context, **keywords)
+        return exportFile(self, False, context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -370,7 +383,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         
         keywords["export_format"] = 'SA2B'
-        return file_LVL.write(context, **keywords)
+        return exportFile(self, False, context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -1703,7 +1716,8 @@ classes = (
     SAMaterialPanel,
     SAScenePanel,
     SA3DPanel,
-    SAMeshPanel
+    SAMeshPanel,
+    DialogOperator
     )
 
 def register():

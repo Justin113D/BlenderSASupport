@@ -5,6 +5,11 @@
 
 from collections import Counter
 
+class TopologyError(Exception):
+
+    def __init__(self, message):
+        super().__init__(message)
+
 class Mesh:
     """contains all vertices, faces and edges from a tri list"""
     triangles = list() #triangles of the mesh
@@ -22,11 +27,13 @@ class Mesh:
             self.vertices[v] = Vertex(v)
 
         for i in range(0, len(triList), 3):
-            self.triangles[int(i / 3)] = Triangle(int(i / 3),
-                                                  self.vertices[triList[i]],
-                                                  self.vertices[triList[i+1]],
-                                                  self.vertices[triList[i+2]],
-                                                  self.edges)
+            tri = Triangle( int(i / 3),
+                            self.vertices[triList[i]],
+                            self.vertices[triList[i+1]],
+                            self.vertices[triList[i+2]],
+                            self.edges)
+            self.triangles[int(i / 3)] = tri
+            
 
 class Triangle:
 
@@ -55,6 +62,8 @@ class Triangle:
         e3 = self.addEdge(v2, v3, edges)
 
         self.edges = [e1, e2, e3]
+        if None in self.edges:
+            self.edges = None
         
     def addEdge(self, v1, v2, edges):
         e = v1.isConnectedWith(v2)
@@ -66,6 +75,7 @@ class Triangle:
             self.neighbours.append(e.triangles[0])
             e.triangles[0].neighbours.append(self)
             e.setTriangle(self)
+            
         return e
 
     def hasVertex(self, v):
@@ -189,7 +199,7 @@ class Edge:
         if len(self.triangles) < 2:
             self.triangles.append(triangle)
         else:
-            print("Edge between " + str(self) + " already has 2 faces assigned")
+            raise TopologyError("Some Edge has more than 2 faces! cant strippify!")
 
     def __str__(self):
         return str(self.vertices[0]) + ", " + str(self.vertices[1])

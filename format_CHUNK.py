@@ -1175,16 +1175,19 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
         polygons: List[List[PolyVert]] = list()
         matMarkers = dict()
         meshMaterials = list()
+        from .enums import StripFlags
         for c in a.polyChunks:
             if c.chunkType.value > 63 and c.chunkType.value < 76: # its a strip
-                tmpMat["b_ignoreLighting"] = (c.flags & enums.StripFlags.IGNORE_LIGHT).value > 0
-                tmpMat["b_ignoreSpecular"] = (c.flags & enums.StripFlags.INGORE_SPECULAR).value > 0
-                tmpMat["b_ignoreAmbient"] = (c.flags & enums.StripFlags.IGNORE_AMBIENT).value > 0
-                tmpMat["b_useAlpha"] = (c.flags & enums.StripFlags.USE_ALPHA).value > 0
-                tmpMat["b_doubleSided"] = (c.flags & enums.StripFlags.DOUBLE_SIDE).value > 0
-                tmpMat["b_flatShading"] = (c.flags & enums.StripFlags.FLAT_SHADING).value > 0
-                tmpMat["b_useEnv"] = (c.flags & enums.StripFlags.ENV_MAPPING).value > 0
-                tmpMat["b_unknown"] = (c.flags & enums.StripFlags.Unknown).value > 0
+                
+                f = c.flags
+                tmpMat["b_ignoreLighting"] = bool(f & StripFlags.IGNORE_LIGHT)
+                tmpMat["b_ignoreSpecular"] = bool(f & StripFlags.INGORE_SPECULAR)
+                tmpMat["b_ignoreAmbient"] = bool(f & StripFlags.IGNORE_AMBIENT)
+                tmpMat["b_useAlpha"] = bool(f & StripFlags.USE_ALPHA)
+                tmpMat["b_doubleSided"] = bool(f & StripFlags.DOUBLE_SIDE)
+                tmpMat["b_flatShading"] = bool(f & StripFlags.FLAT_SHADING)
+                tmpMat["b_useEnv"] = bool(f & StripFlags.ENV_MAPPING)
+                tmpMat["b_unknown"] = bool(f & StripFlags.Unknown)
 
                 material = None
 
@@ -1316,6 +1319,7 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
         bm.verts.index_update()
 
         matIndex = 0
+        doubleFaces = 0
 
         uvLayer = bm.loops.layers.uv.new("UV0")
         if a.hasColor:
@@ -1332,6 +1336,8 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
             except Exception as e:
                 if not str(e).endswith("exists"):
                     print("Invalid triangle:", str(e))
+                else:
+                    doubleFaces += 1
                 continue
 
             for l, pc in zip(face.loops, p):
@@ -1363,6 +1369,9 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
         mesh.normals_split_custom_set(split_normal)
         mesh.use_auto_smooth = True
         mesh.auto_smooth_angle = 180
+        
+        if doubleFaces > 0 and DO:
+            print("Double Faces:", doubleFaces)
 
         # dont ask me why, but blender likes to add sharp edges- we dont need those at all in this case
         for e in mesh.edges:
