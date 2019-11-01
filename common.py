@@ -1232,7 +1232,7 @@ class Model:
         print("    rotation:", "(", str(rot.x) + ",", str(rot.y) + ",", str(rot.z), ")")
         print("    scale:", str(Vector3(self.matrix_local.to_scale())))
 
-def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int, parent, labels: dict, result: list, tempOBJ: bpy.types.Object) -> int:
+def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int, parent, labels: dict, result: list) -> int:
 
     if address in labels:
         label: str = labels[address]
@@ -1244,39 +1244,36 @@ def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int,
     objFlags = enums.ObjectFlags(fileR.rUInt(address))
     meshPtr = fileR.rUInt(address + 4)
 
-    position = Vector3((fileR.rFloat(address + 8), -fileR.rFloat(address + 16), fileR.rFloat(address + 12)))
-    scale = Vector3((fileR.rFloat(address + 32), fileR.rFloat(address + 40), fileR.rFloat(address + 36)))
-
     # getting the rotation is a bit more difficult
     xRot = BAMSToRad(fileR.rInt(address + 20))
     yRot = BAMSToRad(fileR.rInt(address + 24))
     zRot = BAMSToRad(fileR.rInt(address + 28))
 
-    rotation = mathutils.Euler((xRot, -zRot, yRot), 'XZY')
-    rotation = rotation.to_matrix().to_euler('XYZ')
-
-    tempOBJ.location = position
-    tempOBJ.rotation_euler = rotation
-    tempOBJ.scale = scale
-    matrix_local =  tempOBJ.matrix_basis.copy()
+    posMtx = mathutils.Matrix.Translation((fileR.rFloat(address + 8), -fileR.rFloat(address + 16), fileR.rFloat(address + 12)))
+    rotMtx = mathutils.Euler((xRot, -zRot, yRot), 'XZY').to_matrix().to_4x4()
+    scaleMtx = mathutils.Matrix()
+    scaleMtx[0][0] = fileR.rFloat(address + 32)
+    scaleMtx[1][1] = fileR.rFloat(address + 40)
+    scaleMtx[2][2] = fileR.rFloat(address + 36)
+    matrix_local = posMtx @ rotMtx @ scaleMtx
 
 
     if parent is not None:
         matrix_world = parent.matrix_world @ matrix_local
     else:
-        matrix_world = tempOBJ.matrix_basis.copy()
+        matrix_world = matrix_local.copy()
 
     model = Model(name, objFlags, meshPtr, matrix_world, matrix_local, parent)
     result.append(model)
 
     childPtr = fileR.rUInt(address + 44)
     if childPtr > 0:
-        child = readObjects(fileR, childPtr, hierarchyDepth + 1, model, labels, result, tempOBJ)
+        child = readObjects(fileR, childPtr, hierarchyDepth + 1, model, labels, result)
         model.child = child
     
     siblingPtr = fileR.rUInt(address + 48)
     if siblingPtr > 0:
-        sibling = readObjects(fileR, siblingPtr, hierarchyDepth, parent, labels, result, tempOBJ)
+        sibling = readObjects(fileR, siblingPtr, hierarchyDepth, parent, labels, result)
         model.sibling = sibling
 
     return model

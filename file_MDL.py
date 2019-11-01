@@ -153,11 +153,9 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
 
       print(" == Reading Models ==")
    
+
    objects: List[common.Model] = list()
-   tempOBJ = bpy.data.objects.new("##TEMP##", None)
-   context.scene.collection.objects.link(tempOBJ)
-   common.readObjects(fileR, fileR.rUInt(8), 0, None, labels, objects, tempOBJ)
-   bpy.data.objects.remove(tempOBJ)
+   common.readObjects(fileR, fileR.rUInt(8), 0, None, labels, objects)
 
    attaches = dict()
    objID = 0
@@ -193,6 +191,8 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
    context.scene.collection.children.link(collection)
 
    if isArmature:
+
+
       root = objects[0]
       armature = bpy.data.armatures.new(root.name)
       armatureObj = bpy.data.objects.new(root.name, armature)
@@ -219,7 +219,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
          bone.layers[0] = True
          bone.head = (0,0,0)
          bone.tail = (1,0,0)
-         bone.matrix = armatureMatrix.inverted() @ b.matrix_world
+         bone.matrix =  armatureMatrix.inverted() @ b.matrix_world
 
 
          if b.parent.bone is not None:
