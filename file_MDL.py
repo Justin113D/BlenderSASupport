@@ -309,6 +309,7 @@ def write(context,
    meshDict: Dict[bpy.types.Mesh, addr] = dict()
 
    # writing mesh data
+   isArmature = False   
    if export_format == 'SA1':
       # writing material data first
       bscMaterials = format_BASIC.Material.writeMaterials(fileW, materials, labels)
@@ -320,7 +321,8 @@ def write(context,
 
    elif export_format == 'SA2':
       # armature meshes get written differently
-      if not (len(objects) == 1 and isinstance(objects[0], common.Armature)):
+      isArmature = (len(objects) == 1 and isinstance(objects[0], common.Armature))
+      if not isArmature:
          for m in meshes:
             mesh = format_CHUNK.Attach.fromMesh(m, global_matrix, materials)
             if mesh is not None:
@@ -333,7 +335,7 @@ def write(context,
               mesh.write(fileW, labels, meshDict)
 
    # writing model data
-   if export_format == 'SA2' and len(objects) == 1 and isinstance(objects[0], common.Armature): # writing an armature
+   if export_format == 'SA2' and isArmature: # writing an armature
       modelPtr = objects[0].writeArmature(fileW, global_matrix, materials, labels)
    else:
       ModelData.updateMeshPointer(objects, meshDict)

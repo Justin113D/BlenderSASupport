@@ -4,7 +4,7 @@ import mathutils
 import array
 import copy
 import math
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from . import enums, fileHelper, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox, BoneMesh
@@ -690,94 +690,6 @@ class Attach:
 
         return Attach(mesh.name, vertexChunks, polyChunks, bounds)
 
-    def fromWeightData(boneName: str,
-                       meshData: List[BoneMesh],
-                       boneMatrix_world: mathutils.Matrix, 
-                       export_matrix: mathutils.Matrix, 
-                       materials: List[bpy.types.Material]):
-
-        vertexChunks: List[VertexChunk] = list()
-        polyChunks: List[PolyChunk] = list()
-
-        allVertices = list()
-
-        for m in meshData:
-            matrix = export_matrix @ (boneMatrix_world.inverted() @ m.model.origObject.matrix_world)
-
-            mesh = m.model.processedMesh
-            
-            # getting normals
-            normals = common.getNormalData(mesh)
-
-            vertices: List[Vertex] = list()
-            vChunkType = enums.ChunkType.Vertex_VertexNormalNinjaFlags
-            if m.weightIndex >= 0: # do weights
-                if m.weightStatus == enums.WeightStatus.Start:
-                    for v in mesh.vertices:
-                        # normalizing weight at the same time
-                        weightsAdded = 0
-                        weight = 0
-                        for g in v.groups:
-                            weightsAdded += g.weight
-                            if g.group == m.weightIndex:
-                                weight = g.weight
-                        if weightsAdded > 0:
-                            weight = weight / weightsAdded
-                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, weight) )
-
-                        vert = Container()
-                        vert.co = Vector3(matrix @ v.co)
-                        allVertices.append(vert)
-                else:
-                    for v in mesh.vertices:
-                        weightsAdded = 0
-                        weight = None
-                        for g in v.groups:
-                            weightsAdded += g.weight
-                            if g.group == m.weightIndex:
-                                weight = g.weight
-                        if weight is not None:
-                            if weightsAdded > 0:
-                                weight = weight / weightsAdded
-                            vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, weight) )
-
-                            vert = Container()
-                            vert.co = Vector3(matrix @ v.co)
-                            allVertices.append(vert)
-            elif m.weightIndex == -1: # do all
-                for v in mesh.vertices:
-                    vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, 0) )
-
-                    vert = Container()
-                    vert.co = Vector3(matrix @ v.co)
-                    allVertices.append(vert)
-                vChunkType = enums.ChunkType.Vertex_VertexNormal
-            elif m.weightIndex == -2: # do those with no weights
-                for v in mesh.vertices:
-                    if len(v.groups) == 0 or enums.WeightStatus.Start:
-                        weight = 0 if enums.WeightStatus.Start else 1
-                        vertices.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, weight) )
-
-                        vert = Container()
-                        vert.co = Vector3(matrix @ v.co)
-                        allVertices.append(vert)
-            
-            vertexChunks.append(VertexChunk(vChunkType, m.weightStatus, False, m.indexBufferOffset, vertices))
-
-            if m.weightIndex == -1 or m.weightStatus == enums.WeightStatus.End: # write polygons
-                writeUVs = len(mesh.uv_layers) > 0
-                polyVerts: List[PolyVert] = list()
-                for l in mesh.loops:
-                    uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
-                    polyVert = PolyVert(l.vertex_index + m.indexBufferOffset, uv)
-                    polyVerts.append(polyVert)
-                
-                polyChunks.extend(Attach.getPolygons(mesh, writeUVs, polyVerts, materials))
-
-        bounds = BoundingBox(allVertices)
-                
-        return Attach(None, vertexChunks, polyChunks, bounds)
-
     def write(self, 
               fileW: fileHelper.FileWriter,
               labels: dict,
@@ -933,6 +845,7 @@ class Attach:
         print("    Vertex chunks:", len(self.vertexChunks))
         print("    Poly chunks:", len(self.polyChunks))
 
+# stuff for weighted exporting and importing
 
 class ProcessedVert:
 
@@ -1050,8 +963,109 @@ class processedAttach:
             return "Mesh_" + str(self.attachID).zfill(2)
         else:
             return self.attachName
-            
 
+def fromWeightData(boneMap: Dict[str, mathutils.Matrix], # [BoneName] = boneMatrix
+                    meshData: List[common.ArmatureMesh],
+                    export_matrix: mathutils.Matrix, 
+                    materials: List[bpy.types.Material]) -> Dict[str, Attach]:
+
+    # these will carry the chunks for the attaches
+    boneVertChunks: Dict[str, List[VertexChunk]] = dict()
+    bonePolyChunks: Dict[str, List[PolyChunk]] = dict()
+
+    for b in boneMap.keys():
+        boneVertChunks[b] = list()
+        bonePolyChunks[b] = list()
+
+    for m in meshData:
+        # data for every bone that has weights in this mesh
+        boneData: Dict[int, Tuple[enums.WeightStatus, mathutils.Matrix, List[Vertex], enums.ChunkType]] = dict()
+
+        for b in m.weightMap.keys():
+            index, status = m.weightMap[b]
+            boneData[index] = (status, export_matrix @ (boneMap[b].inverted() @ m.model.origObject.matrix_world), list(), enums.ChunkType.Vertex_VertexNormalNinjaFlags)
+
+        mesh = m.model.processedMesh
+        normals = common.getNormalData(mesh)
+
+        # if the only bone is index -1, then just write the entire mesh to the bone
+        if list(boneData.keys())[0] == -1:
+            status, matrix, vList, _ = boneData[-1]
+            for v in mesh.vertices:
+                vList.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, 1) )
+            boneData[-1] = (status, matrix, vList, enums.ChunkType.Vertex_VertexNormal)
+
+        else:
+            for v in mesh.vertices:
+                # get all used weights and the average weight, for proper normalizing
+                cWeight: Dict[int, float] = dict()
+                weightsAdded = 0
+                for g in v.groups:
+                    if g.group in boneData:
+                        weightsAdded += g.weight
+                        cWeight[g.group] =  g.weight
+                
+                # if there are no used weights, then attach it to index -2
+                if len(cWeight) == 0:
+                    status, matrix, vList, _ = boneData[-2]
+                    vList.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, 1) )
+
+                else:
+                    for b in boneData.keys():
+                        if b not in cWeight:
+                            cWeight[b] = 0
+                    for k, weight in cWeight.items():
+                        if weightsAdded > 0:
+                            weight = weight / weightsAdded
+                        status, matrix, vList, _ = boneData[k]
+
+                        if status == enums.WeightStatus.Start or weight > 0:
+                            vList.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, weight) )
+        
+        # getting polygon data
+    
+        writeUVs = len(mesh.uv_layers) > 0
+        polyVerts: List[PolyVert] = list()
+        for l in mesh.loops:
+            uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
+            polyVert = PolyVert(l.vertex_index + m.indexBufferOffset, uv)
+            polyVerts.append(polyVert)
+        
+        polyChunks = Attach.getPolygons(mesh, writeUVs, polyVerts, materials)       
+
+        for b, t in m.weightMap.items():
+            index, status = t
+            _, matrix, vList, chunkType = boneData[index]
+            vChunk = VertexChunk(chunkType, status, False, m.indexBufferOffset, vList)
+            boneVertChunks[b].append(vChunk)
+
+            if len(m.weightMap) == 1 or status == enums.WeightStatus.End:
+                bonePolyChunks[b].extend(polyChunks)
+
+    boneAttaches: Dict[str, Attach] = dict()    
+            
+    for b in list(boneMap.keys()):
+        vChunks = boneVertChunks[b]
+        pChunks = bonePolyChunks[b]
+
+        if len(vChunks) > 0:
+
+            bounds = BoundingBox(None)
+            if len(pChunks) > 0:
+                vertices = list()
+                for vc in vChunks:
+                    for v in vc.vertices:
+                        vert = Container()
+                        vert.co = v.pos
+                        vertices.append(vert)
+                bounds = BoundingBox(vertices)
+
+            boneAttaches[b] = Attach("atc_" + b, vChunks, pChunks, bounds)
+        
+    print(boneAttaches.keys())
+
+    return boneAttaches
+        
 def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> List[processedAttach]:
 
     vertexBuffer: List[BufferedVertex] = [BufferedVertex() for v in range(0x7FFF)]

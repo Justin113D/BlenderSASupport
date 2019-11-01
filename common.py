@@ -4,7 +4,7 @@ import mathutils
 import math
 import copy
 import queue
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 
 from . import fileHelper, enums
@@ -497,26 +497,21 @@ class ModelData:
             fileW.wUInt(self.unknown3)
             fileW.wUInt(self.getSA1SurfaceFlags().value | int("0x" + self.saProps["userFlags"], 0))
 
-
-class BoneMesh:
-
+class ArmatureMesh:
     model: ModelData
-    weightIndex: int
     indexBufferOffset: int
-    weightStatus: enums.WeightStatus
+    weightMap: Dict[str, Tuple[int, enums.WeightStatus]]
 
     # a weightindex of -1 indicates to write the entire mesh
     # and an index of -2 means to write only unweighted vertices
 
     def __init__(self,
                  model: ModelData,
-                 weightIndex: int,
                  indexBufferOffset: int,
-                 weightStatus: enums.WeightStatus):
+                 weightMap: Dict[str, Tuple[int, enums.WeightStatus]]):
         self.model = model
-        self.weightIndex = weightIndex
         self.indexBufferOffset = indexBufferOffset
-        self.weightStatus = weightStatus
+        self.weightMap = weightMap
 
 class Bone:
 
@@ -525,8 +520,6 @@ class Bone:
 
     matrix_world: mathutils.Matrix # in the world
     matrix_local: mathutils.Matrix # relative to parent bone
-
-    weightedMeshes: List[BoneMesh]
 
     parentBone = None #:Bone
     children: list #: List[Bone]
@@ -596,23 +589,6 @@ class Bone:
         
         return bone
 
-    def writeMesh(self,
-                  export_matrix: mathutils.Matrix,
-                  materials: List[bpy.types.Material],
-                  fileW: fileHelper.FileWriter,
-                  labels: dict):
-        self.meshPtr = 0  
-        if len(self.weightedMeshes) > 0:
-            if DO:
-                print(self.name, ":")
-                for m in self.weightedMeshes:
-                    print("  -", m.model.processedMesh.name, m.weightIndex, m.indexBufferOffset, m.weightStatus)
-
-            from . import format_CHUNK
-            mesh = format_CHUNK.Attach.fromWeightData(self.name, self.weightedMeshes, self.matrix_world, export_matrix, materials)
-            if mesh is not None:
-                self.meshPtr = mesh.write(fileW, labels)
-          
     def write(self, fileW: fileHelper.FileWriter, labels: dict):
         """Writes bone data in form of object data"""
         name = self.name
@@ -721,87 +697,89 @@ class Armature(ModelData):
         # 3. Objects without weights. may be parented to armature or object that is parented to armature
 
 
-        # determining which meshes get written with weights at all
-        weighted = list()
-        weightStatus = dict()
-
+        armatureMeshes: List[ArmatureMesh] = list()
         for o in objects:
-            # check case 1
-            if o.processedMesh is None:
+            mesh = o.processedMesh
+            if mesh is None:
                 continue
 
             case1 = False
             for m in o.origObject.modifiers:
-                if isinstance(m, bpy.types.ArmatureModifier):
-                    if m.object is self.origObject:
-                        # yeah then its case 1, otherwise no
-                        case1 = True
-                        break
-                    
+                if isinstance(m, bpy.types.ArmatureModifier) and m.object is self.origObject:
+                    # yeah then its case 1, otherwise no
+                    case1 = True
+                    break
+
+            weightMap = dict()
+            obj = o.origObject
+
             if case1:
-                weighted.append(o)
-                weightStatus[o] = None
-            elif len(o.origObject.parent_bone) > 0:
+                usedBoneGroups: Dict[Bone, bpy.types.VertexGroup] = dict()
+
                 for b in self.bones:
-                    if b.name == o.origObject.parent_bone:
-                        b.weightedMeshes.append(BoneMesh(o, -1, meshesWOffset[o.processedMesh], enums.WeightStatus.Start))
-                        break
-            else:
-                root.weightedMeshes.append(BoneMesh(o, -1, meshesWOffset[o.processedMesh], enums.WeightStatus.Start))
-
-        # assigning weighted meshes to bones
-
-        for b in self.bones:
-            if b is root:
-                for w in weighted:
-                    mesh = w.processedMesh
-                    for v in mesh.vertices:
-                        if len(v.groups) == 0:
-                            root.weightedMeshes.append(BoneMesh(w, -2, meshesWOffset[mesh], enums.WeightStatus.Start))
-                            weightStatus[w] = root
-                            break
-            else:
-                for w in weighted:
-                    obj = w.origObject
                     for g in obj.vertex_groups:
                         if g.name == b.name:
-                            mesh = w.processedMesh
+                            usedBoneGroups[b] = g
+                            break
 
-                            found = False
-                            #checking if any vertex even holds a weight for the group
-                            groupindex = g.index
-                            for v in mesh.vertices:
-                                try:
-                                    weight = g.weight(v.index)
-                                except RuntimeError:
-                                    continue
-                                found = True
-                                break
-                                
-                            
-                            # if the mesh has weights that can be written, then add it to the bone
-                            if found:
-                                if weightStatus[w] is None:
-                                    ws = enums.WeightStatus.Start
-                                else:
-                                    ws = enums.WeightStatus.Middle
-                                b.weightedMeshes.append(BoneMesh(w, groupindex, meshesWOffset[mesh], ws))
-                                weightStatus[w] = b
+                usedGroups = [g.index for g in usedBoneGroups.values()]
 
-        for o in weightStatus.keys():
-            bone: Bone = weightStatus[o]
+                setStart = False
+                last = None
+                # checking if any vertex holds no valid weights
+                for v in mesh.vertices:
+                    found = False
+                    for g in v.groups:
+                        if g.group in usedGroups:
+                            found = True
+                            break
+                        
+                    if not found:
+                        weightMap[root.name] = [-2, enums.WeightStatus.Start]
+                        setStart = True
+                        last = root.name
+                        break
+                        
+                for b, g in usedBoneGroups.items():
+                    weightMap[b.name] = [g.index, enums.WeightStatus.Middle if setStart else enums.WeightStatus.Start]
+                    setStart = True
+                    last = b.name
 
-            for i, m in enumerate(bone.weightedMeshes):
-                if m.model == o:
-                    if m.weightStatus == enums.WeightStatus.Middle:
-                        m.weightStatus = enums.WeightStatus.End
+                if len(weightMap) == 0:
+                    weightMap[root.name] = [-1, enums.WeightStatus.Start]
+                elif len(weightMap) == 1:
+                    weightMap[list(weightMap.keys())[0]] = [-1, enums.WeightStatus.Start]
+                elif len(weightMap) > 1:
+                    weightMap[last] = [weightMap[last][0], enums.WeightStatus.End]
 
-                    elif m.weightStatus == enums.WeightStatus.Start:
-                        m.weightIndex = -1
-        
+            elif len(o.origObject.parent_bone) > 0:
+                weightMap[o.origObject.parent_bone] = [-1, enums.WeightStatus.Start]
+            else:
+                weightMap[root.name] = [-1, enums.WeightStatus.Start]
+
+            armatureMeshes.append(ArmatureMesh(o, meshesWOffset[mesh], weightMap))
+        if DO:
+            for a in armatureMeshes:
+                print("  " + a.model.name, a.indexBufferOffset)
+                for k in a.weightMap.keys():
+                    print("    " + k, a.weightMap[k])
+            print("")
+
+        boneMap: Dict[str, mathutils.Matrix] = dict()
+        for b in self.bones:
+            boneMap[b.name] = b.matrix_world
+
+        # converting mesh data
+        from . import format_CHUNK
+        boneAttaches = format_CHUNK.fromWeightData(boneMap, armatureMeshes, export_matrix, materials)
+
         # writing mesh data
         for b in self.bones:
-            b.writeMesh(export_matrix, materials, fileW, labels)
+            b.meshPtr = 0
+            if b.name not in boneAttaches:
+                continue
+            mesh = boneAttaches[b.name]
+            b.meshPtr = mesh.write(fileW, labels)
 
         if DO:
             print("\n - - - -")
