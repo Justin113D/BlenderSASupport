@@ -7,7 +7,7 @@ import math
 from typing import List, Dict, Tuple
 
 from . import enums, fileHelper, strippifier, common
-from .common import Vector3, ColorARGB, UV, BoundingBox, BoneMesh
+from .common import Vector3, ColorARGB, UV, BoundingBox
 from .__init__ import SAMaterialSettings
 
 DO = False
