@@ -7,7 +7,7 @@ import tempfile
 
 class FileWriter:
     """Handles file writing
-    
+
     Contains methods to make binary writing easier
 
     Default endian: little
@@ -15,10 +15,10 @@ class FileWriter:
 
     def __init__(self, filepath = None):
         if filepath is None:
-            self.oFile = tempfile.TemporaryFile(mode="wb+") # write and read, binary  
+            self.oFile = tempfile.TemporaryFile(mode="wb+") # write and read, binary
             self.filepath = self.oFile.name
         else:
-            self.oFile = open(filepath, "wb+") # write and read, binary        
+            self.oFile = open(filepath, "wb+") # write and read, binary
             self.filepath = filepath
 
         self.endian = "<"
@@ -27,7 +27,7 @@ class FileWriter:
 
     def setBigEndian(self, bigEndian = False):
         self.endian = ">" if bigEndian else "<"
-    
+
     def isBigEndian(self):
         return self.endian == ">"
 
@@ -37,7 +37,7 @@ class FileWriter:
 
     def seek(self, offset, relativeTo):
         """Moves writer position in current file
-        
+
         relativeTo: 0 = start, 1 = current position, 2 = end
         """
         self.oFile.seek(offset, relativeTo)
@@ -83,19 +83,19 @@ class FileWriter:
 
     def wHalf(self, value):
         """Writes a Float"""
-        self.w(struct.pack(self.endian + "e", value))  
+        self.w(struct.pack(self.endian + "e", value))
 
     def wInt(self, value):
         """Writes a signed Integer"""
         self.w(struct.pack(self.endian + "i", value))
-      
+
     def wUInt(self, value):
         """Writes an unsigned Integer"""
         self.w(struct.pack(self.endian + "I", value))
 
     def wFloat(self, value):
         """Writes a Float"""
-        self.w(struct.pack(self.endian + "f", value))        
+        self.w(struct.pack(self.endian + "f", value))
 
     def wLong(self, value):
         """Writes a signed Long"""
@@ -104,10 +104,10 @@ class FileWriter:
     def wULong(self, value):
         """Writes an unsigned Long"""
         self.w(struct.pack(self.endian + "Q", value))
-    
+
     def wDouble(self, value):
         """Writes a Double"""
-        self.w(struct.pack(self.endian + "d", value))     
+        self.w(struct.pack(self.endian + "d", value))
 
     def wString(self, string):
         """Writes a String in utf-8"""
@@ -123,7 +123,7 @@ class FileReader:
             print("Invalid file path")
             self.filepath = None
         else:
-            oFile = open(filepath, "rb") # read, binary 
+            oFile = open(filepath, "rb") # read, binary
             self.fileC = oFile.read()
             oFile.close()
             self.filepath = filepath
@@ -131,7 +131,7 @@ class FileReader:
 
     def setBigEndian(self, bigEndian = False):
         self.endian = ">" if bigEndian else "<"
-    
+
     def isBigEndian(self):
         return self.endian == ">"
 
@@ -156,7 +156,7 @@ class FileReader:
     def rInt(self, address: int):
         """Returns an Integer"""
         return struct.unpack_from(self.endian + "i", self.fileC, address)[0]
-    
+
     def rUInt(self, address: int):
         """Returns an unsigned Integer"""
         return struct.unpack_from(self.endian + "I", self.fileC, address)[0]

@@ -11,8 +11,8 @@ def hex8(number : int):
 def hex16(number : int):
     return '{:016x}'.format(number)
 
-def write(context, 
-         filepath, *, 
+def write(context,
+         filepath, *,
          export_format,
          use_selection,
          apply_modifs,
@@ -38,7 +38,7 @@ def write(context,
 
      # write the file header
      fileVersion = 3
-     
+
      if export_format == 'SA1':
           indicator = enums.LVLFormatIndicator.SA1LVL
      elif export_format == 'SA2':
@@ -46,7 +46,7 @@ def write(context,
      else: # SA2BLVL
           indicator = enums.LVLFormatIndicator.SA2BLVL
 
-     fileW.wULong(indicator.value | (fileVersion << 56))          
+     fileW.wULong(indicator.value | (fileVersion << 56))
 
      if DO:
           print(" == Starting LVL file exporting ==")
@@ -97,7 +97,7 @@ def write(context,
 
           #writing the collision meshes
           if DO:
-               print(" == Writing BASIC attaches == \n")          
+               print(" == Writing BASIC attaches == \n")
           for m in cMeshes:
                mesh = format_BASIC.Attach.fromMesh(m, global_matrix, [], isCollision=True)
                if mesh is not None:
@@ -106,7 +106,7 @@ def write(context,
           #writing visual meshes
           if export_format == 'SA2':
                if DO:
-                    print(" == Writing CHUNK attaches == \n")  
+                    print(" == Writing CHUNK attaches == \n")
                for m in vMeshes:
                     mesh = format_CHUNK.Attach.fromMesh(m, global_matrix, materials)
                     if mesh is not None:
@@ -118,7 +118,7 @@ def write(context,
                     mesh = format_GC.Attach.fromMesh(m, global_matrix, materials)
                     if mesh is not None:
                          mesh.write(fileW, labels, meshDict)
-     
+
      # writing model data
      ModelData.updateMeshPointer(objects, meshDict)
      ModelData.writeObjectList(objects, fileW, labels, True)
@@ -131,7 +131,7 @@ def write(context,
           for o in mObjects:
                o.writeCOL(fileW, labels, False)
      else:
-          COLcount = len(vObjects) + len(cObjects) 
+          COLcount = len(vObjects) + len(cObjects)
           for o in vObjects:
                o.writeCOL(fileW, labels, True)
           for o in cObjects:
@@ -141,9 +141,9 @@ def write(context,
      texFileNameAddr = fileW.tell()
      if context.scene.saSettings.texFileName == "":
           texFileName =  os.path.splitext(os.path.basename(filepath))[0]
-     else: 
+     else:
           texFileName = context.scene.saSettings.texFileName
-     
+
      texListPointer = int("0x" + context.scene.saSettings.texListPointer, 0)
      fileW.wString(texFileName)
 
@@ -156,7 +156,7 @@ def write(context,
      fileW.wUShort(COLcount) # COL count
      drawDist = context.scene.saSettings.drawDistance
      animPtr = 0
-     
+
      if export_format == 'SA1':
           animCount = 0
           fileW.wUShort(animCount) # (unused rn)
@@ -184,7 +184,7 @@ def write(context,
 
      labelsAddress = fileW.tell()
 
-     # writing the 
+     # writing the
      fileW.seek(8, 0) # go to the location of the model properties addrees
      fileW.wUInt(landTableAddress) # and write the address
      fileW.wUInt(labelsAddress) # labels address

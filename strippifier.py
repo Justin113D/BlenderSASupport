@@ -33,7 +33,7 @@ class Mesh:
                             self.vertices[triList[i+2]],
                             self.edges)
             self.triangles[int(i / 3)] = tri
-            
+
 
 class Triangle:
 
@@ -64,7 +64,7 @@ class Triangle:
         self.edges = [e1, e2, e3]
         if None in self.edges:
             self.edges = None
-        
+
     def addEdge(self, v1, v2, edges):
         e = v1.isConnectedWith(v2)
         if e is None:
@@ -75,7 +75,7 @@ class Triangle:
             self.neighbours.append(e.triangles[0])
             e.triangles[0].neighbours.append(self)
             e.setTriangle(self)
-            
+
         return e
 
     def hasVertex(self, v):
@@ -118,7 +118,7 @@ class Triangle:
             return None
         elif len(trisToUse) == 1: # if there is only one, use it
             return trisToUse[0]
-        
+
         # if there are more than one, get the usable one
         weights = [0] * len(trisToUse)
         vConnection = [0] * len(trisToUse)
@@ -127,7 +127,7 @@ class Triangle:
         # base weights and getting triangle connectivity
         for i, t in enumerate(trisToUse):
             weights[i] = len(t.availableNeighbours())
-            
+
             if weights[i] == 0:
                 return t
 
@@ -145,7 +145,7 @@ class Triangle:
 
             if vConnection[i] > biggestConnection:
                 biggestConnection = vConnection[i]
-        
+
         # integrating connectivity into the weights
         for i, v in enumerate(vConnection):
             if v < biggestConnection:
@@ -161,7 +161,7 @@ class Triangle:
             elif hasBase and weights[i] == weights[index]:
                 if trisToUse[i].hasVertex(curVert):
                     index = i
-        
+
         return trisToUse[index]
 
     def getNextStripTriSeq(self, prevVert, curvVert):
@@ -187,13 +187,13 @@ class Triangle:
 
 class Edge:
     """An Edge/Adjacency in between two vertices"""
-    vertices = [None] * 2 # The two vertices that this adjacency consists of    
+    vertices = [None] * 2 # The two vertices that this adjacency consists of
     triangles = list() # The triangles that consist of this adjacency (min. 1, max. 2)
 
     def __init__(self, vertex1, vertex2):
         self.vertices = [vertex1, vertex2]
         self.triangles = list()
-        
+
     def setTriangle(self, triangle):
         """Sets a triangle to be part of the adjacency"""
         if len(self.triangles) < 2:
@@ -225,20 +225,20 @@ class Vertex:
 
     def isConnectedWith(self, otherVert):
         """If a vertex is connected to another vertex, this method will return that adjacency
-            
+
         otherwise it will return None"""
         for e in self.edges:
             if e.vertices[0] is otherVert or e.vertices[1] is otherVert:
                 return e
         return None
-        
+
     def connect(self, otherVert):
         """Creates and returns a new Adjacency (updated other vertex too)"""
         edge = Edge(self, otherVert)
         self.edges.append(edge)
         otherVert.edges.append(edge)
         return edge
-    
+
     def __str__(self):
         return str(self.index)
 
@@ -276,11 +276,11 @@ class Strippifier:
                 t.inList = True
                 startIndex = i + 1
                 break
-            
+
         # if there are no more tris that can be added to a strip, we are done
         if len(self.priorityTris) == 0:
             return
-        
+
         # opponent neighbours
         oN = len(self.priorityTris[0].availableNeighbours())
 
@@ -297,7 +297,7 @@ class Strippifier:
             t = self.mesh.triangles[i]
             if t.used:
                 continue
-                
+
             n = len(t.availableNeighbours())
 
             # this case can only take place if oN is bigger than 1, so there is no need to increase indexC2
@@ -320,9 +320,9 @@ class Strippifier:
 
     def Strippify(self, indexList, doSwaps = False, concat = False):
         """creates a triangle strip from a triangle list.
-        
+
         If concat is True, all strips will be combined into one.
-        
+
         If its False, it will return an array of strips"""
         self.strips = list()
 
@@ -348,16 +348,16 @@ class Strippifier:
         triCount = len(self.mesh.triangles)
 
         while self.written != triCount:
-            
+
             # getting the starting tris
             firstTri = self.priorityTris[0]
             currentTri = firstTri
             currentTri.used = True
 
             newTri = currentTri.getNextStripTri()
-            newTri.used = True   
+            newTri.used = True
 
-            secNewTri = newTri.getNextStripTri()                    
+            secNewTri = newTri.getNextStripTri()
 
             # get the starting vert (the one which is not connected with the new tri)
             commonEdge = currentTri.getCommonAdjacency(newTri)
@@ -382,7 +382,7 @@ class Strippifier:
             # shift verts one forward
             prevVert = thirdVert
             currentVert = newTri.getThirdVertex(currentVert, thirdVert)
-            
+
             # shift triangles one forward
             currentTri = newTri
             newTri = secNewTri
@@ -391,10 +391,10 @@ class Strippifier:
             reachedEnd = False
             reversedList = False
             while not reachedEnd:
-            
+
                 #writing the next index
-                self.strip.append(currentVert.index) 
-                self.written += 1     
+                self.strip.append(currentVert.index)
+                self.written += 1
 
                 # ending the loop when the current tri is None (end of the strip)
                 if newTri is None:
@@ -424,7 +424,7 @@ class Strippifier:
                         #swapping the vertices
                         t = prevVert
                         prevVert = currentVert
-                        currentVert = t          
+                        currentVert = t
 
                 # getting the new vertex to write
                 thirdVert = newTri.getThirdVertex(prevVert, currentVert)
@@ -441,7 +441,7 @@ class Strippifier:
                     newTri = currentTri.getNextStripTriSeq(prevVert, currentVert)
 
 
-            
+
             self.strips.append(self.strip)
 
             self.priorityFill()

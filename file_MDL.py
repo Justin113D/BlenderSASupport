@@ -54,7 +54,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
 
    if fileVersion < 2:
       if fileVersion == 1:
-         # getting labels 
+         # getting labels
          tmpAddr = fileR.rUInt(0x14)
          if tmpAddr > 0:
             addr = fileR.rInt(tmpAddr)
@@ -73,7 +73,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
                morphFiles.append(fileR.rString(addr))
                tmpAddr += 4
                addr = fileR.rInt(tmpAddr)
-            
+
       # getting animation paths
       tmpAddr = fileR.rUInt(0xC)
       if tmpAddr > 0:
@@ -82,7 +82,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
             addr = fileR.rUInt(tmpAddr)
             animFiles.append(fileR.rString(addr))
             tmpAddr += 4
-            addr = fileR.rInt(tmpAddr)    
+            addr = fileR.rInt(tmpAddr)
    else:
       tmpAddr = fileR.rUInt(0xC)
       if tmpAddr > 0:
@@ -91,7 +91,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
             cnkType = enums.Chunktypes(fileR.rUInt(tmpAddr))
             cnkSize = fileR.rUInt(tmpAddr + 4)
             cnkNext = tmpAddr + 8 + cnkSize
-            
+
 
             if fileVersion == 2:
                cnkBase = 0
@@ -99,7 +99,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
                cnkBase = tmpAddr + 8
 
             tmpAddr += 8
-            
+
             if cnkType == enums.Chunktypes.Label: # labels
                while fileR.rLong(tmpAddr) != -1:
                   labels[fileR.rUInt(tmpAddr)] = fileR.rString(cnkBase + fileR.rUInt(tmpAddr + 4))
@@ -114,7 +114,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
                   tmpAddr += 4
             elif cnkType == enums.Chunktypes.Author: # Author name
                context.scene.saSettings.author = fileR.rString(tmpAddr)
-            elif cnkType == enums.Chunktypes.Description: # File description 
+            elif cnkType == enums.Chunktypes.Description: # File description
                context.scene.saSettings.description = fileR.rString(tmpAddr)
             elif cnkType == enums.Chunktypes.Tool and DO: # Tool
                print("Tool metadata found")
@@ -152,7 +152,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
          print(" - - - - \n")
 
       print(" == Reading Models ==")
-   
+
 
    objects: List[common.Model] = list()
    common.readObjects(fileR, fileR.rUInt(8), 0, None, labels, objects)
@@ -161,15 +161,15 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
    objID = 0
    numberCount = max(3, len(str(len(objects))))
    for o in objects:
-      o.name = str(objID).zfill(numberCount) + "_" + o.name 
+      o.name = str(objID).zfill(numberCount) + "_" + o.name
       objID += 1
       if o.meshPtr > 0 and o.meshPtr not in attaches:
          if file_format == 'SA2':
             attaches[o.meshPtr] = format_CHUNK.Attach.read(fileR, o.meshPtr, len(attaches), labels)
          elif file_format == 'SA1':
             attaches[o.meshPtr] = format_BASIC.Attach.read(fileR, o.meshPtr, len(attaches), labels)
-         
-            
+
+
    isArmature = False
    if file_format == 'SA2':
       # checking whether the file is an armature (weighted model)
@@ -190,8 +190,8 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
    collection = bpy.data.collections.new("Import_" + os.path.splitext(os.path.basename(filepath))[0])
    context.scene.collection.children.link(collection)
 
+   print(isArmature)
    if isArmature:
-
 
       root = objects[0]
       armature = bpy.data.armatures.new(root.name)
@@ -207,7 +207,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
 
       armatureMatrix = root.matrix_world
       root.bone = None
-      
+
       # gotta be in edit mode to add bones
       context.view_layer.objects.active = armatureObj
       bpy.ops.object.mode_set(mode='EDIT', toggle=False)
@@ -219,7 +219,8 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
          bone.layers[0] = True
          bone.head = (0,0,0)
          bone.tail = (1,0,0)
-         bone.matrix =  armatureMatrix.inverted() @ b.matrix_world
+
+         bone.matrix = armatureMatrix.inverted() @ b.matrix_world
 
 
          if b.parent.bone is not None:
@@ -227,7 +228,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
          b.bone = bone
 
       bpy.ops.object.mode_set(mode='OBJECT')
-      
+
    else:
       for o in objects:
          data = None
@@ -249,8 +250,8 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
 
    return {'FINISHED'}
 
-def write(context, 
-         filepath, *, 
+def write(context,
+         filepath, *,
          export_format,
          use_selection,
          apply_modifs,
@@ -283,7 +284,7 @@ def write(context,
       indicator = enums.MDLFormatIndicator.SA2MDL
    else: # SA2BLVL
       indicator = enums.MDLFormatIndicator.SA2BMDL
-      
+
    fileW.wULong(indicator.value | (fileVersion << 56))
 
    if DO:
@@ -293,7 +294,7 @@ def write(context,
       print("  - - - - - -\n")
 
    fileW.wUInt(0) # placeholder for the model properties address
-   fileW.wUInt(0) # placeholder for the labels address     
+   fileW.wUInt(0) # placeholder for the labels address
    labels: Dict[int, str] = dict() # for labels methadata
 
    from bpy_extras.io_utils import axis_conversion
@@ -309,7 +310,7 @@ def write(context,
    meshDict: Dict[bpy.types.Mesh, addr] = dict()
 
    # writing mesh data
-   isArmature = False   
+   isArmature = False
    if export_format == 'SA1':
       # writing material data first
       bscMaterials = format_BASIC.Material.writeMaterials(fileW, materials, labels)
@@ -334,6 +335,7 @@ def write(context,
           if mesh is not None:
               mesh.write(fileW, labels, meshDict)
 
+   print(isArmature)
    # writing model data
    if export_format == 'SA2' and isArmature: # writing an armature
       modelPtr = objects[0].writeArmature(fileW, global_matrix, materials, labels)
@@ -346,7 +348,7 @@ def write(context,
    fileW.wUInt(modelPtr) # and write the address
    fileW.wUInt(labelsAddress)
    fileW.seek(0,2) # then return back to the end
-   
+
    if DO:
       print(" == Model file info ==")
       print("  model pointer: ", hex8(modelPtr))
@@ -362,7 +364,7 @@ def write(context,
          else:
             print("", o.name)
       print(" - - - -\n")
-      
+
 
    # writing chunk data
    common.writeMethaData(fileW, labels, context.scene)

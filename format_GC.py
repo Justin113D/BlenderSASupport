@@ -30,7 +30,7 @@ class Parameter:
         fileW.wUInt(self.data)
 
 class VtxAttrFmt(Parameter):
-    """We dont know what this does but we know that we 
+    """We dont know what this does but we know that we
     need one for each vertex data set"""
 
     def __init__(self,
@@ -45,7 +45,7 @@ class VtxAttrFmt(Parameter):
             self.unknown = 27136
         elif vtxType == enums.VertexAttribute.Tex0:
             self.unknown = 33544
-        
+
 
     @property
     def unknown(self) -> int:
@@ -68,7 +68,7 @@ class VtxAttrFmt(Parameter):
 class IndexAttributes(Parameter):
     """Which data the polygon corners hold"""
 
-    def __init__(self, 
+    def __init__(self,
                  idAttr: enums.IndexAttributeFlags):
         super(IndexAttributes, self).__init__(enums.ParameterType.IndexAttributeFlags)
         self.indexAttributes = idAttr
@@ -119,7 +119,7 @@ class Lighting(Parameter):
     def unknown1(self, val: int):
         self.data &= (~0xF00000)
         self.data |= min(0xF, val) << 20
-    
+
     @property
     def unknown2(self) -> int:
         return (self.data >> 24) & 0xFF
@@ -132,15 +132,15 @@ class Lighting(Parameter):
 class AlphaBlend(Parameter):
     """How the alpha is rendered on top of the opaque geometry"""
 
-    def __init__(self, 
-                 src: enums.AlphaInstruction, 
+    def __init__(self,
+                 src: enums.AlphaInstruction,
                  dst: enums.AlphaInstruction,
                  active: bool):
         super(AlphaBlend, self).__init__(enums.ParameterType.BlendAlpha)
         self.src = src
         self.dst = dst
         self.active = active
-        
+
     @property
     def dst(self) -> enums.AlphaInstruction:
         return enums.AlphaInstruction((self.data >> 8) & 0x7)
@@ -157,7 +157,7 @@ class AlphaBlend(Parameter):
     @src.setter
     def src(self, val: enums.AlphaInstruction):
         self.data &= ~0x3800
-        self.data |= val.value << 11 
+        self.data |= val.value << 11
 
     @property
     def active(self) -> bool:
@@ -168,7 +168,7 @@ class AlphaBlend(Parameter):
         if val:
             self.data |= 0x4000
         else:
-            self.data &= ~0x4000 
+            self.data &= ~0x4000
 
 class AmbientColor(Parameter):
     """Ambient color of the mesh"""
@@ -196,7 +196,7 @@ class Texture(Parameter):
         super(Texture, self).__init__(enums.ParameterType.Texture)
         self.texID = texID
         self.tilemode = tilemode
-    
+
     @property
     def texID(self) -> int:
         return self.data & 0xFFFF
@@ -352,7 +352,7 @@ class Geometry:
             else:
                 fileW.wByte(enums.PrimitiveType.TriangleStrip.value)
             fileW.wUShort(len(l))
-            
+
             for p in l:
                 if self.indexAttributes & enums.IndexAttributeFlags.Position16BitIndex:
                     fileW.wUShort(p.posID)
@@ -364,7 +364,7 @@ class Geometry:
                         fileW.wUShort(p.nrmID)
                     else:
                         fileW.wByte(p.nrmID)
-                    
+
                 if self.indexAttributes & enums.IndexAttributeFlags.HasColor:
                     if self.indexAttributes & enums.IndexAttributeFlags.Color16BitIndex:
                         fileW.wUShort(p.vcID)
@@ -376,7 +376,7 @@ class Geometry:
                         fileW.wUShort(p.uvID)
                     else:
                         fileW.wByte(p.uvID)
-    
+
         fileW.setBigEndian(False)
         self.polygonSize = fileW.tell() - self.polygonPtr
 
@@ -425,7 +425,7 @@ class Vertices:
             structSize *= 4
 
         return structSize
-    
+
     def debug(self):
         print("  Attrib:", self.vType)
         print("   fracBitCount:", self.fracBitCount)
@@ -452,7 +452,7 @@ class Vertices:
         fileW.wByte(self.vType.value)
         fileW.wByte(self.fracBitCount)
         fileW.wShort(len(self.data))
-        
+
         datainfo = self.compCount.value | (self.dataType.value << 4)
         fileW.wUInt(datainfo)
         fileW.wUInt(self.dataPtr)
@@ -479,7 +479,7 @@ class Attach:
         self.transparentGeom = transparentGeom
         self.bounds = bounds
 
-    def fromMesh(mesh: bpy.types.Mesh, 
+    def fromMesh(mesh: bpy.types.Mesh,
                  export_matrix: mathutils.Matrix,
                  materials: List[bpy.types.Material]):
 
@@ -569,7 +569,7 @@ class Attach:
         # assembling polygons
 
         # preparing polygon lists
-        tris: List[List[PolyVert]] = [[] for n in mesh.materials]
+        tris: List[List[PolyVert]] = [[] for n in range(len(mesh.materials))]
         if len(tris) == 0:
             tris.append([])
 
@@ -592,7 +592,7 @@ class Attach:
                 tris[p.material_index].append( PolyVert(posID, nrmID, vcID, uvID) )
 
         #strippifying the poly data
-        
+
         strips: List[List[List[PolyVert]]] = list() # material specific -> strip -> polygon
         Stripf = strippifier.Strippifier()
 
@@ -615,7 +615,7 @@ class Attach:
                 for j, index in enumerate(strip):
                     tStrip[j] = distinct[index]
                 polyStrips[i] = tStrip
-            
+
             strips.append(polyStrips)
 
         # generating geometry from the polygon strips
@@ -626,10 +626,11 @@ class Attach:
             if s is None:
                 continue
             mat = None
-            if len(mesh.materials) > 0:
-                for m in materials:
-                    if m.name == mesh.materials[i].name:
-                        mat = m
+            matName = mesh.materials[i].name
+            if matName in materials:
+                mat = materials[matName]
+            else:
+                print(" Material", matName, "not found")
 
             # generating parameters
             parameters = list()
@@ -641,7 +642,7 @@ class Attach:
                 parameters.append(VtxAttrFmt(enums.VertexAttribute.Color0))
             if writeUV:
                 parameters.append(VtxAttrFmt(enums.VertexAttribute.Tex0))
-            
+
             # ID attributes
             idAttribs = enums.IndexAttributeFlags.HasPosition
             if writeNRM:
@@ -650,7 +651,7 @@ class Attach:
                 idAttribs |= enums.IndexAttributeFlags.HasColor
             if writeUV:
                 idAttribs |= enums.IndexAttributeFlags.HasUV
-            
+
             for l in s:
                 for p in l:
                     if p.posID > 0xFF:
@@ -661,7 +662,7 @@ class Attach:
                         idAttribs |= enums.IndexAttributeFlags.Color16BitIndex
                     if writeUV and p.uvID > 0xFF:
                         idAttribs |= enums.IndexAttributeFlags.UV16BitIndex
-                
+
             parameters.append(IndexAttributes(idAttribs))
 
             # material dependend things
@@ -728,7 +729,7 @@ class Attach:
                     tileMode |= enums.TileMode.MirrorV
                 if matProps.b_mirrorU:
                     tileMode |= enums.TileMode.MirrorU
-        
+
                 parameters.append(Texture(matProps.b_TextureID, tileMode))
                 parameters.append(unknown_9())
 
@@ -761,7 +762,7 @@ class Attach:
                     if matProps.gc_texGenSourceMtx == 'POSITION':
                         src = enums.TexGenSrc.Position
                     elif matProps.gc_texGenSourceMtx == 'NORMAL':
-                        src = enums.TexGenSrc.Normal   
+                        src = enums.TexGenSrc.Normal
                     elif matProps.gc_texGenSourceMtx == 'BINORMAL':
                         src = enums.TexGenSrc.Binormal
                     elif matProps.gc_texGenSourceMtx == 'TANGENT':
@@ -866,9 +867,9 @@ class Attach:
         bounds.adjust(export_matrix)
 
         return Attach(mesh.name, vertices, opaqueGeom, transparentGeom, bounds)
-            
-    def write(self, 
-              fileW: fileHelper.FileWriter, 
+
+    def write(self,
+              fileW: fileHelper.FileWriter,
               labels: dict,
               meshDict: dict = None):
         # writing vertex data first
@@ -880,7 +881,7 @@ class Attach:
 
         for l in self.vertices:
             l.writeAttrib(fileW)
-        
+
         fileW.wULong(0xFF) # an empty vertex attrib (terminator)
 
         # next we write geometry data
@@ -893,7 +894,7 @@ class Attach:
         for g in self.opaqueGeom:
             g.writeGeom(fileW)
 
-        # then the transparent data 
+        # then the transparent data
         for g in self.transparentGeom:
             g.writeParams(fileW)
             g.writePolygons(fileW)
@@ -916,4 +917,9 @@ class Attach:
         fileW.wUShort(len(self.transparentGeom))
         self.bounds.write(fileW)
 
+    def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
 
+        # reading vertex attributes
+
+
+        return Attach(None, None, None, None, None)

@@ -63,7 +63,7 @@ class ColorARGB:
 
     def fromRGBA(value: int):
         col = ColorARGB()
-        
+
         col.r = (value >> 24) & 0xFF
         col.g = (value >> 16) & 0xFF
         col.b = (value >> 8) & 0xFF
@@ -72,7 +72,7 @@ class ColorARGB:
 
     def writeRGBA(self, fileW):
         """writes data to file"""
-        fileW.wByte(self.a)        
+        fileW.wByte(self.a)
         fileW.wByte(self.b)
         fileW.wByte(self.g)
         fileW.wByte(self.r)
@@ -205,7 +205,7 @@ class BoundingBox:
                 z = v.co.z
             elif zn > v.co.z:
                 zn = v.co.z
-        
+
         cx = center(x,xn)
         cy = center(y,yn)
         cz = center(z,zn)
@@ -218,7 +218,7 @@ class BoundingBox:
 
         self.boundCenter = Vector3((cx, cy, cz))
         self.radius = distance
-    
+
     def adjust(self, matrix: mathutils.Matrix):
         self.boundCenter = matrix @ self.boundCenter
         self.radius *= matrix.to_scale()[0]
@@ -258,14 +258,14 @@ class ModelData:
     meshPtr: int# set after writing meshes
     objectPtr: int# set after writing model address
 
-    def __init__(self, 
+    def __init__(self,
              bObject: bpy.types.Object,
              parent, #: ModelData,
              hierarchyDepth: int,
              name: str,
-             global_matrix: mathutils.Matrix, 
+             global_matrix: mathutils.Matrix,
              fmt: str = '',
-             collision: bool = False, 
+             collision: bool = False,
              visible: bool = False):
 
         self.name = name
@@ -303,18 +303,11 @@ class ModelData:
         # settings space data
 
         obj_mat: mathutils.Matrix = global_matrix @ matrix
-        #print("xyz:", matrix.to_euler('XYZ'))
-        
         rot: mathutils.Euler = matrix.to_euler('XZY')
-        #print("xzy:", rot)
-
         rot = global_matrix @ mathutils.Vector((rot.x, rot.y, rot.z))
-        #print("applied:", str(rot))
 
         self.position = Vector3(obj_mat.to_translation())
         self.rotation = BAMSRotation(rot)
-        #print("reversed:", BAMSToRad(self.rotation.x), BAMSToRad(self.rotation.y), BAMSToRad(self.rotation.z))
-
         self.scale = Vector3(obj_mat.to_scale())
 
         # settings the unknowns
@@ -342,7 +335,7 @@ class ModelData:
         """Calculates the Objectflags"""
         from .enums import ObjectFlags
         flags = ObjectFlags.null
-        
+
         flags |= ObjectFlags.NoMorph # default
 
         if lvl:
@@ -391,7 +384,7 @@ class ModelData:
             flags |= SA1SurfaceFlags.Visible
             if p["footprints"]:
                 flags |= SA1SurfaceFlags.Footprints
-        
+
         return flags
 
     def getSA2SurfaceFlags(self) -> enums.SA2SurfaceFlags:
@@ -400,7 +393,7 @@ class ModelData:
         flags = SA2SurfaceFlags.null
         if self.saProps is None:
             return flags
-        p = self.saProps 
+        p = self.saProps
 
         if p["isCollision"]:
             if p["solid"]:
@@ -424,18 +417,18 @@ class ModelData:
             if p["unknown29"]:
                 flags |= SA2SurfaceFlags.Unknown29
             if p["unknown30"]:
-                flags |= SA2SurfaceFlags.Unknown30  
+                flags |= SA2SurfaceFlags.Unknown30
         if p["isVisible"]:
             flags |= SA2SurfaceFlags.Visible
             if p["noShadows"]:
                 flags |= SA2SurfaceFlags.NoShadows
             if p["noFog"]:
                 flags |= SA2SurfaceFlags.noFog
-        
+
         return flags
 
     def writeObjectList(objects: list, fileW: fileHelper.FileWriter, labels: dict, lvl: bool = False):
-        
+
         for o in reversed(objects):
             o.writeObject(fileW, labels, lvl)
 
@@ -455,7 +448,7 @@ class ModelData:
 
         self.objectPtr = fileW.tell()
         labels[self.objectPtr] = name
-        
+
         fileW.wUInt(self.getObjectFlags(lvl).value)
         fileW.wUInt(self.meshPtr)
         self.position.write(fileW)
@@ -471,7 +464,7 @@ class ModelData:
             return
 
         name = self.name
-        
+
         numberCount = 0
         while name[numberCount].isdigit():
             numberCount += 1
@@ -552,7 +545,7 @@ class Bone:
             self.matrix_local = self.matrix_world
             matrix = armatureMatrix
 
-        posMatrix = exportMatrix @ matrix 
+        posMatrix = exportMatrix @ matrix
         self.position = Vector3(posMatrix.to_translation())
         self.scale = Vector3((1,1,1))
 
@@ -567,7 +560,7 @@ class Bone:
             parentBone.children.append(self)
 
     def getBones(bBone: bpy.types.Bone,
-                parent, #: Bone 
+                parent, #: Bone
                 hierarchyDepth: int,
                 export_matrix: mathutils.Matrix,
                 armatureMatrix: mathutils.Matrix,
@@ -586,7 +579,7 @@ class Bone:
         # update sibling relationship
         if len(bone.children) > 0:
             bone.child = bone.children[0]
-        
+
         return bone
 
     def write(self, fileW: fileHelper.FileWriter, labels: dict):
@@ -601,7 +594,7 @@ class Bone:
         else:
             name = name[numberCount:]
 
-        
+
         self.objectPtr = fileW.tell()
         labels[self.objectPtr] = name
 
@@ -620,7 +613,7 @@ class Bone:
         fileW.wUInt(0 if self.sibling is None else self.sibling.objectPtr)
 
 class Armature(ModelData):
-    
+
     bones: List[Bone]
 
     def writeArmature(self,
@@ -675,7 +668,7 @@ class Armature(ModelData):
             objects.append(o)
             for c in o.children:
                 objQueue.put(c)
-        
+
         # now we have all objects that get modified by the armature
         # lets get the meshes
         meshes = list()
@@ -693,9 +686,8 @@ class Armature(ModelData):
         # ok lemme write some notes down:
         # there are 3 types of objects that the armature modifies:
         # 1. Objects with weights, which are parented to the armature
-        # 2. Objects parented to bones (also no weights)        
+        # 2. Objects parented to bones (also no weights)
         # 3. Objects without weights. may be parented to armature or object that is parented to armature
-
 
         armatureMeshes: List[ArmatureMesh] = list()
         for o in objects:
@@ -733,13 +725,13 @@ class Armature(ModelData):
                         if g.group in usedGroups:
                             found = True
                             break
-                        
+
                     if not found:
                         weightMap[root.name] = [-2, enums.WeightStatus.Start]
                         setStart = True
                         last = root.name
                         break
-                        
+
                 for b, g in usedBoneGroups.items():
                     weightMap[b.name] = [g.index, enums.WeightStatus.Middle if setStart else enums.WeightStatus.Start]
                     setStart = True
@@ -787,8 +779,8 @@ class Armature(ModelData):
         # writing object data
         for b in reversed(self.bones):
             b.write(fileW, labels)
-        
-        return self.bones[0].objectPtr         
+
+        return self.bones[0].objectPtr
 
 def convertObjectData(context: bpy.types.Context,
                       use_selection: bool,
@@ -796,7 +788,7 @@ def convertObjectData(context: bpy.types.Context,
                       export_matrix: mathutils.Matrix,
                       fmt: str,
                       lvl: bool):
-    
+
     global DO
 
     # gettings the objects to export
@@ -817,7 +809,7 @@ def convertObjectData(context: bpy.types.Context,
     for o in objects:
         if o.parent == None or not (o.parent in objects):
             noParents.append(o)
-    
+
     # correct object order
     # sort top level objects first
     noParents.sort(key=lambda x: x.name)
@@ -845,7 +837,6 @@ def convertObjectData(context: bpy.types.Context,
     objects = modelData
 
     # get meshes
-    depsgraph = context.evaluated_depsgraph_get()
     if not lvl or lvl and fmt == 'SA1':
 
         mObjects = list() # objects with a mesh
@@ -853,7 +844,7 @@ def convertObjectData(context: bpy.types.Context,
             if o.origObject is not None and o.origObject.type == 'MESH':
                 mObjects.append(o)
 
-        meshes, materials = getMeshesFromObjects(mObjects, depsgraph, apply_modifs)
+        meshes, materials = getMeshesFromObjects(mObjects, context, apply_modifs)
         ModelData.updateMeshes(objects, meshes)
 
         if fmt == 'SA2': # since sa2 can have armatures, we need to handle things a little different...
@@ -874,7 +865,7 @@ def convertObjectData(context: bpy.types.Context,
             print("  Meshes:", len(meshes))
             print("  Objects:", len(objects))
             print("  - - - - - -\n")
-        
+
         return objects, meshes, materials, mObjects
 
     else: # only occurs when format is sa2lvl or sa2blvl
@@ -888,15 +879,15 @@ def convertObjectData(context: bpy.types.Context,
                 else:
                     vObjects.append(o)
 
-        cMeshes, dontUse = getMeshesFromObjects(cObjects, depsgraph, apply_modifs)
-        vMeshes, materials = getMeshesFromObjects(vObjects, depsgraph, apply_modifs)
+        cMeshes, dontUse = getMeshesFromObjects(cObjects, context, apply_modifs)
+        vMeshes, materials = getMeshesFromObjects(vObjects, context, apply_modifs)
 
         meshes = list()
         meshes.extend(cMeshes)
         meshes.extend(vMeshes)
 
         ModelData.updateMeshes(objects, meshes)
-        
+
         if DO:
             print(" == Exporting ==")
             print("  Materials:", len(materials))
@@ -907,9 +898,9 @@ def convertObjectData(context: bpy.types.Context,
 
         return objects, cMeshes, vMeshes, materials, cObjects, vObjects
 
-def sortChildren(cObject: bpy.types.Object, 
+def sortChildren(cObject: bpy.types.Object,
                 objects: List[bpy.types.Object],
-                parent: ModelData, 
+                parent: ModelData,
                 hierarchyDepth: int,
                 export_matrix: mathutils.Matrix,
                 fmt: str,
@@ -932,7 +923,7 @@ def sortChildren(cObject: bpy.types.Object,
                 meshTag = 'gc' # sa2b format is GC
 
             visible = True if not cObject.saSettings.isCollision else cObject.saSettings.isVisible
-                
+
             model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, meshTag, cObject.saSettings.isCollision, visible)
     elif fmt == 'SA2' and not lvl and cObject.type == 'ARMATURE':
         visible = True if not cObject.saSettings.isCollision else cObject.saSettings.isVisible
@@ -940,7 +931,7 @@ def sortChildren(cObject: bpy.types.Object,
     else:
         # everything that is not a mesh should be written as an empty
         model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, fmt, False, False)
-    
+
     result.append(model)
 
     for c in cObject.children:
@@ -953,10 +944,10 @@ def sortChildren(cObject: bpy.types.Object,
     # update sibling relationship
     if len(model.children) > 0:
         model.child = model.children[0]
-    
+
     return model
 
-def getMeshesFromObjects(objects: List[ModelData], depsgraph: bpy.types.Depsgraph, apply_modifs: bool):
+def getMeshesFromObjects(objects: List[ModelData], context, apply_modifs: bool) -> Tuple[List[bpy.types.Mesh], Dict[str, bpy.types.Material]]:
     """checking which meshes are in the objects at all"""
     tMeshes = list()
     for o in objects:
@@ -976,49 +967,68 @@ def getMeshesFromObjects(objects: List[ModelData], depsgraph: bpy.types.Depsgrap
             meshesToConvert.append(o)
 
     outMeshes = list()
-    materials = list()
+    materials: Dict[str, bpy.types.Material] = dict()
+
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+
+    # setting modifier data first, so that the mesh gets exported correctly
+    modifierStates: Dict[bpy.types.Modifier, bool] = dict()
+    addESplit: Dict[bpy.types.Object, bpy.types.EdgeSplitModifier] = dict()
     for o in meshesToConvert:
+        obj = o.origObject
         if len(o.origObject.data.vertices) == 0:
             continue
+        t_apply_modifs = False if o in mObjects else apply_modifs
 
-        newMesh, mats = convertMesh(o.origObject, depsgraph, False if o in mObjects else apply_modifs)
-        outMeshes.append(newMesh)
+        hasEdgeSplit = False
+        for m in obj.modifiers:
+            if isinstance(m, bpy.types.ArmatureModifier):
+                modifierStates[m] = m.show_viewport
+                m.show_viewport = False
+            elif isinstance(m, bpy.types.EdgeSplitModifier):
+                hasEdgeSplit = True
+
+        # if the mesh has no edge split modifier but uses auto smooth, then add one to compensate for sharp edges
+        if obj.data.use_auto_smooth and not hasEdgeSplit and t_apply_modifs:
+            ESM = obj.modifiers.new("AutoEdgeSplit", 'EDGE_SPLIT')
+            ESM.split_angle = obj.data.auto_smooth_angle
+            ESM.use_edge_angle = not obj.data.has_custom_normals
+            addESplit[obj] = ESM
+
+    depsgraph.update()
+
+    for o in meshesToConvert:
+        obj = o.origObject
+        if len(o.origObject.data.vertices) == 0:
+            continue
+        t_apply_modifs = False if o in mObjects else apply_modifs
+
+        ob_for_convert = obj.evaluated_get(depsgraph) if t_apply_modifs else obj.original
+        me = ob_for_convert.to_mesh(preserve_all_data_layers=True, depsgraph=depsgraph)
+        trianglulateMesh(me)
+
+        if obj in addESplit:
+            obj.modifiers.remove(addESplit[obj])
+
+        outMeshes.append(me)
         if not (o.saProps["isCollision"] and not o.saProps["isVisible"]):
-            for m in mats:
-                if m not in materials:
-                    materials.append(m)
+            for m in obj.data.materials:
+                if m.name not in materials:
+                    materials[m.name] = m
+
+    for k, v in modifierStates.items():
+        k.show_viewport = v
 
     return outMeshes, materials
 
-def convertMesh(obj: bpy.types.Object, depsgraph: bpy.types.Depsgraph, apply_modifs: bool):
-    """Applies modifiers (or not), triangulates the mesh and returns materials"""
-    toDisable = list()
-    oldStates = list()
-    for m in obj.modifiers:
-        if isinstance(m, bpy.types.ArmatureModifier):
-            toDisable.append(m)
-    for m in toDisable:
-        oldStates.append(m.show_viewport)
-        m.show_viewport = False
-        
-    ob_for_convert = obj.evaluated_get(depsgraph) if apply_modifs else obj.original
-    me = ob_for_convert.to_mesh()
-
-    trianglulateMesh(me)
-
-    for s, m in zip(oldStates, toDisable):
-        m.show_viewport = s
-
-    return me, obj.data.materials
-
 def trianglulateMesh(mesh: bpy.types.Mesh) -> bpy.types.Mesh:
     """Transforms a mesh into a mesh only consisting of triangles, so that it can be stripped"""
-    
+
     # if we use custom normals, we gotta correct them manually, since blenders triangulate is shit
     if mesh.use_auto_smooth:
         # calculate em, so that we can collect the correct normals
         mesh.calc_normals_split()
-        
+
         # and now store them, together with the vertex indices, since those will be the only identical data after triangulating
         normalData = list()
         for p in mesh.polygons:
@@ -1030,12 +1040,12 @@ def trianglulateMesh(mesh: bpy.types.Mesh) -> bpy.types.Mesh:
                 nrm = loop.normal
                 normals.append((nrm.x, nrm.y, nrm.z))
                 indices.append(loop.vertex_index)
-                
+
             normalData.append((indices,normals))
-                
+
         # free the split data
         #mesh.free_normals_split()
-            
+
     import bmesh
     bm = bmesh.new()
     bm.from_mesh(mesh)
@@ -1047,35 +1057,35 @@ def trianglulateMesh(mesh: bpy.types.Mesh) -> bpy.types.Mesh:
         polygons = list()
         for p in mesh.polygons:
             polygons.append(p)
-        
+
         splitNormals = [None] * len(mesh.loops)
 
         for nd in normalData:
             foundTris = 0
             toFind = len(nd[0])-2
-            
+
             out = False
             toRemove = list()
-            
+
             for p in polygons:
                 found = 0
                 for l in p.loop_indices:
                     if mesh.loops[l].vertex_index in nd[0]:
                         found += 1
-                        
+
                 if found == 3:
                     foundTris += 1
-                    
+
                     for l in p.loop_indices:
                         splitNormals[l] = nd[1][nd[0].index(mesh.loops[l].vertex_index)]
-                        
+
                     toRemove.append(p)
                     if foundTris == toFind:
                         break
-                    
+
             for p in toRemove:
                 polygons.remove(p)
-            
+
         if len(polygons) > 0:
             print("\ntriangulating went wrong?", len(polygons))
         else:
@@ -1186,11 +1196,17 @@ def writeMethaData(fileW: fileHelper.FileWriter,
 
     fileW.wUInt(enums.Chunktypes.End.value)
     fileW.wUInt(0)
-  
+
+def matrixFromScale(scale: mathutils.Vector) -> mathutils.Matrix:
+    mtx = mathutils.Matrix()
+    mtx[0][0] = scale[0]
+    mtx[1][1] = scale[1]
+    mtx[2][2] = scale[2]
+    return mtx
 
 # for reading only
 class Model:
-    
+
     name: str
     objFlags: enums.ObjectFlags
     meshPtr: int
@@ -1251,10 +1267,8 @@ def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int,
 
     posMtx = mathutils.Matrix.Translation((fileR.rFloat(address + 8), -fileR.rFloat(address + 16), fileR.rFloat(address + 12)))
     rotMtx = mathutils.Euler((xRot, -zRot, yRot), 'XZY').to_matrix().to_4x4()
-    scaleMtx = mathutils.Matrix()
-    scaleMtx[0][0] = fileR.rFloat(address + 32)
-    scaleMtx[1][1] = fileR.rFloat(address + 40)
-    scaleMtx[2][2] = fileR.rFloat(address + 36)
+    scaleMtx = matrixFromScale((fileR.rFloat(address + 32), fileR.rFloat(address + 40), fileR.rFloat(address + 36)))
+
     matrix_local = posMtx @ rotMtx @ scaleMtx
 
 
@@ -1270,7 +1284,7 @@ def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int,
     if childPtr > 0:
         child = readObjects(fileR, childPtr, hierarchyDepth + 1, model, labels, result)
         model.child = child
-    
+
     siblingPtr = fileR.rUInt(address + 48)
     if siblingPtr > 0:
         sibling = readObjects(fileR, siblingPtr, hierarchyDepth, parent, labels, result)
@@ -1314,3 +1328,4 @@ def getDefaultMatDict() -> dict:
     d["gc_texGenType"] = 'MTX2X4'
     d["gc_texCoordID"] = 'TEXCOORD0'
     return d
+

@@ -24,7 +24,7 @@ if "bpy" in locals():
     if "format_CHUNK" in locals():
         importlib.reload(format_CHUNK)
     if "strippifier" in locals():
-        importlib.reload(strippifier)   
+        importlib.reload(strippifier)
     if "fileHelper" in locals():
         importlib.reload(fileHelper)
     if "enums" in locals():
@@ -108,7 +108,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
     console_debug_output: BoolProperty(
         name = "Console Output",
         description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-        default = True,
+        default = False,
         )
 
     def execute(self, context):
@@ -126,7 +126,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
         layout.prop(self, "apply_modifs")
         layout.separator()
         layout.prop(self, "console_debug_output")
- 
+
 class ExportSA2MDL(bpy.types.Operator, ExportHelper):
     """Export Objects into an SA2 model file"""
     bl_idname = "export_scene.sa2mdl"
@@ -161,7 +161,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
     console_debug_output: BoolProperty(
         name = "Console Output",
         description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-        default = True,
+        default = False,
         )
 
     def execute(self, context):
@@ -214,7 +214,7 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
     console_debug_output: BoolProperty(
         name = "Console Output",
         description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-        default = True,
+        default = False,
         )
 
     def execute(self, context):
@@ -267,9 +267,9 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
     console_debug_output: BoolProperty(
         name = "Console Output",
         description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-        default = True,
+        default = False,
         )
-    
+
     def execute(self, context):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
@@ -285,7 +285,7 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
         layout.prop(self, "apply_modifs")
         layout.separator()
         layout.prop(self, "console_debug_output")
- 
+
 class ExportSA2LVL(bpy.types.Operator, ExportHelper):
     """Export scene into an SA2 level file"""
     bl_idname = "export_scene.sa2lvl"
@@ -320,9 +320,9 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
     console_debug_output: BoolProperty(
         name = "Console Output",
         description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-        default = True,
+        default = False,
         )
-    
+
     def execute(self, context):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
@@ -373,13 +373,13 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
     console_debug_output: BoolProperty(
         name = "Console Output",
         description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-        default = True,
+        default = False,
         )
-    
+
     def execute(self, context):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
-        
+
         keywords["export_format"] = 'SA2B'
         return exportFile(self, False, context, **keywords)
 
@@ -462,7 +462,7 @@ class StrippifyTest(bpy.types.Operator):
         # creating the vertex list
         verts = []
         oIDtodID = [0] * len(me.vertices)
-        
+
         for IDo, vo in enumerate(me.vertices):
             vert = [vo.co.x, vo.co.y, vo.co.z]
             found = -1
@@ -490,7 +490,7 @@ class StrippifyTest(bpy.types.Operator):
 
         if not self.doConcat:
             empty = bpy.data.objects.new(obj.data.name + "_str", None)
-            context.collection.objects.link(empty)           
+            context.collection.objects.link(empty)
             for i, s in enumerate(indexStrips):
                 # making them lists so blender can use them
                 indexList = list()
@@ -531,10 +531,10 @@ class ArmatureFromObjects(bpy.types.Operator):
             ArmatureFromObjects.addChildren(c, result, resultMeshes)
 
     def execute(self, context):
-        
+
         if len(context.selected_objects) == 0 or bpy.context.object.mode != 'OBJECT':
             return {'CANCELLED'}
-        active = context.active_object  
+        active = context.active_object
 
         objects = list()
         meshes = list()
@@ -562,7 +562,7 @@ class ArmatureFromObjects(bpy.types.Operator):
         boneMap = dict()
         bones = objects[1:]
 
-        
+
         for b in bones:
             boneName = b.name
             bone = edit_bones.new(b.name)
@@ -590,28 +590,28 @@ class ArmatureFromObjects(bpy.types.Operator):
 
             meshObj.parent = armatureObj
             meshObj.matrix_local = globalMatrix.inverted() @ boneObject.matrix_world
-            
+
             bpy.ops.object.mode_set(mode='OBJECT')
             meshObj.select_set(True, view_layer=context.view_layer)
             bpy.ops.object.transform_apply(location = True, scale = True, rotation = True)
 
             modif = meshObj.modifiers.new("deform", 'ARMATURE')
-            modif.object = armatureObj            
-            
+            modif.object = armatureObj
+
             group = meshObj.vertex_groups.new(name=boneObject.name)
             group.add([v.index for v in meshCopy.vertices], 1, 'ADD')
 
             meshCount += 1
             meshObj.select_set(False, view_layer=context.view_layer)
 
-                
 
-        
+
+
 
         return {'FINISHED'}
 
 def qmeUpdate(context, newValue):
-    
+
     matQProps = context.scene.saSettings.matQProps
     matQEditor = context.scene.saSettings.matQEditor
 
@@ -628,22 +628,22 @@ def qmeUpdate(context, newValue):
 
         if matQEditor.b_apply_diffuse and newValue:
             matProps.b_Diffuse = matQProps.b_Diffuse
-        
+
         if matQEditor.b_apply_specular and newValue:
             matProps.b_Specular = matQProps.b_Specular
 
         if matQEditor.b_apply_Ambient and newValue:
             matProps.b_Ambient = matQProps.b_Ambient
-        
+
         if matQEditor.b_apply_specularity and newValue:
             matProps.b_Exponent = matQProps.b_Exponent
-        
+
         if matQEditor.b_apply_texID and newValue:
             matProps.b_TextureID = matQProps.b_TextureID
 
         if matQProps.b_d_025:
             matProps.b_d_025 = newValue
-        
+
         if matQProps.b_d_050:
             matProps.b_d_050 = newValue
 
@@ -673,7 +673,7 @@ def qmeUpdate(context, newValue):
 
         if matQProps.b_mirrorV:
             matProps.b_mirrorV = newValue
-        
+
         if matQProps.b_useTexture:
             matProps.b_useTexture = newValue
 
@@ -695,7 +695,7 @@ def qmeUpdate(context, newValue):
             matProps.b_ignoreLighting = newValue
 
         if matQProps.b_ignoreAmbient:
-            matProps.b_ignoreAmbient = newValue 
+            matProps.b_ignoreAmbient = newValue
 
         if matQProps.b_flatShading:
             matProps.b_flatShading = newValue
@@ -763,13 +763,13 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         description="Whether the character can collide with the model",
         default=True
         )
-    
+
     water: BoolProperty(
         name="Water",
         description="The model will act like water",
         default=False
         )
-    
+
     cannotLand: BoolProperty(
         name="Cannot land",
         description="Whether you can stand on the model",
@@ -857,7 +857,7 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         description="Whether the model has friction",
         default=False
         )
-    
+
     noAcceleration: BoolProperty(
         name="no acceleration",
         description="If the acceleration of the character should stay when interacting with the model",
@@ -868,7 +868,7 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         name="Increased acceleration",
         description="Whether the acceleration of the character should be raised when interacting with the model",
         default=False
-        )        
+        )
 
     footprints: BoolProperty(
         name="Footprints",
@@ -951,14 +951,14 @@ class SASettings(bpy.types.PropertyGroup):
 class SAMaterialSettings(bpy.types.PropertyGroup):
     """Hosts all of the material data necessary for exporting"""
     # sa1 properties
-    
+
     b_Diffuse: FloatVectorProperty(
         name = "Diffuse Color",
         description="Color of the material",
         subtype='COLOR_GAMMA',
         size=4,
         min=0.0, max=1.0,
-        default=(1.0, 1.0, 1.0, 1.0),       
+        default=(1.0, 1.0, 1.0, 1.0),
         )
 
     b_Specular: FloatVectorProperty(
@@ -967,7 +967,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         subtype='COLOR_GAMMA',
         size=4,
         min=0.0, max=1.0,
-        default=(1.0, 1.0, 1.0, 1.0),       
+        default=(1.0, 1.0, 1.0, 1.0),
         )
 
     b_Ambient : FloatVectorProperty(
@@ -976,7 +976,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         subtype='COLOR_GAMMA',
         size=4,
         min=0.0, max=1.0,
-        default=(1.0, 1.0, 1.0, 1.0),       
+        default=(1.0, 1.0, 1.0, 1.0),
         )
 
     b_Exponent: FloatProperty(
@@ -1018,15 +1018,15 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         description="adds 2 to the mipmap distance multiplier",
         default=False
         )
-    
+
     # texture filtering
-        
+
     b_use_Anisotropy: BoolProperty(
         name="Anisotropy",
         description="Enable Anisotropy for the texture of the material",
         default=True
         )
-            
+
     b_texFilter: EnumProperty(
         name="Filter Type",
         description="The texture filter",
@@ -1340,39 +1340,39 @@ class SAMaterialPanelSettings(bpy.types.PropertyGroup):
 
     # Quick material edit properties
 
-    expandedPanel: BoolProperty( name="Material Properties", default=False )  
+    expandedPanel: BoolProperty( name="Material Properties", default=False )
 
-    b_apply_diffuse: BoolProperty( 
+    b_apply_diffuse: BoolProperty(
         name = "Apply diffuse",
         description="Sets the diffuse of all material when pressing 'Update'",
         default=False
         )
 
-    b_apply_specular: BoolProperty( 
+    b_apply_specular: BoolProperty(
         name = "Apply specular",
         description="Sets the specular of all material when pressing 'Update'",
         default=False
         )
 
-    b_apply_Ambient: BoolProperty( 
+    b_apply_Ambient: BoolProperty(
         name = "Apply ambient",
         description="Sets the ambient of all material when pressing 'Update'",
         default=False
         )
 
-    b_apply_specularity: BoolProperty( 
+    b_apply_specularity: BoolProperty(
         name = "Apply specularity",
         description="Sets the specularity of all material when pressing 'Update'",
         default=False
         )
 
-    b_apply_texID: BoolProperty( 
+    b_apply_texID: BoolProperty(
         name = "Apply texture ID",
         description="Sets the texture ID of all material when pressing 'Update'",
         default=False
         )
 
-    b_apply_filter: BoolProperty( 
+    b_apply_filter: BoolProperty(
         name = "Apply filter type",
         description="Sets the filter type of all material when pressing 'Update'",
         default=False
@@ -1404,7 +1404,7 @@ def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, qe = False):
     row.alignment='LEFT'
     if qe:
         row.prop(prop2, prop2Name, text="")
-    
+
     row.label(text=label)
     split.prop(prop1, prop1Name, text="")
 
@@ -1425,7 +1425,7 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
         propAdv(menu, "Ambient Color:", matProps, "b_Ambient", menuProps, "b_apply_Ambient", qe)
         propAdv(menu, "Specular Strength:", matProps, "b_Exponent", menuProps, "b_apply_specularity", qe)
         propAdv(menu, "Texture ID:", matProps, "b_TextureID", menuProps, "b_apply_texID", qe)
-        
+
         #mipmap menu
         box = menu.box()
         box.prop(menuProps, "expandedBMipMap",
@@ -1475,14 +1475,14 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
             )
 
         if menuProps.expandedBGeneral:
-            
-            
+
+
             box.prop(matProps, "b_useTexture")
             box.prop(matProps, "b_useEnv")
             box.prop(matProps, "b_useAlpha")
             if matProps.b_useAlpha:
                 split = box.split(factor= 0.5)
-                split.label(text ="Source Alpha:")  
+                split.label(text ="Source Alpha:")
                 split.prop(matProps, "b_srcAlpha", text = "")
 
                 split = box.split(factor= 0.5)
@@ -1494,7 +1494,7 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
             box.prop(matProps, "b_ignoreAmbient")
             box.prop(matProps, "b_flatShading")
             box.prop(matProps, "b_unknown")
-            
+
         box = menu.box()
         box.prop(menuProps, "expandedGC",
             icon="TRIA_DOWN" if menuProps.expandedGC else "TRIA_RIGHT",
@@ -1519,7 +1519,7 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
                     split = box.split(factor=0.5)
                     split.label(text = "Generation Type")
                     split.prop(matProps, "gc_texGenType", text="")
-                    
+
                     if matProps.gc_texGenType[0] == 'M': #matrix
                         split = box.split(factor=0.5)
                         split.label(text = "Matrix ID")
@@ -1538,7 +1538,7 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
                         split = box.split(factor=0.5)
                         split.label(text = "Source")
                         split.prop(matProps, "gc_texGenSourceSRTG", text="")
-            
+
 class SAObjectPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_saProperties"
     bl_label = "SA Object Properties"
@@ -1593,8 +1593,8 @@ class SAObjectPanel(bpy.types.Panel):
             box.prop(objProps, "water")
             box.prop(objProps, "standOnSlope")
             box.prop(objProps, "diggable")
-            box.prop(objProps, "unclimbable")   
-            box.prop(objProps, "hurt")                     
+            box.prop(objProps, "unclimbable")
+            box.prop(objProps, "hurt")
             box.prop(objProps, "cannotLand")
             box.prop(objProps, "water2")
 
@@ -1608,7 +1608,7 @@ class SAObjectPanel(bpy.types.Panel):
             box.prop(objProps, "unknown24")
             box.prop(objProps, "unknown29")
             box.prop(objProps, "unknown30")
-        
+
         layout.separator()
         layout.label(text="Experimental")
         split = layout.split()
@@ -1649,7 +1649,7 @@ class SAMaterialPanel(bpy.types.Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "material"
-        
+
 
     @classmethod
     def poll(cls, context):
@@ -1705,7 +1705,7 @@ class SA3DPanel(bpy.types.Panel):
         layout = self.layout
 
         settings = context.scene.saSettings
-        
+
         box = layout.box()
 
         box.prop(settings, "expandedMatEdit",
@@ -1721,7 +1721,7 @@ class SA3DPanel(bpy.types.Panel):
 
         layout.operator(ArmatureFromObjects.bl_idname)
         layout.operator(StrippifyTest.bl_idname)
-        
+
 
 def menu_func_exportsa(self, context):
     self.layout.menu("TOPBAR_MT_SA_export")

@@ -21,7 +21,7 @@ class Vertex:
     col: ColorARGB
     ninjaFlags: int
 
-    def __init__(self, 
+    def __init__(self,
                  origIndex: int,
                  index: int,
                  pos: Vector3,
@@ -38,7 +38,7 @@ class Vertex:
             self.weight = max(weight, 1 / 255.0)
         else:
             self.weight = 0
-  
+
     @property
     def index(self) -> int:
         return self.ninjaFlags & 0xFFFF
@@ -61,7 +61,7 @@ class Vertex:
     def writeVC(self, fileW: fileHelper.FileWriter):
         self.pos.write(fileW)
         self.col.writeARGB(fileW)
-        
+
     def writeNRM(self, fileW: fileHelper.FileWriter):
         self.pos.write(fileW)
         self.nrm.write(fileW)
@@ -95,7 +95,7 @@ class VertexChunk:
     def write(self, fileW: fileHelper.FileWriter):
         fileW.wByte(self.chunkType.value)
         fileW.wByte(self.weightType.value)
-        
+
         if self.chunkType == enums.ChunkType.Vertex_VertexDiffuse8:
             vertexSize = 4
         elif self.chunkType == enums.ChunkType.Vertex_VertexNormal:
@@ -125,8 +125,8 @@ class PolyVert:
     index: int
     uv: UV
 
-    def __init__(self, 
-                 index: int, 
+    def __init__(self,
+                 index: int,
                  uv: UV):
         self.index = index
         self.uv = uv
@@ -247,7 +247,7 @@ class PolyChunk_Texture(PolyChunk):
     anisotropy: bool
     filtering: enums.TextureFiltering
 
-    def __init__(self, 
+    def __init__(self,
                  texID: int,
                  flags: enums.TextureIDFlags,
                  anisotropy: bool,
@@ -265,7 +265,7 @@ class PolyChunk_Texture(PolyChunk):
         aniso = (header & 0x2000) > 0
         filtering = enums.TextureFiltering( header >> 14 )
         return PolyChunk_Texture(texID, flags, aniso, filtering), address + 3
-     
+
     def write(self, fileW: fileHelper.FileWriter):
         super(PolyChunk_Texture, self).write(fileW)
         fileW.wByte(self.flags.value)
@@ -283,7 +283,7 @@ class PolyChunk_Material(PolyChunk):
     ambient: ColorARGB
     specular: ColorARGB
     specularity: int
-    
+
     def __init__(self,
                  alphaInstruction: enums.AlphaInstruction,
                  diffuse: ColorARGB,
@@ -300,13 +300,13 @@ class PolyChunk_Material(PolyChunk):
     def read(fileR: fileHelper.FileReader, chunkType: enums.ChunkType, address: int):
 
         alphaInstruction = enums.SA2AlphaInstructions(fileR.rByte(address))
-        address += 3 
+        address += 3
 
         diffuse = ColorARGB()
         if chunkType.value & 0x1: # diffuse
             diffuse = ColorARGB.fromARGB(fileR.rUInt(address))
             address += 4
-            
+
         ambient = ColorARGB()
         if chunkType.value & 0x2: # ambient
             ambient = ColorARGB.fromARGB(fileR.rUInt(address))
@@ -319,7 +319,7 @@ class PolyChunk_Material(PolyChunk):
             specularity = specular.a
             specular.a = 255
             address += 4
-        
+
         return PolyChunk_Material(alphaInstruction, diffuse, ambient, specular, specularity), address
 
 
@@ -331,7 +331,7 @@ class PolyChunk_Material(PolyChunk):
         self.ambient.writeARGB(fileW)
         self.specular.writeRGB(fileW)
         fileW.wByte(self.specularity)
-    
+
 class PolyChunk_Strip(PolyChunk):
 
     flags: enums.StripFlags
@@ -355,16 +355,16 @@ class PolyChunk_Strip(PolyChunk):
             self.reversedStrips = [False] * len(strips)
         else:
             self.reversedStrips = reversedStrips
-    
+
     def read(fileR: fileHelper.FileReader, chunkType: enums.ChunkType, address: int):
-        
+
         flags = enums.StripFlags(fileR.rByte(address))
         address += 1
         size = fileR.rUShort(address)
         address += 2
         header = fileR.rUShort(address)
         stripCount = header & 0x3FFF
-        userFlagCount = header >> 14 
+        userFlagCount = header >> 14
         #if userFlagCount > 0:
         #    print("  Userflag count:", userFlagCount)
         address += 2
@@ -372,7 +372,7 @@ class PolyChunk_Strip(PolyChunk):
         polyVerts = list()
         reversedStrips = list()
 
-        c = chunkType.value 
+        c = chunkType.value
         hasUV = c == 65 or c == 66 or c == 68 or c == 69 or c == 71 or c == 72
         hasNRM = 1 if c >= 67 and c <= 69 else 0
         hasCOL = 1 if c >= 70 and c <= 72 else 0
@@ -382,10 +382,10 @@ class PolyChunk_Strip(PolyChunk):
             strip = list()
             pCount = fileR.rShort(address)
             reverse = pCount < 0
-            
+
             if reverse:
                 pCount = abs(pCount)
-            
+
             address += 2
             for p in range(pCount):
                 vIndex = fileR.rUShort(address)
@@ -400,7 +400,7 @@ class PolyChunk_Strip(PolyChunk):
                     uv.x = u
                     uv.y = v
                     address += 4
-                
+
                 # check normals
                 address += 12 * hasNRM
                 # check colors
@@ -408,7 +408,7 @@ class PolyChunk_Strip(PolyChunk):
 
                 address += userFlagCount * 2
                 strip.append(PolyVert(vIndex, uv))
-            
+
             reversedStrips.append(reverse)
             polyVerts.append(strip)
 
@@ -470,8 +470,8 @@ class Attach:
         IDs = [0] * len(polyVerts)
 
         distinctPolys, IDs = common.getDistinctwID(polyVerts)
-        
-        polygons: List[List[PolyVert]] = [[] for m in mesh.materials]
+
+        polygons: List[List[PolyVert]] = [[] for m in range(len(mesh.materials))]
         if len(polygons) == 0:
             polygons.append(list())
 
@@ -497,7 +497,7 @@ class Attach:
                 for j, index in enumerate(strip):
                     tStrip[j] = distinctPolys[index]
                 polyStrips[i] = tStrip
-            
+
             strips.append(polyStrips)
 
         # generating polygon chunks
@@ -506,16 +506,14 @@ class Attach:
         for mID, l in enumerate(strips):
             if l is None:
                 continue
-            
+
             # getting material
             material = None
-            if len(mesh.materials) > 0:
-                for m in materials:
-                    if m.name == mesh.materials[mID].name:
-                        material = m
-                        break
+            matName = mesh.materials[mID].name
+            if matName in materials:
+                material = materials[matName]
             else:
-                print(" mesh contains no material")
+                print(" Material", matName, "not found")
 
             stripFlags = enums.StripFlags.null
 
@@ -555,12 +553,12 @@ class Attach:
                     filtering = enums.TextureFiltering.Blend
 
                 polyChunks.append(PolyChunk_Texture(matProps.b_TextureID, textureFlags, matProps.b_use_Anisotropy, filtering))
-                
+
                 # getting alpha
                 alphaflags = enums.SA2AlphaInstructions.null
                 if matProps.b_useAlpha:
                     from .enums import SA2AlphaInstructions
-                    
+
                     src = matProps.b_srcAlpha
                     if src == 'ONE':
                         alphaflags |= SA2AlphaInstructions.SA_ONE
@@ -594,7 +592,7 @@ class Attach:
                         alphaflags |= SA2AlphaInstructions.DA_INV_DST
                 else:
                     alphaflags = enums.SA2AlphaInstructions.SA_SRC | enums.SA2AlphaInstructions.DA_INV_SRC
-                
+
                 polyChunks.append(PolyChunk_Material(alphaflags, ColorARGB(matProps.b_Diffuse), ColorARGB(matProps.b_Ambient), ColorARGB(matProps.b_Specular), round(matProps.b_Exponent * 255)))
 
                 #getting strip flags
@@ -619,10 +617,10 @@ class Attach:
 
         return polyChunks
 
-    def fromMesh(mesh: bpy.types.Mesh, 
-                 export_matrix: mathutils.Matrix, 
+    def fromMesh(mesh: bpy.types.Mesh,
+                 export_matrix: mathutils.Matrix,
                  materials: List[bpy.types.Material]):
-        
+
         vertexType = mesh.saSettings.sa2ExportType
         if vertexType == 'VC' and len(mesh.vertex_colors) == 0:
             vertexType = 'NRM'
@@ -630,7 +628,7 @@ class Attach:
 
 
         writeUVs = len(mesh.uv_layers) > 0
-        
+
         vertices: List[Vertex] = list()
         polyVerts: List[PolyVert] = list()
 
@@ -639,7 +637,7 @@ class Attach:
 
         if vertexType == 'VC':
             verts: List[List[Vertex]] = [[] for v in mesh.vertices]
-            
+
             # generating the vertices with their colors
             for l in mesh.loops:
                 vert = mesh.vertices[l.vertex_index]
@@ -684,18 +682,18 @@ class Attach:
         vertexChunks: List[VertexChunk] = [VertexChunk(chunkType, enums.WeightStatus.Start, False, extraOffset, vertices)]
 
         polyChunks = Attach.getPolygons(mesh, writeUVs, polyVerts, materials)
-                
+
         bounds = BoundingBox(mesh.vertices)
         bounds.adjust(export_matrix)
 
         return Attach(mesh.name, vertexChunks, polyChunks, bounds)
 
-    def write(self, 
+    def write(self,
               fileW: fileHelper.FileWriter,
               labels: dict,
               meshDict: dict = None):
         global DO
-        
+
         # writing vertex chunks
         vertexChunkPtr = fileW.tell()
         for v in self.vertexChunks:
@@ -707,7 +705,7 @@ class Attach:
         polyChunkPtr = fileW.tell()
         for p in self.polyChunks:
             p.write(fileW)
-                
+
         # writing poly chunk terminator
         fileW.wUShort(enums.ChunkType.End.value)
 
@@ -752,14 +750,14 @@ class Attach:
         if tmpAddr > 0:
             chunkType = enums.ChunkType(fileR.rByte(tmpAddr))
             while chunkType != enums.ChunkType.End:
-                
+
                 flags = fileR.rByte(tmpAddr + 1)
                 weightStatus = enums.WeightStatus(flags & 0x3)
                 otherFlags = flags & ~0x3
                 size = fileR.rUShort(tmpAddr+2)
                 indexBufferOffset = fileR.rUShort(tmpAddr + 4)
                 vertexCount = fileR.rUShort(tmpAddr + 6)
-                
+
                 vertices = list()
 
                 tmpAddr += 8
@@ -778,7 +776,7 @@ class Attach:
                     if chunkType == enums.ChunkType.Vertex_VertexDiffuse8:
                         col = ColorARGB.fromARGB(fileR.rUInt(tmpAddr))
                         tmpAddr += 4
-                        
+
                     weight = 0
                     index = i
                     nrm = None
@@ -805,7 +803,7 @@ class Attach:
 
         polygonChunks = list()
         tmpAddr = fileR.rUInt(address + 4)
-        if tmpAddr > 0: 
+        if tmpAddr > 0:
             chunkType = enums.ChunkType(fileR.rByte(tmpAddr))
             while chunkType != enums.ChunkType.End:
                 chunk = PolyChunk(chunkType)
@@ -873,7 +871,7 @@ class BufferedVertex:
 
     def reset(self, newVert: ProcessedVert):
         self.vertices = [newVert]
-    
+
     def add(self, vert: ProcessedVert):
         self.vertices.append(vert)
 
@@ -898,8 +896,8 @@ class BufferedVertex:
                 if v.normal is not None:
                     nrm += ((armatureMatrix.inverted() @ v.model.matrix_world).to_3x3() @ v.normal) * v.weight
         nrm.normalize()
-        
-        return (nrm.x, nrm.y, nrm.z) 
+
+        return (nrm.x, nrm.y, nrm.z)
 
     def getLocalPos(self):
         """only use if only one item in self.vertices"""
@@ -966,7 +964,7 @@ class processedAttach:
 
 def fromWeightData(boneMap: Dict[str, mathutils.Matrix], # [BoneName] = boneMatrix
                     meshData: List[common.ArmatureMesh],
-                    export_matrix: mathutils.Matrix, 
+                    export_matrix: mathutils.Matrix,
                     materials: List[bpy.types.Material]) -> Dict[str, Attach]:
 
     # these will carry the chunks for the attaches
@@ -1004,12 +1002,11 @@ def fromWeightData(boneMap: Dict[str, mathutils.Matrix], # [BoneName] = boneMatr
                     if g.group in boneData:
                         weightsAdded += g.weight
                         cWeight[g.group] =  g.weight
-                
+
                 # if there are no used weights, then attach it to index -2
                 if len(cWeight) == 0:
                     status, matrix, vList, _ = boneData[-2]
                     vList.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, 1) )
-
                 else:
                     for b in boneData.keys():
                         if b not in cWeight:
@@ -1021,17 +1018,18 @@ def fromWeightData(boneMap: Dict[str, mathutils.Matrix], # [BoneName] = boneMatr
 
                         if status == enums.WeightStatus.Start or weight > 0:
                             vList.append( Vertex(v.index, v.index, Vector3(matrix @ v.co), Vector3((matrix.to_3x3() @ normals[v.index]).normalized()), None, weight) )
-        
+
+
         # getting polygon data
-    
+
         writeUVs = len(mesh.uv_layers) > 0
         polyVerts: List[PolyVert] = list()
         for l in mesh.loops:
             uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
             polyVert = PolyVert(l.vertex_index + m.indexBufferOffset, uv)
             polyVerts.append(polyVert)
-        
-        polyChunks = Attach.getPolygons(mesh, writeUVs, polyVerts, materials)       
+
+        polyChunks = Attach.getPolygons(mesh, writeUVs, polyVerts, materials)
 
         for b, t in m.weightMap.items():
             index, status = t
@@ -1042,8 +1040,8 @@ def fromWeightData(boneMap: Dict[str, mathutils.Matrix], # [BoneName] = boneMatr
             if len(m.weightMap) == 1 or status == enums.WeightStatus.End:
                 bonePolyChunks[b].extend(polyChunks)
 
-    boneAttaches: Dict[str, Attach] = dict()    
-            
+    boneAttaches: Dict[str, Attach] = dict()
+
     for b in list(boneMap.keys()):
         vChunks = boneVertChunks[b]
         pChunks = bonePolyChunks[b]
@@ -1061,11 +1059,9 @@ def fromWeightData(boneMap: Dict[str, mathutils.Matrix], # [BoneName] = boneMatr
                 bounds = BoundingBox(vertices)
 
             boneAttaches[b] = Attach("atc_" + b, vChunks, pChunks, bounds)
-        
-    print(boneAttaches.keys())
 
     return boneAttaches
-        
+
 def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> List[processedAttach]:
 
     vertexBuffer: List[BufferedVertex] = [BufferedVertex() for v in range(0x7FFF)]
@@ -1087,7 +1083,7 @@ def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> List
                 print("     WeightContinue:", v.weightContinue)
                 print("     Index Offset:", v.indexBufferOffset)
                 print("     VertexCount:", len(v.vertices), "\n")
-        
+
         for vtxCnk in attach.vertexChunks:
             if vtxCnk.weightType == enums.WeightStatus.Start:
                 for v in vtxCnk.vertices:
@@ -1097,7 +1093,7 @@ def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> List
                     vertexBuffer[vtxCnk.indexBufferOffset + v.index].add(ProcessedVert(o, v))
 
         polyChunks = list() # the chunks that we are about to process
-            
+
         cacheIndex = -1
         for polyCnk in attach.polyChunks:
             if cacheIndex > -1:
@@ -1192,7 +1188,7 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
         from .enums import StripFlags
         for c in a.polyChunks:
             if c.chunkType.value > 63 and c.chunkType.value < 76: # its a strip
-                
+
                 f = c.flags
                 tmpMat["b_ignoreLighting"] = bool(f & StripFlags.IGNORE_LIGHT)
                 tmpMat["b_ignoreSpecular"] = bool(f & StripFlags.INGORE_SPECULAR)
@@ -1209,15 +1205,15 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
                     if key == tmpMat:
                         material = materials[i]
                         break
-                
+
                 if material is None:
                     material = bpy.data.materials.new(name="material_" + str(len(materials)))
                     material.saSettings.readMatDict(tmpMat)
-                    
+
                     materials.append(material)
                     matDicts.append(copy.deepcopy(tmpMat))
 
-                
+
                 if material not in meshMaterials:
                     meshMaterials.append(material)
 
@@ -1231,11 +1227,11 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
                             polygons.append((s[p+1], s[p], s[p+2]))
                     else:
                         for p in range(len(s) - 2):
-                            polygons.append((s[p], s[p+1], s[p+2]))  
+                            polygons.append((s[p], s[p+1], s[p+2]))
             elif c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular or c.chunkType == enums.ChunkType.Bits_BlendAlpha:
                 instr = c.alphaInstruction
                 from .enums import SA2AlphaInstructions
-                
+
                 if instr & SA2AlphaInstructions.SA_INV_DST == SA2AlphaInstructions.SA_INV_DST:
                     tmpMat["b_srcAlpha"] = 'INV_DST'
                 elif instr & SA2AlphaInstructions.SA_DST == SA2AlphaInstructions.SA_DST:
@@ -1243,7 +1239,7 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
                 elif instr & SA2AlphaInstructions.SA_INV_SRC == SA2AlphaInstructions.SA_INV_SRC:
                     tmpMat["b_srcAlpha"] = 'INV_SRC'
                 elif instr & SA2AlphaInstructions.SA_INV_OTHER == SA2AlphaInstructions.SA_INV_OTHER:
-                    tmpMat["b_srcAlpha"] = 'INV_OTHER'                        
+                    tmpMat["b_srcAlpha"] = 'INV_OTHER'
                 elif instr & SA2AlphaInstructions.SA_SRC:
                     tmpMat["b_srcAlpha"] = 'SRC'
                 elif instr & SA2AlphaInstructions.SA_OTHER:
@@ -1269,7 +1265,7 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
                     tmpMat["b_destAlpha"] = 'ONE'
                 else:
                     tmpMat["b_destAlpha"] = 'ZERO'
-                
+
                 if c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular:
                     tmpMat["b_Diffuse"] = c.diffuse.toBlenderTuple()
                     tmpMat["b_Ambient"] = c.ambient.toBlenderTuple()
@@ -1337,7 +1333,7 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
 
         uvLayer = bm.loops.layers.uv.new("UV0")
         if a.hasColor:
-            colorLayer = bm.loops.layers.color.new("COL0")       
+            colorLayer = bm.loops.layers.color.new("COL0")
         for i, p in enumerate(polygons):
             verts = []
             indices = []
@@ -1383,7 +1379,7 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
         mesh.normals_split_custom_set(split_normal)
         mesh.use_auto_smooth = True
         mesh.auto_smooth_angle = 180
-        
+
         if doubleFaces > 0 and DO:
             print("Double Faces:", doubleFaces)
 
@@ -1401,7 +1397,7 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
 
             for v, bV in zip(a.vertices, mesh.vertices):
                 for ov in v.vertices:
-                    weightGroups[ov.model].add([bV.index], ov.weight, 'REPLACE') 
+                    weightGroups[ov.model].add([bV.index], ov.weight, 'REPLACE')
 
             armatureRoot.meshes.append(meshOBJ)
         else:

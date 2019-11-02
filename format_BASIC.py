@@ -23,7 +23,7 @@ class Material:
 
     def __init__(self,
                 name: str = "default",
-                diffuse = ColorARGB(), 
+                diffuse = ColorARGB(),
                 specular = ColorARGB(),
                 exponent = 11,
                 textureID = 0,
@@ -37,7 +37,7 @@ class Material:
         self.mFlags = materialFlags
 
     def fromBlenderMat(material: bpy.types.Material):
-        
+
         matProps = material.saSettings
         diffuse = ColorARGB(c = matProps.b_Diffuse)
         specular = ColorARGB(c = matProps.b_Specular)
@@ -67,7 +67,7 @@ class Material:
             mFlags |= MaterialFlags.FILTER_TRILINEAR
         elif matProps.b_texFilter == 'BLEND':
             mFlags |= MaterialFlags.FILTER_BLEND
-        
+
         # uv properties
         if matProps.b_clampV:
             mFlags |= MaterialFlags.FLAG_CLAMP_V
@@ -77,7 +77,7 @@ class Material:
             mFlags |= MaterialFlags.FLAG_FLIP_U
         if matProps.b_mirrorU:
             mFlags |= MaterialFlags.FLAG_FLIP_V
-        
+
         # general
         if matProps.b_ignoreSpecular:
             mFlags |= MaterialFlags.FLAG_IGNORE_SPECULAR
@@ -147,7 +147,7 @@ class Material:
             bMat.write(fileW)
             mats.append(bMat)
         else:
-            for m in materials:
+            for m in materials.values():
                 bMat = Material.fromBlenderMat(m)
                 bMat.write(fileW, labels)
                 mats.append(bMat)
@@ -178,7 +178,7 @@ class Material:
 
 class PolyVert:
     """Face loops of a mesh
-    
+
     an array/list represents a single mesh
     """
 
@@ -187,10 +187,10 @@ class PolyVert:
     color: ColorARGB
     uv: UV
 
-    def __init__(self, 
-                 polyIndex: int, 
-                 polyNormal: Vector3, 
-                 color: ColorARGB, 
+    def __init__(self,
+                 polyIndex: int,
+                 polyNormal: Vector3,
+                 color: ColorARGB,
                  uv: UV):
         self.polyIndex = polyIndex
         self.polyNormal = polyNormal
@@ -216,13 +216,13 @@ class MeshSet:
 
     # the polygon corners of the mesh
     # each list is a single poly
-    polys: List[List[PolyVert]] 
+    polys: List[List[PolyVert]]
     reverse: List[bool]
 
     polyPtr: int
     polyAttribs: int
     polyNormalPtr: int
-    ColorPtr: int 
+    ColorPtr: int
     UVPtr: int
 
     def __init__(self,
@@ -268,7 +268,7 @@ class MeshSet:
             for p in self.polys:
                 for l in p:
                     l.polyNormal.write(fileW)
-        
+
         # writing colors
         if self.ColorPtr == -1:
             self.ColorPtr = fileW.tell()
@@ -308,7 +308,7 @@ class MeshSet:
             labels[self.UVPtr] = name + "uv" + str(self.meshSetID)
 
     def read(fileR: fileHelper.FileReader, address: int, meshName: str, setID: int):
-        
+
 
         header = fileR.rUShort(address)
         materialID = header & 0x3FFF
@@ -336,10 +336,10 @@ class MeshSet:
                 polyPtr += 2
             elif polyType == enums.PolyType.Quads:
                 vCount = 4
-            
+
             polyVerts = list()
             for v in range(vCount):
-                
+
                 vIndex = fileR.rUShort(polyPtr)
                 polyPtr += 2
 
@@ -352,19 +352,19 @@ class MeshSet:
                 if colPtr:
                     color = ColorARGB.fromARGB(fileR.rUInt(colPtr))
                     colPtr += 4
-                
+
                 uv = UV()
                 if uvPtr:
                     uv.x = fileR.rShort(uvPtr)
                     uv.y = fileR.rShort(uvPtr + 2)
                     uvPtr += 4
-                
+
                 polyVerts.append(PolyVert(vIndex, polyNormal, color, uv))
-            
+
             polys.append(polyVerts)
-        
+
         return MeshSet(meshName, materialID, setID, polyType, polys, polyNrmPtr > 0, colPtr > 0, uvPtr > 0, polyAttribs, reverse)
-            
+
 class Attach:
     """Attach for the BASIC format"""
 
@@ -391,9 +391,9 @@ class Attach:
         self.materials = materials
         self.bounds = bounds
 
-    def fromMesh(mesh: bpy.types.Mesh, 
-                 export_matrix: mathutils.Matrix, 
-                 materials: List[Material], 
+    def fromMesh(mesh: bpy.types.Mesh,
+                 export_matrix: mathutils.Matrix,
+                 materials: List[Material],
                  isCollision: bool = False):
         """Creates a BASIC mesh from a Blender mesh"""
         global DO
@@ -418,7 +418,7 @@ class Attach:
         # we take minimum number between the mesh materials and global materials first, just to be sure.
         # then we make it a minimum of 1 (so that there is at least one poly list)
         # if we are writing collisions, then it can directly just be 1 array
-        polyLists = 1 if isCollision else max(1, min(len(mesh.materials), len(materials))) 
+        polyLists = 1 if isCollision else max(1, min(len(mesh.materials), len(materials)))
         polyListMin = polyLists - 1
         polys: List[list[PolyVert]] = [[] for i in range(polyLists)] # one poly list for each material
 
@@ -430,10 +430,10 @@ class Attach:
                 uv = UV(mesh.uv_layers[0].data[lID].uv) if useUV else None
 
                 poly = PolyVert(loop.vertex_index, None, vc, uv)
-                polys[min(f.material_index, polyListMin)].append(poly) 
-                # we take the minimum number, this way if we use collisions, 
+                polys[min(f.material_index, polyListMin)].append(poly)
+                # we take the minimum number, this way if we use collisions,
                 # it will always place them in list no. 0
-        
+
         # strippifying
         stripf = strippifier.Strippifier()
         stripPolys = list()
@@ -443,7 +443,7 @@ class Attach:
             if len(l) == 0:
                 stripPolys.append(None) # so that the material order is still correct
                 continue
-            
+
             # getting distinct polys first
             distinct = list()
             IDs = [0] * len(l)
@@ -467,12 +467,12 @@ class Attach:
                     for j, index in enumerate(strip):
                         tStrip[j] = distinct[index]
                     polyStrips[i] = tStrip
-                
+
                 stripPolys.append((enums.PolyType.Strips, polyStrips))
 
         # creating the meshsets
         meshsets: List[meshsets] = list()
-        
+
         if isCollision or len(materials) == 0:
             if stripPolys[0] is not None:
                 meshsets.append(MeshSet(mesh.name, 0, 0, stripPolys[0][0], stripPolys[0][1], usePolyNormals, useColor, useUV))
@@ -483,7 +483,7 @@ class Attach:
                 matID = 0
                 if len(mesh.materials) > 0:
                     try:
-                        for mid, m in enumerate(materials):
+                        for mid, m in enumerate(materials.values()):
                             if m.name == mesh.materials[i].name:
                                 matID = mid
                                 break
@@ -496,7 +496,7 @@ class Attach:
             print(" Mesh not valid (?); no meshsets could be created")
             return None
         return Attach(mesh.name, positions, normals, meshsets, materials, bounds)
-    
+
     def write(self, fileW: fileHelper.FileWriter, labels: dict, meshDict: dict = None):
         global DO
 
@@ -504,7 +504,7 @@ class Attach:
         labels[posPtr] = "bsc_" + self.name + "_pos"
         for p in self.positions:
             p.write(fileW)
-        
+
         nrmPtr = fileW.tell()
         labels[nrmPtr] = "bsc_" + self.name + "_nrm"
         for n in self.normals:
@@ -561,7 +561,7 @@ class Attach:
             normals.append(Vector3((fileR.rFloat(nrm), fileR.rFloat(nrm + 4), fileR.rFloat(nrm + 8))))
             pos += 12
             nrm += 12
-        
+
         tempAddr = fileR.rUInt(address + 12)
         meshSetCount = fileR.rUShort(address + 20)
         meshSets = list()
@@ -581,7 +581,7 @@ class Attach:
         return Attach(name, positions, normals, meshSets, materials, None)
 
 def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
-    
+
     import bmesh
     meshes: Dict[int, bpy.types.Mesh] = dict()
 
@@ -644,7 +644,7 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
             elif f & MaterialFlags.SA_INV_SRC == MaterialFlags.SA_INV_SRC:
                 d["b_srcAlpha"] = 'INV_SRC'
             elif f & MaterialFlags.SA_INV_OTHER == MaterialFlags.SA_INV_OTHER:
-                d["b_srcAlpha"] = 'INV_OTHER'                        
+                d["b_srcAlpha"] = 'INV_OTHER'
             elif f & MaterialFlags.SA_SRC:
                 d["b_srcAlpha"] = 'SRC'
             elif f & MaterialFlags.SA_OTHER:
@@ -677,17 +677,17 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
                 if md == d:
                     material = mt
                     break
-            
+
             if material is None:
                 material = bpy.data.materials.new(name="material_" + str(len(materials)))
                 material.saSettings.readMatDict(d)
-                
+
                 materials.append(material)
                 matDicts.append(d)
 
             if material not in meshMaterials:
                 meshMaterials.append(material)
-            
+
             matIDs.append(meshMaterials.index(material))
 
         polySets: List[List[List[PolyVert]]] = [[] for m in meshMaterials]
@@ -719,12 +719,12 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
         # creating mesh
         mesh = bpy.data.meshes.new(attach.name)
         matIDs = dict()
-        
+
         for i, s in enumerate(polySets):
             if len(s) > 0:
                 matIDs[i] = len(mesh.materials)
                 mesh.materials.append(meshMaterials[i])
-                
+
 
         bm = bmesh.new()
         bm.from_mesh(mesh)
@@ -737,7 +737,7 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
         if hasUV:
             uvLayer = bm.loops.layers.uv.new("UV0")
         if hasColor:
-            colorLayer = bm.loops.layers.color.new("COL0")   
+            colorLayer = bm.loops.layers.color.new("COL0")
 
         doubleFaces = 0
 
@@ -768,13 +768,13 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
 
                 face.smooth = True
                 face.material_index = matID
-                
+
 
         if doubleFaces > 0 and DO:
             print("Double faces:", doubleFaces)
-            
+
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-            
+
         bm.to_mesh(mesh)
         bm.clear()
 
