@@ -844,7 +844,9 @@ def convertObjectData(context: bpy.types.Context,
             if o.origObject is not None and o.origObject.type == 'MESH':
                 mObjects.append(o)
 
-        meshes, materials = getMeshesFromObjects(mObjects, context, apply_modifs)
+        meshObjects, toConvert, addESplit, modifierStates = evaluateMeshModifiers(mObjects, apply_modifs)
+        meshes, materials = getMeshes(toConvert, meshObjects, apply_modifs, context.evaluated_depsgraph_get(), addESplit, modifierStates)
+
         ModelData.updateMeshes(objects, meshes)
 
         if fmt == 'SA2': # since sa2 can have armatures, we need to handle things a little different...
@@ -879,8 +881,11 @@ def convertObjectData(context: bpy.types.Context,
                 else:
                     vObjects.append(o)
 
-        cMeshes, dontUse = getMeshesFromObjects(cObjects, context, apply_modifs)
-        vMeshes, materials = getMeshesFromObjects(vObjects, context, apply_modifs)
+        mObjects1, toConvert1, addESplit1, modifierStates1 = evaluateMeshModifiers(cObjects, apply_modifs)
+        mObjects2, toConvert2, addESplit2, modifierStates2 = evaluateMeshModifiers(vObjects, apply_modifs)
+        despgraph = context.evaluated_depsgraph_get()
+        cMeshes, dontUse = getMeshes(toConvert1, mObjects1, apply_modifs, despgraph, addESplit1, modifierStates1)
+        vMeshes, materials = getMeshes(toConvert2, mObjects2, apply_modifs, despgraph, addESplit2, modifierStates2)
 
         meshes = list()
         meshes.extend(cMeshes)
@@ -947,8 +952,7 @@ def sortChildren(cObject: bpy.types.Object,
 
     return model
 
-def getMeshesFromObjects(objects: List[ModelData], context, apply_modifs: bool) -> Tuple[List[bpy.types.Mesh], Dict[str, bpy.types.Material]]:
-    """checking which meshes are in the objects at all"""
+def evaluateMeshModifiers(objects: List[ModelData], apply_modifs: bool):
     tMeshes = list()
     for o in objects:
         tMeshes.append(o.origObject.data)
@@ -958,6 +962,8 @@ def getMeshesFromObjects(objects: List[ModelData], context, apply_modifs: bool) 
     mObjects = list()
     meshesToConvert = list()
     for o in objects:
+        if len(o.origObject.data.vertices) == 0:
+            continue
         if tMeshes.count(o.origObject.data) > 1:
             if collectedMOMeshes.count(o.origObject.data) == 0:
                 mObjects.append(o)
@@ -966,18 +972,13 @@ def getMeshesFromObjects(objects: List[ModelData], context, apply_modifs: bool) 
         else:
             meshesToConvert.append(o)
 
-    outMeshes = list()
-    materials: Dict[str, bpy.types.Material] = dict()
-
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-
     # setting modifier data first, so that the mesh gets exported correctly
+    toConvert = list()
     modifierStates: Dict[bpy.types.Modifier, bool] = dict()
     addESplit: Dict[bpy.types.Object, bpy.types.EdgeSplitModifier] = dict()
     for o in meshesToConvert:
         obj = o.origObject
-        if len(o.origObject.data.vertices) == 0:
-            continue
+        toConvert.append(o)
         t_apply_modifs = False if o in mObjects else apply_modifs
 
         hasEdgeSplit = False
@@ -995,7 +996,16 @@ def getMeshesFromObjects(objects: List[ModelData], context, apply_modifs: bool) 
             ESM.use_edge_angle = not obj.data.has_custom_normals
             addESplit[obj] = ESM
 
-    depsgraph.update()
+    return mObjects, meshesToConvert, addESplit, modifierStates
+
+def getMeshes(meshesToConvert: List[ModelData],
+              mObjects: List[ModelData],
+              apply_modifs: bool,
+              depsgraph,
+              addESplit: Dict[bpy.types.Object, bpy.types.EdgeSplitModifier],
+              modifierStates: Dict[bpy.types.Modifier, bool]):
+    outMeshes = list()
+    materials: Dict[str, bpy.types.Material] = dict()
 
     for o in meshesToConvert:
         obj = o.origObject

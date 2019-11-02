@@ -483,7 +483,7 @@ class Attach:
                 matID = 0
                 if len(mesh.materials) > 0:
                     try:
-                        for mid, m in enumerate(materials.values()):
+                        for mid, m in enumerate(materials):
                             if m.name == mesh.materials[i].name:
                                 matID = mid
                                 break

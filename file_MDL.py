@@ -190,7 +190,6 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
    collection = bpy.data.collections.new("Import_" + os.path.splitext(os.path.basename(filepath))[0])
    context.scene.collection.children.link(collection)
 
-   print(isArmature)
    if isArmature:
 
       root = objects[0]
@@ -335,7 +334,6 @@ def write(context,
           if mesh is not None:
               mesh.write(fileW, labels, meshDict)
 
-   print(isArmature)
    # writing model data
    if export_format == 'SA2' and isArmature: # writing an armature
       modelPtr = objects[0].writeArmature(fileW, global_matrix, materials, labels)
