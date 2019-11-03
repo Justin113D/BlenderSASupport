@@ -244,7 +244,10 @@ class MeshSet:
         self.polys = polys
         self.polyAttribs = polyAttribs
         self.polycount = len(polys) if polyType == enums.PolyType.Strips or polyType == enums.PolyType.NPoly else round(len(polys[0]) / 3)
-        self.reverse = reverse
+        if reverse is None:
+            self.reverse = [False for s in self.polys]
+        else:
+            self.reverse = reverse
 
         self.polyNormalPtr = -1 if usePolyNormals else 0
         self.ColorPtr = -1 if useColor else 0
@@ -255,9 +258,12 @@ class MeshSet:
         #writing poly indices
         self.polyPtr = fileW.tell()
 
-        for p in self.polys:
-            if self.polytype == enums.PolyType.Strips or self.polytype == enums.PolyType.NPoly:
-                fileW.wUShort(min(0x7FFF, len(p)))
+        for p, r in zip(self.polys, self.reverse):
+            if self.polytype == enums.PolyType.Strips:
+                size = min(0x7FFF, len(p)) * (-1 if r else 1)
+                fileW.wShort(size)
+            elif self.polytype == enums.PolyType.NPoly:
+                fileW.wUShort(min(0xFFFF, len(p)))
             for l in p:
                 fileW.wUShort(l.polyIndex)
         fileW.align(4)
@@ -327,9 +333,11 @@ class MeshSet:
         for p in range(polyCount):
             vCount = 3
             if polyType == enums.PolyType.Strips:
-                stripSize = fileR.rShort(polyPtr)
-                reverse.append(stripSize < 0)
-                vCount = abs(stripSize)
+                vCount = fileR.rShort(polyPtr)
+                rev = vCount < 0
+                reverse.append(rev)
+                if rev:
+                    vCount = abs(vCount)
                 polyPtr += 2
             elif polyType == enums.PolyType.NPoly:
                 vCount = fileR.rUShort(polyPtr)
@@ -437,16 +445,16 @@ class Attach:
         # strippifying
         stripf = strippifier.Strippifier()
         stripPolys = list()
+        stripReverse: List[List[bool]] = list()
 
         for l in polys:
             # if there are no polys in the poly list, then we ignore it
             if len(l) == 0:
                 stripPolys.append(None) # so that the material order is still correct
+                stripReverse.append(None)
                 continue
 
             # getting distinct polys first
-            distinct = list()
-            IDs = [0] * len(l)
 
             distinct, IDs = common.getDistinctwID(l)
 
@@ -456,41 +464,50 @@ class Attach:
             stripLength = 0
             for s in stripIndices:
                 stripLength += len(s) + 1 # +1 for the strip length in the poly data later on
+                if s[0] == s[1]:
+                    stripLength -= 1
 
             if stripLength > len(l):
                 stripPolys.append((enums.PolyType.Triangles, [l]))
+                stripReverse.append(None)
             else:
                 polyStrips = [None] * len(stripIndices)
+                revList: List[bool] = [True] * len(stripIndices)
 
                 for i, strip in enumerate(stripIndices):
-                    tStrip = [None] * len(strip)
-                    for j, index in enumerate(strip):
-                        tStrip[j] = distinct[index]
-                    polyStrips[i] = tStrip
+                    if strip[0] == strip[1]:
+                        revList[i] = False
+                        strip = strip[1:]
+
+                    polyStrips[i] = [distinct[index] for index in strip]
 
                 stripPolys.append((enums.PolyType.Strips, polyStrips))
+                stripReverse.append(revList)
 
         # creating the meshsets
         meshsets: List[meshsets] = list()
 
         if isCollision or len(materials) == 0:
             if stripPolys[0] is not None:
-                meshsets.append(MeshSet(mesh.name, 0, 0, stripPolys[0][0], stripPolys[0][1], usePolyNormals, useColor, useUV))
+                meshsets.append(MeshSet(mesh.name, 0, 0, stripPolys[0][0], stripPolys[0][1], usePolyNormals, useColor, useUV, reverse=stripReverse[0]))
         else:
             for i, p in enumerate(stripPolys):
                 if p is None or len(p) == 0:
                     continue
                 matID = 0
+                setUseUV = useUV
                 if len(mesh.materials) > 0:
                     try:
                         for mid, m in enumerate(materials):
                             if m.name == mesh.materials[i].name:
                                 matID = mid
+                                if m.mFlags & enums.MaterialFlags.FLAG_USE_ENV:
+                                    setUseUV = False
                                 break
                     except ValueError:
                         print(" material", mesh.materials[i].name, "not found")
 
-                meshsets.append(MeshSet(mesh.name, matID, i, p[0], p[1], usePolyNormals, useColor, useUV))
+                meshsets.append(MeshSet(mesh.name, matID, i, p[0], p[1], usePolyNormals, useColor, setUseUV, reverse=stripReverse[i]))
 
         if len(meshsets) == 0:
             print(" Mesh not valid (?); no meshsets could be created")
@@ -705,12 +722,16 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
 
             if m.polytype == enums.PolyType.Strips:
                 for s, r in zip(m.polys, m.reverse):
-                    if r:
-                        for p in range(len(s) - 2):
-                            polySet.append((s[p+1], s[p], s[p+2]))
-                    else:
-                        for p in range(len(s) - 2):
-                            polySet.append((s[p], s[p+1], s[p+2]))
+                    for p in range(len(s) - 2):
+                        if r:
+                            poly = (s[p+1], s[p], s[p+2])
+                        else:
+                            poly = (s[p], s[p+1], s[p+2])
+                        indices = [s[p + sp].polyIndex for sp in range(3)]
+                        if len(set(indices)) == 3:
+                            polySet.append(poly)
+
+                        r = not r
             else:
                 polySet = m.polys
 
@@ -746,8 +767,6 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
                 continue
             matID = matIDs[i]
             for p in polySet:
-                if i == 1:
-                    print("doin")
                 verts = []
                 for l in p:
                     verts.append(bm.verts[l.polyIndex])
@@ -769,25 +788,13 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
                 face.smooth = True
                 face.material_index = matID
 
-
         if doubleFaces > 0 and DO:
             print("Double faces:", doubleFaces)
-
-        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 
         bm.to_mesh(mesh)
         bm.clear()
 
         normals = [mathutils.Vector((n.x, -n.z, n.y)).normalized() for n in attach.normals]
-
-        for p in mesh.polygons:
-            normal = mathutils.Vector((0,0,0))
-            for v in p.vertices:
-                normal += normals[v]
-            if normal != mathutils.Vector((0,0,0)):
-                normal /= len(p.vertices)
-                if normal.dot(p.normal) < 0:
-                    p.flip()
 
         mesh.create_normals_split()
         split_normal = [normals[l.vertex_index] for l in mesh.loops]

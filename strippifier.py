@@ -4,6 +4,7 @@
 #base classes, which can be used in any strippifier algorithm
 
 from collections import Counter
+from typing import List
 
 class TopologyError(Exception):
 
@@ -253,7 +254,7 @@ class Strippifier:
     def addZTriangle(self, tri: Triangle):
         """creates a strip from a triangle with no (free) neighbours"""
         v = tri.vertices
-        self.strips.append([v[0].index, v[1].index, v[2].index])
+        self.strips.append([v[0].index, v[0].index, v[1].index, v[2].index])
         self.written += 1
         tri.used = True
 
@@ -340,7 +341,7 @@ class Strippifier:
                 self.addZTriangle(t)
 
         # priority list of potential starting tris
-        self.priorityTris = list()
+        self.priorityTris: List[Triangle] = list()
 
         self.priorityFill()
 
@@ -351,6 +352,7 @@ class Strippifier:
 
             # getting the starting tris
             firstTri = self.priorityTris[0]
+            revCheckTri = firstTri
             currentTri = firstTri
             currentTri.used = True
 
@@ -384,8 +386,11 @@ class Strippifier:
             currentVert = newTri.getThirdVertex(currentVert, thirdVert)
 
             # shift triangles one forward
+            secOldTri = currentTri
             currentTri = newTri
             newTri = secNewTri
+
+
 
             # creating a strip
             reachedEnd = False
@@ -410,6 +415,7 @@ class Strippifier:
                                 reachedEnd = True
                                 continue
                         self.strip.reverse()
+                        revCheckTri = currentTri
 
                     else:
                         reachedEnd = True
@@ -440,7 +446,17 @@ class Strippifier:
                 else:
                     newTri = currentTri.getNextStripTriSeq(prevVert, currentVert)
 
-
+            #checking if the triangle is reversed
+            t = 0
+            for i in range(3):
+                if self.strip[i] == revCheckTri.vertices[0].index:
+                    t = i
+                    break
+            tNext = 0 if t == 2 else t + 1
+            rev = revCheckTri.vertices[1].index == self.strip[tNext]
+            if rev:
+                firstIndex = self.strip[0]
+                self.strip.insert(0, firstIndex)
 
             self.strips.append(self.strip)
 

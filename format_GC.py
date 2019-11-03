@@ -917,9 +917,10 @@ class Attach:
         fileW.wUShort(len(self.transparentGeom))
         self.bounds.write(fileW)
 
-    def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
+def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
 
-        # reading vertex attributes
+    # reading vertex attributes
+    vertPtr = fileR.rUInt(address)
 
 
-        return Attach(None, None, None, None, None)
+    return Attach(None, None, None, None, None)
