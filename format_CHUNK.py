@@ -770,13 +770,14 @@ class Attach:
         if tmpAddr > 0:
             chunkType = enums.ChunkType(fileR.rByte(tmpAddr))
             while chunkType != enums.ChunkType.End:
-
+                print(chunkType)
                 flags = fileR.rByte(tmpAddr + 1)
                 weightStatus = enums.WeightStatus(flags & 0x3)
                 otherFlags = flags & ~0x3
                 size = fileR.rUShort(tmpAddr+2)
                 indexBufferOffset = fileR.rUShort(tmpAddr + 4)
                 vertexCount = fileR.rUShort(tmpAddr + 6)
+                print(vertexCount, size)
 
                 vertices = list()
 
@@ -793,7 +794,7 @@ class Attach:
                     col = None
 
                     # getting color
-                    if chunkType == enums.ChunkType.Vertex_VertexDiffuse8:
+                    if chunkType == enums.ChunkType.Vertex_VertexDiffuse8 or chunkType == enums.ChunkType.Vertex_VertexNormalDiffuse8:
                         col = ColorARGB.fromARGB(fileR.rUInt(tmpAddr))
                         tmpAddr += 4
 
@@ -801,7 +802,7 @@ class Attach:
                     index = i
                     nrm = None
 
-                    if chunkType == enums.ChunkType.Vertex_VertexNormal or chunkType == enums.ChunkType.Vertex_VertexNormalNinjaFlags:
+                    if chunkType == enums.ChunkType.Vertex_VertexNormal or chunkType == enums.ChunkType.Vertex_VertexNormalNinjaFlags or chunkType == enums.ChunkType.Vertex_VertexNormalDiffuse8:
                         nrmX = fileR.rFloat(tmpAddr)
                         nrmY = fileR.rFloat(tmpAddr + 4)
                         nrmZ = fileR.rFloat(tmpAddr + 8)
