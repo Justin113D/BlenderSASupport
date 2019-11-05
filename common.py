@@ -227,6 +227,9 @@ class BoundingBox:
         self.boundCenter.write(fileW)
         fileW.wFloat(self.radius)
 
+    def __str__(self):
+        return str(self.boundCenter) + " - " + str(self.radius)
+
 class ModelData:
     """A class that holds all necessary data to export an Object/COL"""
 
@@ -614,8 +617,6 @@ class Bone:
 
 class Armature(ModelData):
 
-    bones: List[Bone]
-
     def writeArmature(self,
                       fileW: fileHelper.FileWriter,
                       export_matrix: mathutils.Matrix,
@@ -623,18 +624,18 @@ class Armature(ModelData):
                       labels: dict
                     ):
         armature = self.origObject.data
-        self.bones: List[Bone] = list()
+        bones: List[Bone] = list()
 
         # first we need to evaluate all bone data (the fun part)
         # lets start with the root bone. thats basically representing the armature object
         root = Bone(self.name, 0, self.origObject.matrix_world, mathutils.Matrix.Identity(4), export_matrix, None)
-        self.bones.append(root)
+        bones.append(root)
 
         # starting with the parentless bones
         lastSibling = None
         for b in armature.bones:
             if b.parent is None:
-                bone = Bone.getBones(b, root, 1, export_matrix, self.origObject.matrix_world, self.bones)
+                bone = Bone.getBones(b, root, 1, export_matrix, self.origObject.matrix_world, bones)
 
                 if lastSibling is not None:
                     lastSibling.sibling = bone
@@ -645,7 +646,7 @@ class Armature(ModelData):
 
         if DO:
             print(" == Bone Hierarchy == \n")
-            for b in self.bones:
+            for b in bones:
                 marker = " "
                 for r in range(b.hierarchyDepth):
                     marker += "- "
@@ -708,7 +709,7 @@ class Armature(ModelData):
             if case1:
                 usedBoneGroups: Dict[Bone, bpy.types.VertexGroup] = dict()
 
-                for b in self.bones:
+                for b in bones:
                     for g in obj.vertex_groups:
                         if g.name == b.name:
                             usedBoneGroups[b] = g
@@ -758,7 +759,7 @@ class Armature(ModelData):
             print("")
 
         boneMap: Dict[str, mathutils.Matrix] = dict()
-        for b in self.bones:
+        for b in bones:
             boneMap[b.name] = b.matrix_world
 
         # converting mesh data
@@ -766,7 +767,7 @@ class Armature(ModelData):
         boneAttaches = format_CHUNK.fromWeightData(boneMap, armatureMeshes, export_matrix, materials)
 
         # writing mesh data
-        for b in self.bones:
+        for b in bones:
             b.meshPtr = 0
             if b.name not in boneAttaches:
                 continue
@@ -777,10 +778,10 @@ class Armature(ModelData):
             print("\n - - - -")
 
         # writing object data
-        for b in reversed(self.bones):
+        for b in reversed(bones):
             b.write(fileW, labels)
 
-        return self.bones[0].objectPtr
+        return bones[0].objectPtr
 
 def convertObjectData(context: bpy.types.Context,
                       use_selection: bool,
