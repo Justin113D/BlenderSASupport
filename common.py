@@ -556,7 +556,6 @@ class Bone:
         self.rotation = BAMSRotation( exportMatrix @ mathutils.Vector((rot.x, rot.y, rot.z)) )
 
         self.parentBone = parentBone
-        self.weightedMeshes = list()
         self.children = list()
 
         if parentBone is not None:
@@ -719,19 +718,30 @@ class Armature(ModelData):
 
                 setStart = False
                 last = None
-                # checking if any vertex holds no valid weights
+                # checking valid weight groups
+                validGroups = list()
+                emptyVertsFound = False
                 for v in mesh.vertices:
                     found = False
                     for g in v.groups:
-                        if g.group in usedGroups:
+                        if g.group in usedGroups and g.weight > 0:
                             found = True
-                            break
-
+                            if g.group not in validGroups:
+                                validGroups.append(g.group)
                     if not found:
-                        weightMap[root.name] = [-2, enums.WeightStatus.Start]
-                        setStart = True
-                        last = root.name
-                        break
+                        emptyVertsFound = True
+                usedGroups = validGroups
+
+                validBoneGroups: Dict[Bone, bpy.types.VertexGroup] = dict()
+                for b, g in usedBoneGroups.items():
+                    if g.index in usedGroups:
+                        validBoneGroups[b] = g
+                usedBoneGroups = validBoneGroups
+
+                if emptyVertsFound:
+                    weightMap[root.name] = [-2, enums.WeightStatus.Start]
+                    setStart = True
+                    last = root.name
 
                 for b, g in usedBoneGroups.items():
                     weightMap[b.name] = [g.index, enums.WeightStatus.Middle if setStart else enums.WeightStatus.Start]
