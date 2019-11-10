@@ -59,7 +59,7 @@ class FileWriter:
 
     def pad(self, start, padding):
         length = self.tell() - start
-        newlength = length + (padding - 1) & ~(0x1F)
+        newlength = length + (padding - 1) & ~(padding - 1)
         addLength = newlength - length
         self.w(bytes([0] * addLength))
 
@@ -140,6 +140,10 @@ class FileReader:
     def rByte(self, address: int):
         """Returns a Byte"""
         return struct.unpack_from("B", self.fileC, address)[0]
+
+    def rSByte(self, address: int):
+        """Returns a Byte"""
+        return struct.unpack_from("b", self.fileC, address)[0]
 
     def rShort(self, address: int):
         """Returns a Short"""

@@ -110,6 +110,16 @@ class DataType(Enum):
     RGBA6 = 9
     RGBA8 = 10
 
+    @property
+    def length(self) -> int:
+        if self == DataType.Unsigned8 or self == DataType.Signed8:
+            return 1
+        elif self == DataType.Unsigned16 or self == DataType.Signed16 or self == DataType.RGB565 or self == DataType.RGBA4:
+            return 2
+        elif self == DataType.RGBA6 or self == DataType.RGB8:
+            return 3
+        return 4
+
 class ComponentCount(Enum):
     """The amount and arranged of values in an attribute entry"""
     Position_XY = 0
@@ -121,6 +131,16 @@ class ComponentCount(Enum):
     Color_RGBA = 6
     TexCoord_S = 7
     TexCoord_ST = 8
+
+    @property
+    def length(self) -> int:
+        if self == ComponentCount.TexCoord_S or self == ComponentCount.Color_RGB or self == ComponentCount.Color_RGBA:
+            return 1
+        elif self == ComponentCount.Position_XY or self == ComponentCount.TexCoord_ST:
+            return 2
+        elif self == ComponentCount.Position_XYZ or self == ComponentCount.Normal_XYZ:
+            return 3
+        return 4
 
 class ParameterType(Enum):
     """Type of Mesh Parameter"""

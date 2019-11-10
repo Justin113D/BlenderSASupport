@@ -168,6 +168,8 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
             attaches[o.meshPtr] = format_CHUNK.Attach.read(fileR, o.meshPtr, len(attaches), labels)
          elif file_format == 'SA1':
             attaches[o.meshPtr] = format_BASIC.Attach.read(fileR, o.meshPtr, len(attaches), labels)
+         elif file_format == 'SA2B':
+            attaches[o.meshPtr] = format_GC.read(fileR, o.meshPtr, len(attaches), labels)
 
 
    isArmature = False
@@ -186,6 +188,8 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
       format_CHUNK.ProcessChunkData(processedAttaches, root)
    elif file_format == 'SA1':
       format_BASIC.process_BASIC(objects, attaches)
+   elif file_format == 'SA2B':
+      format_GC.process_GC(objects, attaches)
 
    collection = bpy.data.collections.new("Import_" + os.path.splitext(os.path.basename(filepath))[0])
    context.scene.collection.children.link(collection)

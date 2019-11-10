@@ -1,7 +1,7 @@
 import bpy
 import math
 import mathutils
-from typing import List
+from typing import List, Dict
 
 from . import fileHelper, enums, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox
@@ -28,6 +28,32 @@ class Parameter:
     def write(self, fileW: fileHelper.FileWriter):
         fileW.wUInt(self.pType.value)
         fileW.wUInt(self.data)
+
+    def read(fileR: fileHelper.FileReader, address: int):
+        pType = enums.ParameterType(fileR.rUInt(address))
+        data = fileR.rUInt(address+4)
+        param = Parameter(pType)
+        param.data = data
+        if pType == enums.ParameterType.VtxAttrFmt:
+            param = VtxAttrFmt(param)
+        elif pType == enums.ParameterType.IndexAttributeFlags:
+            param = IndexAttributes(param)
+        elif pType == enums.ParameterType.Lighting:
+            param = Lighting(param)
+        elif pType == enums.ParameterType.BlendAlpha:
+            param = AlphaBlend(param)
+        elif pType == enums.ParameterType.AmbientColor:
+            param = AmbientColor(param)
+        elif pType == enums.ParameterType.Texture:
+            param = Texture(param)
+        elif pType == enums.ParameterType.Unknown_9:
+            param = unknown_9(param)
+        elif pType == enums.ParameterType.TexCoordGen:
+            param = TexCoordGen(param)
+        else:
+            print("type not found?")
+
+        return param
 
 class VtxAttrFmt(Parameter):
     """We dont know what this does but we know that we
@@ -378,6 +404,7 @@ class Geometry:
                         fileW.wByte(p.uvID)
 
         fileW.setBigEndian(False)
+
         self.polygonSize = fileW.tell() - self.polygonPtr
 
     def writeGeom(self, fileW: fileHelper.FileWriter):
@@ -386,6 +413,27 @@ class Geometry:
         fileW.wUInt(len(self.params))
         fileW.wUInt(self.polygonPtr)
         fileW.wUInt(self.polygonSize)
+
+def read(fileR: fileHelper.FileReader, address: int):
+
+    paramPtr = fileR.rUInt(address)
+    paramCount = fileR.rUInt(address + 4)
+    polyPtr = fileR.rUInt(address + 8)
+    polySize = fileR.rUInt(address + 12)
+
+    # reading parameters
+    params: List[Parameter] = list()
+    indexAttributeData = enums.IndexAttributeFlags.null
+    for i in range(paramCount):
+        param = Parameter.read(fileR, paramPtr)
+        if isinstance(param, IndexAttributes):
+            indexAttributeData = param.indexAttributes
+        params.append(param)
+        paramPtr += 8
+
+    #reading polygons
+
+
 
 class Vertices:
     """One vertex data array"""
@@ -411,20 +459,7 @@ class Vertices:
 
     def getCompSize(self) -> int:
         """Calculates the size of a single element in bytes"""
-        structSize = 1
-        if self.compCount == enums.ComponentCount.Position_XYZ or self.compCount == enums.ComponentCount.Normal_XYZ:
-            structSize = 3
-        elif self.compCount == enums.ComponentCount.TexCoord_ST or self.compCount == enums.ComponentCount.Position_XY:
-            structSize = 2
-
-        if self.dataType == enums.DataType.Unsigned8 or self.dataType == enums.DataType.Signed8:
-            structSize = structSize
-        elif self.dataType == enums.DataType.Signed16 or self.dataType == enums.DataType.Unsigned16 or self.dataType == enums.DataType.RGB565 or self.dataType == enums.DataType.RGBA4 :
-            structSize *= 2
-        else:
-            structSize *= 4
-
-        return structSize
+        return self.compCount.length * self.dataType.length
 
     def debug(self):
         print("  Attrib:", self.vType)
@@ -457,6 +492,70 @@ class Vertices:
         fileW.wUInt(datainfo)
         fileW.wUInt(self.dataPtr)
         fileW.wUInt(len(self.data) * self.getCompSize())
+
+    def read(fileR: fileHelper.FileReader, address: int):
+
+        vType = enums.VertexAttribute(fileR.rByte(address))
+        fracBitCount = enums.VertexAttribute(fileR.rByte(address + 1))
+        vCount = fileR.rUShort(address +2)
+
+        dataComp = fileR.rByte(address+4)
+        compCount = enums.ComponentCount(dataComp & 0xF)
+        dataType = enums.DataType(dataComp >> 4)
+
+        dataPtr = fileR.rUInt(address + 8)
+        dataSize = fileR.rUInt(address + 12)
+
+        data = list()
+        vProps = Vertices(vType, fracBitCount, compCount, dataType, data)
+        compSize = vProps.getCompSize()
+
+        for i in range(vCount):
+            values = []
+
+            for c in range(compCount.length):
+                t = 0
+                if dataType == enums.DataType.Signed8:
+                    t = fileR.rSByte(dataPtr)
+                elif dataType == enums.DataType.Unsigned8:
+                    t = fileR.rByte(dataPtr)
+                elif dataType == enums.DataType.Signed16:
+                    t = fileR.rShort(dataPtr)
+                elif dataType == enums.DataType.Unsigned16:
+                    t = fileR.rUShort(dataPtr)
+                elif dataType == enums.DataType.Float32:
+                    t = fileR.rFloat(dataPtr)
+                elif dataType == enums.DataType.RGB565:
+                    t = fileR.rUShort(dataPtr)
+                elif dataType == enums.DataType.RGBA4:
+                    t = fileR.rUShort(dataPtr)
+                    t = ((t & 0xF) * 2) | ((((t & 0xF0) >> 4) * 2) << 8) | ((((t & 0xF00) >> 8) * 2) << 16) | ((((t & 0xF000) >> 12) * 2) << 24)
+                    t = common.ColorARGB.fromRGBA(t)
+                elif dataType == enums.DataType.RGBA6:
+                    t = fileR.rUInt(dataPtr)
+                    t = round((t & 0x3F) * 1.5) | (round(((t & 0xFc0) >> 6) * 1.5) << 8) | (round(((t & 0x3F000) >> 12) * 1.5) << 16) | (round(((t & 0xFC0000) >> 18) * 1.5) << 24)
+                    t = common.ColorARGB.fromRGBA(t)
+                elif dataType == enums.DataType.RGBX8 or dataType == enums.DataType.RGBX8 or dataType == enums.DataType.RGB8:
+                    t = fileR.rUInt(dataPtr) | 0xFF000000
+                    t = common.ColorARGB.fromRGBA(t)
+
+                values.append(t)
+                dataPtr += dataType.length
+
+            if compCount == enums.ComponentCount.TexCoord_S or compCount == enums.ComponentCount.TexCoord_ST:
+                t = UV()
+                t.x = values[0]
+                if len(values) == 2:
+                    t.y = values[1]
+
+            elif compCount == enums.ComponentCount.Position_XY or compCount == enums.ComponentCount.Position_XYZ or compCount == enums.ComponentCount.Normal_XYZ:
+                if len(values) == 2:
+                    values.append(0)
+                t = Vector3(values)
+
+            data.append(t)
+
+        return Vertices(vType, fracBitCount, compCount, dataType, data)
 
 class Attach:
     """Gamecube format attach"""
@@ -922,5 +1021,74 @@ def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
     # reading vertex attributes
     vertPtr = fileR.rUInt(address)
 
+    vertices = list()
+    attrType = enums.VertexAttribute(fileR.rByte(vertPtr))
+    while attrType != enums.VertexAttribute.Null:
+        vertices.append(Vertices.read(fileR, vertPtr))
+        vertPtr += 16
+        attrType = enums.VertexAttribute(fileR.rByte(vertPtr))
 
-    return Attach(None, None, None, None, None)
+    oMeshCount = fileR.rUShort(address + 12)
+    tMeshCount = fileR.rUShort(address + 14)
+
+    if address in labels:
+        name: str = labels[address]
+        if name.startswith("gc_"):
+            name = name[3:]
+    else:
+        name = "Attach_" + str(meshID)
+
+    return Attach(name, vertices, None, None, None)
+
+def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
+
+    import bmesh
+    meshes: Dict[int, bpy.types.Mesh] = dict()
+
+    materials: List[bpy.types.Material] = list()
+    matDicts: List[dict] = list()
+
+    for o in models:
+        if o.meshPtr == 0:
+            continue
+        elif o.meshPtr in meshes:
+            o.meshes.append(meshes[o.meshPtr])
+            continue
+
+        attach = attaches[o.meshPtr]
+
+        pos: List[Vector3] = None
+        nrm: List[Vector3] = None
+        col: List[ColorARGB] = None
+        uv: List[UV] = None
+
+        for v in attach.vertices:
+            if v.vType == enums.VertexAttribute.Position:
+                pos = v.data
+            elif v.vType == enums.VertexAttribute.Normal:
+                nrm = v.data
+            elif v.vType == enums.VertexAttribute.Color0:
+                col = v.data
+            elif v.vType == enums.VertexAttribute.Tex0:
+                uv = v.data
+
+        vertPairs = list()
+
+        # going through the polygons and creating the vertpairs
+
+        # creating the mesh
+
+        mesh = bpy.data.meshes.new(attach.name)
+
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+
+        for vn in vertPairs:
+            v = pos[vn[0]]
+            bm.verts.new((v.x, -v.z, v.y))
+
+        bm.to_mesh(mesh)
+        bm.clear()
+
+        o.meshes.append(mesh)
+        meshes[o.meshPtr] = mesh

@@ -260,8 +260,8 @@ class MeshSet:
 
         for p, r in zip(self.polys, self.reverse):
             if self.polytype == enums.PolyType.Strips:
-                size = min(0x7FFF, len(p)) * (-1 if r else 1)
-                fileW.wShort(size)
+                size = min(0x7FFF, len(p)) + (0x8000 if r else 0)
+                fileW.wUShort(size)
             elif self.polytype == enums.PolyType.NPoly:
                 fileW.wUShort(min(0xFFFF, len(p)))
             for l in p:
