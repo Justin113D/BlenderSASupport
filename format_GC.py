@@ -1,7 +1,8 @@
 import bpy
 import math
 import mathutils
-from typing import List, Dict
+from typing import List, Dict, Tuple
+import copy
 
 from . import fileHelper, enums, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox
@@ -32,26 +33,27 @@ class Parameter:
     def read(fileR: fileHelper.FileReader, address: int):
         pType = enums.ParameterType(fileR.rUInt(address))
         data = fileR.rUInt(address+4)
-        param = Parameter(pType)
-        param.data = data
+
         if pType == enums.ParameterType.VtxAttrFmt:
-            param = VtxAttrFmt(param)
+            param = VtxAttrFmt(enums.VertexAttribute.Null)
         elif pType == enums.ParameterType.IndexAttributeFlags:
-            param = IndexAttributes(param)
+            param = IndexAttributes(enums.IndexAttributeFlags.HasPosition)
         elif pType == enums.ParameterType.Lighting:
-            param = Lighting(param)
+            param = Lighting(1)
         elif pType == enums.ParameterType.BlendAlpha:
-            param = AlphaBlend(param)
+            param = AlphaBlend(enums.AlphaInstruction.SrcAlpha, enums.AlphaInstruction.InverseSrcAlpha, False)
         elif pType == enums.ParameterType.AmbientColor:
-            param = AmbientColor(param)
+            param = AmbientColor(ColorARGB())
         elif pType == enums.ParameterType.Texture:
-            param = Texture(param)
+            param = Texture(0, enums.TileMode.null)
         elif pType == enums.ParameterType.Unknown_9:
-            param = unknown_9(param)
+            param = unknown_9()
         elif pType == enums.ParameterType.TexCoordGen:
-            param = TexCoordGen(param)
+            param = TexCoordGen(enums.TexGenMtx.Identity, enums.TexGenSrc.TexCoord0, enums.TexGenType.Matrix2x4, enums.TexCoordID.TexCoord0)
         else:
             print("type not found?")
+
+        param.data = data
 
         return param
 
@@ -206,7 +208,7 @@ class AmbientColor(Parameter):
     @property
     def color(self) -> ColorARGB:
         a = self.data & 0xFF
-        g = (self.data >> 8) & 0xFF
+        r = (self.data >> 8) & 0xFF
         g = (self.data >> 16) & 0xFF
         b = (self.data >> 24) & 0xFF
         return ColorARGB((a,r,g,b))
@@ -352,6 +354,8 @@ class Geometry:
         self.params = params
         self.polygons = polygons
 
+        self.indexAttributes = None
+        self.transparent = False
         for p in params:
             if isinstance(p, IndexAttributes):
                 self.indexAttributes = p.indexAttributes
@@ -414,26 +418,72 @@ class Geometry:
         fileW.wUInt(self.polygonPtr)
         fileW.wUInt(self.polygonSize)
 
-def read(fileR: fileHelper.FileReader, address: int):
+    def read(fileR: fileHelper.FileReader, address: int):
 
-    paramPtr = fileR.rUInt(address)
-    paramCount = fileR.rUInt(address + 4)
-    polyPtr = fileR.rUInt(address + 8)
-    polySize = fileR.rUInt(address + 12)
+        paramPtr = fileR.rUInt(address)
+        paramCount = fileR.rUInt(address + 4)
+        polyPtr = fileR.rUInt(address + 8)
+        polySize = fileR.rUInt(address + 12)
 
-    # reading parameters
-    params: List[Parameter] = list()
-    indexAttributeData = enums.IndexAttributeFlags.null
-    for i in range(paramCount):
-        param = Parameter.read(fileR, paramPtr)
-        if isinstance(param, IndexAttributes):
-            indexAttributeData = param.indexAttributes
-        params.append(param)
-        paramPtr += 8
+        # reading parameters
+        params: List[Parameter] = list()
+        idAttr = enums.IndexAttributeFlags.null
+        for i in range(paramCount):
+            param = Parameter.read(fileR, paramPtr)
+            if isinstance(param, IndexAttributes):
+                idAttr = param.indexAttributes
+            params.append(param)
+            paramPtr += 8
 
-    #reading polygons
+        #reading polygons
+        tmpAddr = paramPtr
+        polygons: List[List[PolyVert]] = list()
+        fileR.setBigEndian(True)
+        while tmpAddr - paramPtr < polySize:
+            tmpAddr += 1
+            vCount = fileR.rUShort(tmpAddr)
+            tmpAddr += 2
+            polys = list()
+            for i in range(vCount):
+                if idAttr & enums.IndexAttributeFlags.Position16BitIndex:
+                    pos = fileR.rUShort(tmpAddr)
+                    tmpAddr += 2
+                else:
+                    pos = fileR.rByte(tmpAddr)
+                    tmpAddr += 1
 
+                nrm = 0
+                if idAttr & enums.IndexAttributeFlags.HasNormal:
+                    if idAttr & enums.IndexAttributeFlags.Normal16BitIndex:
+                        nrm = fileR.rUShort(tmpAddr)
+                        tmpAddr += 2
+                    else:
+                        nrm = fileR.rByte(tmpAddr)
+                        tmpAddr += 1
 
+                col = 0
+                if idAttr & enums.IndexAttributeFlags.HasColor:
+                    if idAttr & enums.IndexAttributeFlags.Color16BitIndex:
+                        col = fileR.rUShort(tmpAddr)
+                        tmpAddr += 2
+                    else:
+                        col = fileR.rByte(tmpAddr)
+                        tmpAddr += 1
+
+                uv = 0
+                if idAttr & enums.IndexAttributeFlags.HasUV:
+                    if idAttr & enums.IndexAttributeFlags.UV16BitIndex:
+                        uv = fileR.rUShort(tmpAddr)
+                        tmpAddr += 2
+                    else:
+                        uv = fileR.rByte(tmpAddr)
+                        tmpAddr += 1
+
+                polys.append(PolyVert(pos, nrm, col, uv))
+            polygons.append(polys)
+        fileR.setBigEndian(False)
+
+        return Geometry(params, polygons)
 
 class Vertices:
     """One vertex data array"""
@@ -1028,8 +1078,21 @@ def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
         vertPtr += 16
         attrType = enums.VertexAttribute(fileR.rByte(vertPtr))
 
-    oMeshCount = fileR.rUShort(address + 12)
-    tMeshCount = fileR.rUShort(address + 14)
+    oMeshCount = fileR.rUShort(address + 16)
+    tMeshCount = fileR.rUShort(address + 18)
+
+    opaqueGeom = list()
+    transparentGeom = list()
+
+    tmpAddr = fileR.rUInt(address + 8)
+    for o in range(oMeshCount):
+        opaqueGeom.append(Geometry.read(fileR, tmpAddr))
+        tmpAddr += 16
+
+    tmpAddr = fileR.rUInt(address + 12)
+    for t in range(tMeshCount):
+        transparentGeom.append(Geometry.read(fileR, tmpAddr))
+        tmpAddr += 16
 
     if address in labels:
         name: str = labels[address]
@@ -1038,7 +1101,7 @@ def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
     else:
         name = "Attach_" + str(meshID)
 
-    return Attach(name, vertices, None, None, None)
+    return Attach(name, vertices, opaqueGeom, transparentGeom, None)
 
 def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
 
@@ -1072,20 +1135,166 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
             elif v.vType == enums.VertexAttribute.Tex0:
                 uv = v.data
 
-        vertPairs = list()
+        vertPairs: Dict[Tuple[int, int], bmesh.types.BMVert] = dict()
 
         # going through the polygons and creating the vertpairs
+        geom: List[Geometry] = list()
+        geom.extend(attach.opaqueGeom)
+        geom.extend(attach.transparentGeom)
+
+        for g in geom:
+            for p in g.polygons:
+                for pv in p:
+                    pair = (pv.posID, pv.nrmID)
+                    if pair not in vertPairs.keys():
+                        vertPairs[pair] = None
+
+        # creating the materials
+
+        meshMaterials = list()
+        geomMaterials = list()
+
+        for g in geom:
+            tmpMat = common.getDefaultMatDict()
+
+            for p in g.params:
+                if p.pType == enums.ParameterType.AmbientColor:
+                    tmpMat["b_Ambient"] = p.color.toBlenderTuple()
+                elif p.pType == enums.ParameterType.BlendAlpha:
+                    if p.dst == enums.AlphaInstruction.Zero:
+                        tmpMat["b_destAlpha"] = 'ZERO'
+                    elif p.dst == enums.AlphaInstruction.One:
+                        tmpMat["b_destAlpha"] = 'ONE'
+                    elif p.dst == enums.AlphaInstruction.SrcColor:
+                        tmpMat["b_destAlpha"] = 'OTHER'
+                    elif p.dst == enums.AlphaInstruction.InverseSrcColor:
+                        tmpMat["b_destAlpha"] = 'INV_OTHER'
+                    elif p.dst == enums.AlphaInstruction.SrcAlpha:
+                        tmpMat["b_destAlpha"] = 'SRC'
+                    elif p.dst == enums.AlphaInstruction.InverseSrcAlpha:
+                        tmpMat["b_destAlpha"] = 'INV_SRC'
+                    elif p.dst == enums.AlphaInstruction.DstAlpha:
+                        tmpMat["b_destAlpha"] = 'DST'
+                    elif p.dst == enums.AlphaInstruction.InverseDstAlpha:
+                        tmpMat["b_destAlpha"] = 'INV_DST'
+
+                    if p.src == enums.AlphaInstruction.Zero:
+                        tmpMat["b_srcAlpha"] = 'ZERO'
+                    elif p.src == enums.AlphaInstruction.One:
+                        tmpMat["b_srcAlpha"] = 'ONE'
+                    elif p.src == enums.AlphaInstruction.SrcColor:
+                        tmpMat["b_srcAlpha"] = 'OTHER'
+                    elif p.src == enums.AlphaInstruction.InverseSrcColor:
+                        tmpMat["b_srcAlpha"] = 'INV_OTHER'
+                    elif p.src == enums.AlphaInstruction.SrcAlpha:
+                        tmpMat["b_srcAlpha"] = 'SRC'
+                    elif p.src == enums.AlphaInstruction.InverseSrcAlpha:
+                        tmpMat["b_srcAlpha"] = 'INV_SRC'
+                    elif p.src == enums.AlphaInstruction.DstAlpha:
+                        tmpMat["b_srcAlpha"] = 'DST'
+                    elif p.src == enums.AlphaInstruction.InverseDstAlpha:
+                        tmpMat["b_srcAlpha"] = 'INV_DST'
+
+                    tmpMat["b_useAlpha"] = p.active
+
+                elif p.pType == enums.ParameterType.TexCoordGen: # todo
+                    tmpMat["gc_texMatrixID"] = 'IDENTITY'
+                    tmpMat["gc_texGenSourceMtx"] = 'TEX0'
+                    tmpMat["gc_texGenSourceBmp"] = 'TEXCOORD0'
+                    tmpMat["gc_texGenSourceSRTG"] = 'COLOR0'
+                    tmpMat["gc_texGenType"] = 'MTX2X4'
+                    tmpMat["gc_texCoordID"] = 'TEXCOORD0'
+                elif p.pType == enums.ParameterType.Texture:
+                    tmpMat["b_TextureID"] = p.texID
+                    tmpMat["b_clampU"] = not (p.tilemode & enums.TileMode.WrapU)
+                    tmpMat["b_clampV"] = not (p.tilemode & enums.TileMode.WrapV)
+                    tmpMat["b_mirrorU"] = not (p.tilemode & enums.TileMode.MirrorU)
+                    tmpMat["b_mirrorV"] = not (p.tilemode & enums.TileMode.MirrorV)
+
+            material = None
+
+            for i, key in enumerate(matDicts):
+                if key == tmpMat:
+                    material = materials[i]
+                    break
+
+            if material is None:
+                material = bpy.data.materials.new(name="material_" + str(len(materials)))
+                material.saSettings.readMatDict(tmpMat)
+
+                materials.append(material)
+                matDicts.append(copy.deepcopy(tmpMat))
+
+            if material not in meshMaterials:
+                meshMaterials.append(material)
+
+            geomMaterials.append(meshMaterials.index(material))
 
         # creating the mesh
 
         mesh = bpy.data.meshes.new(attach.name)
+        for m in meshMaterials:
+            mesh.materials.append(m)
 
         bm = bmesh.new()
         bm.from_mesh(mesh)
 
-        for vn in vertPairs:
+        for vn in vertPairs.keys():
             v = pos[vn[0]]
-            bm.verts.new((v.x, -v.z, v.y))
+            v = bm.verts.new((v.x, -v.z, v.y))
+            vertPairs[vn] = v
+        bm.verts.ensure_lookup_table()
+        bm.verts.index_update()
+
+        doubleFaces = 0
+
+        if uv is not None:
+            uvLayer = bm.loops.layers.uv.new("UV0")
+        if col is not None:
+            colorLayer = bm.loops.layers.color.new("COL0")
+
+        for matIndex, g in enumerate(geom):
+            for p in g.polygons:
+                for i in range(len(p) - 2):
+
+                    polyVerts: List[PolyVert] = list()
+                    verts = list()
+                    for pv in range(3):
+                        pVert = p[i + pv]
+                        pVert.uvID
+                        polyVerts.append(pVert)
+                        verts.append(vertPairs[(pVert.posID, pVert.nrmID)])
+                    if len(set(verts)) < 3:
+                        continue
+
+                    try:
+                        face = bm.faces.new(verts)
+                    except Exception as e:
+                        if not str(e).endswith("exists"):
+                            print("Invalid triangle:", str(e))
+                        else:
+                            doubleFaces += 1
+                        continue
+
+                    for l, pc in zip(face.loops, polyVerts):
+                        if uv is not None:
+                            l[uvLayer].uv = uv[pc.uvID].getBlenderUV()
+                        if col is not None:
+                            l[colorLayer] = col[pc.vcID].toBlenderTuple()
+
+                    face.smooth = True
+                    face.material_index = geomMaterials[matIndex]
+
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
+        if nrm is not None:
+            normals = [mathutils.Vector((nrm[vn[1]].x, -nrm[vn[1]].z, nrm[vn[1]].y)).normalized() for vn in vertPairs]
+
+            mesh.create_normals_split()
+            split_normal = [normals[l.vertex_index] for l in mesh.loops]
+            mesh.normals_split_custom_set(split_normal)
+        mesh.use_auto_smooth = True
+        mesh.auto_smooth_angle = 180
 
         bm.to_mesh(mesh)
         bm.clear()
