@@ -1,7 +1,7 @@
 import bpy
 import os
 import mathutils
-from . import fileHelper, enums, common, format_BASIC, format_GC, format_CHUNK
+from . import fileHelper, enums, common, format_BASIC, format_GC, format_CHUNK, __init__
 
 DO = False # Debug out
 
@@ -34,7 +34,8 @@ def write(context,
           os.system("cls")
 
      # create the file
-     fileW = fileHelper.FileWriter(filepath=filepath)
+     fileW = fileHelper.FileWriter()#filepath=filepath)
+     __init__.exportedFile = fileW
 
      # write the file header
      fileVersion = 3
@@ -50,7 +51,7 @@ def write(context,
 
      if DO:
           print(" == Starting LVL file exporting ==")
-          print("  File:", fileW.filepath)
+          print("  File:", filepath)
           print("  Format:", export_format, "version", fileVersion)
           print("  - - - - - -\n")
 

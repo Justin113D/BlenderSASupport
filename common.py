@@ -43,6 +43,10 @@ def getDistinctwID(items: list):
 
     return distinct, IDs
 
+class ExportError(Exception):
+
+    def __init__(self, message):
+        super().__init__(message)
 
 class ColorARGB:
     """4 Channel Color (ARGB)
@@ -809,11 +813,7 @@ def convertObjectData(context: bpy.types.Context,
         objects = context.scene.objects.values()
 
     if len(objects) == 0:
-        print("No objects found")
-        if fmt == 'SA1' or not lvl:
-            return None, None, None, None
-        else:
-            return None, None, None, None, None, None
+        raise ExportError("No objects to export")
 
     # getting the objects without parents
     noParents = list()

@@ -1,7 +1,7 @@
 import bpy
 import os
 import mathutils
-from . import fileHelper, enums, common, format_BASIC, format_CHUNK, format_GC
+from . import fileHelper, enums, common, format_BASIC, format_CHUNK, format_GC, __init__
 from .common import ModelData
 from typing import Dict, List
 
@@ -276,7 +276,8 @@ def write(context,
          os.system("cls")
 
    # create the file
-   fileW = fileHelper.FileWriter(filepath=filepath)
+   fileW = fileHelper.FileWriter()#filepath=filepath)
+   __init__.exportedFile = fileW
 
    # write the header
    fileVersion = 3
@@ -292,7 +293,7 @@ def write(context,
 
    if DO:
       print(" == Starting MDL file exporting ==")
-      print("  File:", fileW.filepath)
+      print("  File:", filepath)
       print("  Format:", export_format, "version", fileVersion)
       print("  - - - - - -\n")
 
@@ -306,9 +307,6 @@ def write(context,
 
    # creating and getting variables to use in the export process
    objects, meshes, materials, mObjects = common.convertObjectData(context, use_selection, apply_modifs, global_matrix, export_format, False)
-   if objects is None:
-      fileW.close()
-      return {'CANCELLED'}
 
    meshDict: Dict[bpy.types.Mesh, addr] = dict()
 

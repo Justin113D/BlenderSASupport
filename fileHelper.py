@@ -15,7 +15,7 @@ class FileWriter:
 
     def __init__(self, filepath = None):
         if filepath is None:
-            self.oFile = tempfile.TemporaryFile(mode="wb+") # write and read, binary
+            self.oFile = tempfile.TemporaryFile(mode="wb+", delete=False) # write and read, binary
             self.filepath = self.oFile.name
         else:
             self.oFile = open(filepath, "wb+") # write and read, binary
@@ -119,7 +119,7 @@ class FileReader:
 
     def __init__(self, filepath: str):
         import os
-        if filepath is None or not os.path.exists(filepath):
+        if filepath is None or not os.path.isfile(filepath):
             print("Invalid file path")
             self.filepath = None
         else:

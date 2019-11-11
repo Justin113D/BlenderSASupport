@@ -33,6 +33,8 @@ if "bpy" in locals():
         importlib.reload(common)
 
 import bpy
+import os
+from . import fileHelper, common
 from bpy.props import (
     BoolProperty,
     BoolVectorProperty,
@@ -63,6 +65,14 @@ class TOPBAR_MT_SA_export(bpy.types.Menu):
 
 # export operators
 
+def removeFile():
+
+    fileW = __init__.exportedFile
+    if fileW is not None:
+        fileW.close()
+        os.remove(fileW.filepath)
+        __init__.exportedFile = None
+
 def exportFile(op, mdl: bool, context, **keywords):
     try:
         if mdl:
@@ -71,8 +81,25 @@ def exportFile(op, mdl: bool, context, **keywords):
             out = file_LVL.write(context, **keywords)
     except strippifier.TopologyError as e:
         op.report({'WARNING'}, "Export stopped!\n" + str(e))
+        removeFile()
         return {'CANCELLED'}
-    return out
+    except common.ExportError as e:
+        op.report({'WARNING'}, "Export stopped!\n" + str(e))
+        removeFile()
+        return {'CANCELLED'}
+    except Exception as e:
+        removeFile()
+        raise e
+
+    # moving and renaming the temporary file
+    # also removing the file that existed before
+    fileW = __init__.exportedFile
+    filepath = keywords["filepath"]
+    if(os.path.isfile(filepath)):
+        os.remove(filepath)
+    os.rename(fileW.filepath, filepath)
+
+    return {'FINISHED'}
 
 class ExportSA1MDL(bpy.types.Operator, ExportHelper):
     """Export Objects into an SA1 model file"""
@@ -448,8 +475,7 @@ class StrippifyTest(bpy.types.Operator):
         return wm.invoke_props_dialog(self)
 
     def execute(self, context):
-        import os
-        os.system("cls")
+        #os.system("cls")
         obj = context.active_object
         if obj is None or not isinstance(obj.data, bpy.types.Mesh):
             print("active object not a mesh")
