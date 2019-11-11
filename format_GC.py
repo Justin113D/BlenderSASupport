@@ -1287,6 +1287,9 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
 
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 
+        bm.to_mesh(mesh)
+        bm.clear()
+
         if nrm is not None:
             normals = [mathutils.Vector((nrm[vn[1]].x, -nrm[vn[1]].z, nrm[vn[1]].y)).normalized() for vn in vertPairs]
 
@@ -1296,8 +1299,9 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
         mesh.use_auto_smooth = True
         mesh.auto_smooth_angle = 180
 
-        bm.to_mesh(mesh)
-        bm.clear()
+        # dont ask me why, but blender likes to add sharp edges- we dont need those at all in this case
+        for e in mesh.edges:
+            e.use_edge_sharp = False
 
         o.meshes.append(mesh)
         meshes[o.meshPtr] = mesh

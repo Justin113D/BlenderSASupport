@@ -1131,7 +1131,7 @@ def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> List
 
         if len(polyChunks) > 0:
             if DO:
-                print(" Active Poly Chunks:\n")
+                print(" Active Poly Chunks: ", len(polyChunks) ,"\n")
                 for p in polyChunks:
                     print("    Chunktype:", p.chunkType)
                     c = p.chunkType.value
@@ -1324,15 +1324,22 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
                 tmpMat["b_d_200"] = (c.value & enums.MipMapDistanceAdjust.D_200).value > 0
 
         filteredPolygons: List[List[PolyVert]] = list()
-        for p in polygons:
+        filteredMatMarkers = dict()
+        for i, p in enumerate(polygons):
             indices = [p[0].index, p[1].index, p[2].index]
+            if i in matMarkers:
+                filteredMatMarkers[len(filteredPolygons)] = matMarkers[i]
             if len(set(indices)) == 3:
                 filteredPolygons.append(p)
+
+
+
         dif = len(polygons) - len(filteredPolygons)
         if DO and dif > 0:
             print("  Invalid Polygons:", dif)
 
         polygons = filteredPolygons
+        matMarkers = filteredMatMarkers
 
         # creating the mesh
 

@@ -802,5 +802,9 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
         mesh.use_auto_smooth = True
         mesh.auto_smooth_angle = 180
 
+        # dont ask me why, but blender likes to add sharp edges- we dont need those at all in this case
+        for e in mesh.edges:
+            e.use_edge_sharp = False
+
         o.meshes.append(mesh)
         meshes[o.meshPtr] = mesh
