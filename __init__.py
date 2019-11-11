@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (0,6,2),
+    "version": (0,6,4),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -950,6 +950,12 @@ class SASettings(bpy.types.PropertyGroup):
         default=""
         )
 
+    landtableName: StringProperty(
+        name="Name",
+        description="The label for the landtable in the file. If empty, the filename will be used",
+        default=""
+        )
+
     texListPointer: StringProperty(
         name="Texture List Pointer (hex)",
         description="Used for when replacing a stage and its textures",
@@ -1701,7 +1707,10 @@ class SAScenePanel(bpy.types.Panel):
 
         layout.prop(settings, "author")
         layout.prop(settings, "description")
-        layout.prop(settings, "texFileName")
+
+        layout.separator(factor=2)
+        layout.label(text="Landtable data")
+        layout.prop(settings, "landtableName")
 
         split = layout.split(factor=0.5)
         split.label(text="Draw Distance:")

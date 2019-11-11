@@ -151,7 +151,10 @@ def write(context,
      fileW.align(4)
 
      landTableAddress = fileW.tell()
-     labels[landTableAddress] = "tbl_" + os.path.splitext(os.path.basename(filepath))[0]
+     if context.scene.saSettings.landtableName == "":
+          labels[landTableAddress] = os.path.splitext(os.path.basename(filepath))[0]
+     else:
+          labels[landTableAddress] = context.scene.saSettings.landtableName
 
      #landtable info
      fileW.wUShort(COLcount) # COL count
