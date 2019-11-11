@@ -1196,14 +1196,130 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
                         tmpMat["b_srcAlpha"] = 'INV_DST'
 
                     tmpMat["b_useAlpha"] = p.active
+                elif p.pType == enums.ParameterType.TexCoordGen:
 
-                elif p.pType == enums.ParameterType.TexCoordGen: # todo
-                    tmpMat["gc_texMatrixID"] = 'IDENTITY'
-                    tmpMat["gc_texGenSourceMtx"] = 'TEX0'
-                    tmpMat["gc_texGenSourceBmp"] = 'TEXCOORD0'
-                    tmpMat["gc_texGenSourceSRTG"] = 'COLOR0'
-                    tmpMat["gc_texGenType"] = 'MTX2X4'
-                    tmpMat["gc_texCoordID"] = 'TEXCOORD0'
+                    #texMatrixID
+                    if p.mtx == enums.TexGenMtx.Matrix0:
+                        tmpMat["gc_texMatrixID"] = 'MATRIX0'
+                    elif p.mtx == enums.TexGenMtx.Matrix1:
+                        tmpMat["gc_texMatrixID"] = 'MATRIX1'
+                    elif p.mtx == enums.TexGenMtx.Matrix2:
+                        tmpMat["gc_texMatrixID"] = 'MATRIX2'
+                    elif p.mtx == enums.TexGenMtx.Matrix3:
+                        tmpMat["gc_texMatrixID"] = 'MATRIX4'
+                    elif p.mtx == enums.TexGenMtx.Matrix5:
+                        tmpMat["gc_texMatrixID"] = 'MATRIX6'
+                    elif p.mtx == enums.TexGenMtx.Matrix7:
+                        tmpMat["gc_texMatrixID"] = 'MATRIX7'
+                    elif p.mtx == enums.TexGenMtx.Matrix8:
+                        tmpMat["gc_texMatrixID"] = 'MATRIX9'
+                    elif p.mtx == enums.TexGenMtx.Matrix9:
+                        tmpMat["gc_texMatrixID"] = 'MATRIX9'
+                    elif p.mtx == enums.TexGenMtx.Identity:
+                        tmpMat["gc_texMatrixID"] = 'IDENTITY'
+
+                    #texGenSrc
+                    if tmpMat["gc_texMatrixID"][0] == 'M': #Matrix
+                        if p.src == enums.TexGenSrc.Position:
+                            tmpMat["gc_texGenSourceMtx"] = 'POSITION'
+                        elif p.src == enums.TexGenSrc.Normal:
+                            tmpMat["gc_texGenSourceMtx"] = 'NORMAL'
+                        elif p.src == enums.TexGenSrc.Binormal:
+                            tmpMat["gc_texGenSourceMtx"] = 'BINORMAL'
+                        elif p.src == enums.TexGenSrc.Tangent:
+                            tmpMat["gc_texGenSourceMtx"] = 'TANGENT'
+                        elif p.src == enums.TexGenSrc.Tex0:
+                            tmpMat["gc_texGenSourceMtx"] = 'TEX0'
+                        elif p.src == enums.TexGenSrc.Tex1:
+                            tmpMat["gc_texGenSourceMtx"] = 'TEX1'
+                        elif p.src == enums.TexGenSrc.Tex2:
+                            tmpMat["gc_texGenSourceMtx"] = 'TEX2'
+                        elif p.src == enums.TexGenSrc.Tex3:
+                            tmpMat["gc_texGenSourceMtx"] = 'TEX3'
+                        elif p.src == enums.TexGenSrc.Tex4:
+                            tmpMat["gc_texGenSourceMtx"] = 'TEX4'
+                        elif p.src == enums.TexGenSrc.Tex5:
+                            tmpMat["gc_texGenSourceMtx"] = 'TEX5'
+                        elif p.src == enums.TexGenSrc.Tex6:
+                            tmpMat["gc_texGenSourceMtx"] = 'TEX6'
+                        elif p.src == enums.TexGenSrc.Tex7:
+                            tmpMat["gc_texGenSourceMtx"] = 'TEX7'
+                        else:
+                            print("Not valid mtx + src combination:", p.mtx, p.src)
+                    elif tmpMat["gc_texMatrixID"][0] == 'B': #Bump
+                        if p.src == enums.TexGenSrc.TexCoord0:
+                            tmpMat["gc_texGenSourceBmp"] = 'TEXCOORD0'
+                        elif p.src == enums.TexGenSrc.TexCoord1:
+                            tmpMat["gc_texGenSourceBmp"] = 'TEXCOORD1'
+                        elif p.src == enums.TexGenSrc.TexCoord2:
+                            tmpMat["gc_texGenSourceBmp"] = 'TEXCOORD2'
+                        elif p.src == enums.TexGenSrc.TexCoord3:
+                            tmpMat["gc_texGenSourceBmp"] = 'TEXCOORD3'
+                        elif p.src == enums.TexGenSrc.TexCoord4:
+                            tmpMat["gc_texGenSourceBmp"] = 'TEXCOORD4'
+                        elif p.src == enums.TexGenSrc.TexCoord5:
+                            tmpMat["gc_texGenSourceBmp"] = 'TEXCOORD5'
+                        elif p.src == enums.TexGenSrc.TexCoord6:
+                            tmpMat["gc_texGenSourceBmp"] = 'TEXCOORD6'
+                        else:
+                            print("Not valid mtx + src combination:", p.mtx, p.src)
+                    else: #SRTG
+                        if p.src == enums.TexGenSrc.Color0:
+                            tmpMat["gc_texGenSourceSRTG"] = 'COLOR0'
+                        elif p.src == enums.TexGenSrc.Color0:
+                            tmpMat["gc_texGenSourceSRTG"] = 'COLOR1'
+                        else:
+                            print("Not valid mtx + src combination:", p.mtx, p.src)
+
+                    #texGenType
+                    if p.typ == enums.TexGenType.Matrix3x4:
+                        tmpMat["gc_texGenType"] = 'MTX3X4'
+                    elif p.typ == enums.TexGenType.Matrix2x4:
+                        tmpMat["gc_texGenType"] = 'MTX2X4'
+                    elif p.typ == enums.TexGenType.Bump0:
+                        tmpMat["gc_texGenType"] = 'BUMP0'
+                    elif p.typ == enums.TexGenType.Bump1:
+                        tmpMat["gc_texGenType"] = 'BUMP1'
+                    elif p.typ == enums.TexGenType.Bump2:
+                        tmpMat["gc_texGenType"] = 'BUMP2'
+                    elif p.typ == enums.TexGenType.Bump3:
+                        tmpMat["gc_texGenType"] = 'BUMP3'
+                    elif p.typ == enums.TexGenType.Bump4:
+                        tmpMat["gc_texGenType"] = 'BUMP4'
+                    elif p.typ == enums.TexGenType.Bump5:
+                        tmpMat["gc_texGenType"] = 'BUMP5'
+                    elif p.typ == enums.TexGenType.Bump6:
+                        tmpMat["gc_texGenType"] = 'BUMP6'
+                    elif p.typ == enums.TexGenType.Bump7:
+                        tmpMat["gc_texGenType"] = 'BUMP7'
+                    elif p.typ == enums.TexGenType.SRTG:
+                        tmpMat["gc_texGenType"] = 'SRTG'
+
+                    #texCoordID
+                    if p.texID == enums.TexCoordID.TexCoord0:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORD0'
+                    elif p.texID == enums.TexCoordID.TexCoord1:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORD1'
+                    elif p.texID == enums.TexCoordID.TexCoord2:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORD2'
+                    elif p.texID == enums.TexCoordID.TexCoord3:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORD3'
+                    elif p.texID == enums.TexCoordID.TexCoord4:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORD4'
+                    elif p.texID == enums.TexCoordID.TexCoord5:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORD5'
+                    elif p.texID == enums.TexCoordID.TexCoord6:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORD6'
+                    elif p.texID == enums.TexCoordID.TexCoord7:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORD7'
+                    elif p.texID == enums.TexCoordID.TexCoord8:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORD8'
+                    elif p.texID == enums.TexCoordID.TexCoord9:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORD9'
+                    elif p.texID == enums.TexCoordID.TexCoordMax:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORDMAX'
+                    elif p.texID == enums.TexCoordID.TexCoordNull:
+                        tmpMat["gc_texCoordID"] = 'TEXCOORDNULL'
                 elif p.pType == enums.ParameterType.Texture:
                     tmpMat["b_TextureID"] = p.texID
                     tmpMat["b_clampU"] = not (p.tilemode & enums.TileMode.WrapU)
