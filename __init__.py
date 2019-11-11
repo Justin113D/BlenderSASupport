@@ -1711,6 +1711,7 @@ class SAScenePanel(bpy.types.Panel):
         layout.separator(factor=2)
         layout.label(text="Landtable data")
         layout.prop(settings, "landtableName")
+        layout.prop(settings, "texFileName")
 
         split = layout.split(factor=0.5)
         split.label(text="Draw Distance:")
