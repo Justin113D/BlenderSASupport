@@ -11,6 +11,106 @@ def hex8(number : int):
 def hex16(number : int):
     return '{:016x}'.format(number)
 
+def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
+
+     global DO
+     DO = console_debug_output
+     common.DO = DO
+     format_BASIC.DO = DO
+     format_CHUNK.DO = DO
+     format_GC.DO = DO
+     if DO:
+          os.system("cls")
+
+     fileR = fileHelper.FileReader(filepath)
+
+     if fileR.filepath is None:
+          print("no valid filepath")
+          return {'CANCELLED'}
+
+     indicator = enums.LVLFormatIndicator( fileR.rULong(0) & ~0xFF00000000000000 )
+     fileVersion = fileR.rByte(7)
+
+     if indicator == enums.LVLFormatIndicator.SA1LVL:
+          file_format = 'SA1'
+     elif indicator == enums.LVLFormatIndicator.SA2LVL:
+          file_format = 'SA2'
+     elif indicator == enums.LVLFormatIndicator.SA2BLVL:
+          file_format = 'SA2B'
+     else:
+          print("no Valid file")
+          return {'CANCELLED'}
+
+     if DO:
+          print(" == Starting LVL file reading ==")
+          print("  File:", filepath)
+          print("  Format:", file_format, "version", fileVersion)
+          print("  - - - - - -\n")
+
+     labels: Dict[int, str] = dict()
+
+     if fileVersion < 2:
+          if fileVersion == 1:
+               tmpAddr = fileR.rUInt(0xC)
+               if tmpAddr != 0:
+                    addr = fileR.rInt(tmpAddr)
+                    while addr != -1:
+                         labels[fileR.rUInt(tmpAddr)] = fileR.rString(tmpAddr + 4)
+                         tmpAddr += 8
+                         addr = fileR.rInt(tmpAddr)
+     else:
+          tmpAddr = fileR.rUInt(0xC)
+          if tmpAddr != 0:
+               finished = False
+               while not finished:
+                    cnkType = enums.Chunktypes(fileR.rUInt(tmpAddr))
+                    cnkSize = fileR.rUInt(tmpAddr + 4)
+                    cnkNext = tmpAddr + 8 + cnkSize
+
+                    if fileVersion == 2:
+                         cnkBase = 0
+                    else:
+                         cnkBase = tmpAddr + 8
+
+                    tmpAddr += 8
+
+                    if cnkType == enums.Chunktypes.Label: # labels
+                         while fileR.rLong(tmpAddr) != -1:
+                         labels[fileR.rUInt(tmpAddr)] = fileR.rString(cnkBase + fileR.rUInt(tmpAddr + 4))
+                         tmpAddr += 8
+                    elif cnkType == enums.Chunktypes.Author: # Author name
+                         context.scene.saSettings.author = fileR.rString(tmpAddr)
+                    elif cnkType == enums.Chunktypes.Description: # File description
+                         context.scene.saSettings.description = fileR.rString(tmpAddr)
+                    elif cnkType == enums.Chunktypes.Tool and DO: # Tool
+                         print("Tool metadata found")
+                    elif cnkType == enums.Chunktypes.Texture and DO: # texture
+                         print("Texture metadata found")
+                    elif cnkType == enums.Chunktypes.End: # end
+                         finished = True
+                    else: # everything else
+                         if DO:
+                         print("invalid Chunk type:", cnkType.value)
+
+                    tmpAddr = cnkNext
+
+     if DO:
+          if len(labels) > 0:
+               print("Labels:", len(labels))
+               for l in labels.keys():
+                    print(hex8(l), labels[l])
+          if context.scene.saSettings.author != "":
+               print("Author:", context.scene.saSettings.author)
+          if context.scene.saSettings.description != "":
+               print("Description:", context.scene.saSettings.description)
+          print("\n")
+
+          print(" == Reading Models ==")
+
+     # get landtable data
+
+
+
 def write(context,
          filepath, *,
          export_format,
@@ -19,8 +119,8 @@ def write(context,
          global_scale,
          console_debug_output
          ):
-     from .common import ModelData
 
+     from .common import ModelData
 
      global DO
      DO = console_debug_output
@@ -229,4 +329,3 @@ def write(context,
      common.writeMethaData(fileW, labels, context.scene)
 
      fileW.close()
-     return {'FINISHED'}

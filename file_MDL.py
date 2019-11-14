@@ -59,8 +59,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
          if tmpAddr > 0:
             addr = fileR.rInt(tmpAddr)
             while addr != -1:
-               addr = fileR.rUInt(tmpAddr)
-               labels[addr] = fileR.rString(tmpAddr + 4)
+               labels[fileR.rUInt(tmpAddr)] = fileR.rString(tmpAddr + 4)
                tmpAddr += 8
                addr = fileR.rInt(tmpAddr)
 
@@ -91,7 +90,6 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
             cnkType = enums.Chunktypes(fileR.rUInt(tmpAddr))
             cnkSize = fileR.rUInt(tmpAddr + 4)
             cnkNext = tmpAddr + 8 + cnkSize
-
 
             if fileVersion == 2:
                cnkBase = 0
@@ -225,10 +223,15 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
 
          bone.matrix = armatureMatrix.inverted() @ b.matrix_world
 
-
          if b.parent.bone is not None:
             bone.parent = b.parent.bone
          b.bone = bone
+
+         bone.use_deform = False
+         for o in root.meshes:
+            if o.vertex_groups.find(bone.name) >= 0:
+               bone.use_deform = True
+               break
 
       bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -370,4 +373,3 @@ def write(context,
    common.writeMethaData(fileW, labels, context.scene)
 
    fileW.close()
-   return {'FINISHED'}
