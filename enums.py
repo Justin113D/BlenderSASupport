@@ -67,9 +67,9 @@ class SA2SurfaceFlags(Flag):
     null = 0x00
     Solid = 0x01
     Water = 0x02
-    StandOnSlope = 0x10
     Diggable = 0x20
     Unclimbable = 0x80
+    StandOnSlope = 0x100
     Hurt = 0x0400
     CannotLand = 0x1000
     Water2 = 0x2000

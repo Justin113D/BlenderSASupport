@@ -1331,7 +1331,8 @@ class Col:
             f = fileR.rUInt(address+12)
 
             from .enums import SA2SurfaceFlags
-            saProps["isCollision"] = bool((f & ~SA2SurfaceFlags.collision.value) & 0xFFFFFFFF)
+
+            saProps["isCollision"] = bool((f & SA2SurfaceFlags.collision.value) & 0xFFFFFFFF)
             saProps["solid"] = bool(f & SA2SurfaceFlags.Solid.value)
             saProps["water"] = bool(f & SA2SurfaceFlags.Water.value)
             saProps["cannotLand"] = bool(f & SA2SurfaceFlags.CannotLand.value)
@@ -1349,6 +1350,13 @@ class Col:
             saProps["unknown30"] = bool(f & SA2SurfaceFlags.Unknown30.value)
 
             saProps["userFlags"] = hex4((f & ~SA2SurfaceFlags.known.value) & 0xFFFFFFFF )
+
+            try:
+                flagTest = SA2SurfaceFlags(f)
+            except:
+                print("Unknown surface flags found:")
+                print(saProps["userFlags"])
+
         else:
             objectPtr = fileR.rUInt(address + 8)
             unknown1 = fileR.rInt(address)
@@ -1357,7 +1365,7 @@ class Col:
             f = enums.SA1SurfaceFlags(fileR.rUInt(address+16))
             from .enums import SA1SurfaceFlags
 
-            saProps["isCollision"] =  bool((f.value & ~SA1SurfaceFlags.collision) & 0xFFFFFFFF)
+            saProps["isCollision"] =  bool((f.value & SA1SurfaceFlags.collision) & 0xFFFFFFFF)
             saProps["solid"] = bool(f & SA1SurfaceFlags.Solid.value)
             saProps["water"] = bool(f & SA1SurfaceFlags.Water.value)
             saProps["cannotLand"] = bool(f & SA1SurfaceFlags.CannotLand.value)
@@ -1372,6 +1380,12 @@ class Col:
             saProps["footprints"] = bool(f & SA1SurfaceFlags.Footprints.value)
 
             saProps["userFlags"] = hex4((f & ~SA1SurfaceFlags.known.value) & 0xFFFFFFFF )
+
+            try:
+                flagTest = SA1SurfaceFlags(f)
+            except:
+                print("Unknown surface flags found:")
+                print(saProps["userFlags"])
 
         model = readObjects(fileR, objectPtr, 0, None, labels, None)
 

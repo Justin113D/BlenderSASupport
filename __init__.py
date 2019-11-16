@@ -1748,7 +1748,6 @@ class SAMeshPanel(bpy.types.Panel):
         split.label(text="(SA2) Additional Vertex Offset")
         split.prop(meshprops, "sa2IndexOffset", text = "")
 
-
 class SAMaterialPanel(bpy.types.Panel):
     bl_idname = "MATERIAL_PT_saProperties"
     bl_label = "SA Material Properties"
