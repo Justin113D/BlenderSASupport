@@ -469,7 +469,8 @@ class Geometry:
             vCount = fileR.rUShort(tmpAddr)
             tmpAddr += 2
             polys = list()
-            print(polyType, vCount)
+            if DO:
+                print(polyType, vCount)
             if vCount == 0:
                 break
             for i in range(vCount):
@@ -1108,7 +1109,8 @@ class Attach:
         else:
             name = "Attach_" + str(meshID)
 
-        print("\n === reading gc:", name, "===")
+        if DO:
+            print("\n === reading gc:", name, "===")
 
         # reading vertex attributes
         vertPtr = fileR.rUInt(address)

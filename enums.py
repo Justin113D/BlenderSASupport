@@ -196,7 +196,7 @@ class TileMode(Flag):
     WrapU = 0x01
     MirrorU = 0x02
     WrapV = 0x04
-    MirrorV = 0x05
+    MirrorV = 0x08
     unknown = 0x10
 
 # to understand the next enums:
