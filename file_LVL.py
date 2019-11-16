@@ -126,6 +126,19 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
           context.scene.saSettings.texListPointer = hex8(fileR.rUInt(tmpAddr + 24))
           unknown2 = fileR.rUInt(tmpAddr + 28)
           unknown3 = fileR.rUInt(tmpAddr + 32)
+
+          if DO:
+               print(" == Landtable info ==")
+               print("  Col Count:", colCount)
+               print("  Anim Count:", animCount)
+               print("  Flags:", flags)
+               print("  Draw Dist.:", context.scene.saSettings.drawDistance)
+               print("  Col Ptr:", common.hex4(colPtr))
+               print("  Anim Ptr:", common.hex4(animPtr))
+               print("  Tex File Name:", context.scene.saSettings.texFileName)
+               print("  Tex List Ptr:", context.scene.saSettings.texListPointer)
+               print("  Unknown2:", unknown2)
+               print("  Unknown3:", unknown3)
      else:
           colCount = fileR.rUShort(tmpAddr)
           vColCount = fileR.rUShort(tmpAddr + 2)
@@ -134,6 +147,16 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
           animPtr = fileR.rUInt(tmpAddr + 20)
           context.scene.saSettings.texFileName = fileR.rString(fileR.rUInt(tmpAddr + 24))
           context.scene.saSettings.texListPointer = hex8(fileR.rUInt(tmpAddr + 28))
+
+          if DO:
+               print(" == Landtable info ==")
+               print("  Col Count:", colCount)
+               print("  visual Col Count:", vColCount)
+               print("  Draw Dist.:", context.scene.saSettings.drawDistance)
+               print("  Col Ptr:", common.hex4(colPtr))
+               print("  Anim Ptr:", common.hex4(animPtr))
+               print("  Tex File Name:", context.scene.saSettings.texFileName)
+               print("  Tex List Ptr:", context.scene.saSettings.texListPointer)
 
      # create collections
      cName = os.path.splitext(os.path.basename(filepath))[0]
@@ -155,8 +178,6 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
      for i in range(colCount):
           COLs.append(common.Col.read(fileR, tmpAddr, labels, isSA2))
           tmpAddr += colSize
-
-
 
      if file_format == 'SA1':
           meshes = dict()
@@ -181,11 +202,12 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
           cmeshes = dict()
 
           for i in range(vColCount):
-               if COLs[i].model.meshPtr > 0 and COLs[i].model.meshPtr not in vmeshes:
+               ptr = COLs[i].model.meshPtr
+               if ptr > 0 and ptr not in vmeshes:
                     if file_format == 'SA2':
-                         vmeshes[COLs[i].model.meshPtr] = format_CHUNK.Attach.read(fileR, COLs[i].model.meshPtr, i, labels)
+                         vmeshes[ptr] = format_CHUNK.Attach.read(fileR, ptr, i, labels)
                     else:
-                         vmeshes[COLs[i].model.meshPtr] = format_GC.Attach.read(fileR, COLs[i].model.meshPtr, i, labels)
+                         vmeshes[ptr] = format_GC.Attach.read(fileR, ptr, i, labels)
           for i in range(colCount - vColCount):
                col = COLs[i + vColCount]
                if col.model.meshPtr > 0 and col.model.meshPtr not in cmeshes:

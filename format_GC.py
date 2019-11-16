@@ -337,6 +337,9 @@ class PolyVert:
     def __eq__(self, other):
         return self.posID == other.posID and self.nrmID == other.nrmID and self.vcID == other.vcID and self.uvID == other.uvID
 
+    def __str__(self):
+        return "(" + str(self.posID).zfill(3) + ", " + str(self.nrmID).zfill(3) + ", " + str(self.vcID).zfill(3) + ", " + str(self.uvID).zfill(3) + ")"
+
 class Geometry:
     """Holds a single polygon data set"""
 
@@ -376,8 +379,20 @@ class Geometry:
         self.polygonPtr = fileW.tell()
         fileW.setBigEndian(True)
 
+        toWrite = list()
+        triangleList = list()
+
         for l in self.polygons:
             if len(l) == 3:
+                triangleList.extend(l)
+            else:
+                toWrite.append(l)
+
+        if len(triangleList) > 0:
+            toWrite.append(triangleList)
+
+        for l in toWrite:
+            if l is triangleList:
                 fileW.wByte(enums.PrimitiveType.Triangles.value)
             else:
                 fileW.wByte(enums.PrimitiveType.TriangleStrip.value)
@@ -418,7 +433,7 @@ class Geometry:
         fileW.wUInt(self.polygonPtr)
         fileW.wUInt(self.polygonSize)
 
-    def read(fileR: fileHelper.FileReader, address: int):
+    def read(fileR: fileHelper.FileReader, address: int, paramDict: dict):
 
         paramPtr = fileR.rUInt(address)
         paramCount = fileR.rUInt(address + 4)
@@ -426,24 +441,37 @@ class Geometry:
         polySize = fileR.rUInt(address + 12)
 
         # reading parameters
-        params: List[Parameter] = list()
-        idAttr = enums.IndexAttributeFlags.null
         for i in range(paramCount):
             param = Parameter.read(fileR, paramPtr)
-            if isinstance(param, IndexAttributes):
-                idAttr = param.indexAttributes
-            params.append(param)
+            if param.pType == enums.ParameterType.VtxAttrFmt:
+                paramDict[param.vtxType] = param
+            else:
+                paramDict[param.pType] = param
             paramPtr += 8
 
+        idAttr = enums.IndexAttributeFlags.null
+        params: List[Parameter] = paramDict.values()
+        if enums.ParameterType.IndexAttributeFlags in paramDict:
+            idAttr = paramDict[enums.ParameterType.IndexAttributeFlags].indexAttributes
+        else:
+            print("no index attributes found")
+
         #reading polygons
-        tmpAddr = paramPtr
+        tmpAddr = polyPtr
         polygons: List[List[PolyVert]] = list()
         fileR.setBigEndian(True)
-        while tmpAddr - paramPtr < polySize:
+        while tmpAddr - polyPtr < polySize:
+            polyType = fileR.rByte(tmpAddr)
             tmpAddr += 1
+            if polyType == 0:
+                break
+            polyType = enums.PrimitiveType(polyType)
             vCount = fileR.rUShort(tmpAddr)
             tmpAddr += 2
             polys = list()
+            print(polyType, vCount)
+            if vCount == 0:
+                break
             for i in range(vCount):
                 if idAttr & enums.IndexAttributeFlags.Position16BitIndex:
                     pos = fileR.rUShort(tmpAddr)
@@ -480,7 +508,13 @@ class Geometry:
                         tmpAddr += 1
 
                 polys.append(PolyVert(pos, nrm, col, uv))
-            polygons.append(polys)
+
+            if polyType == enums.PrimitiveType.Triangles and vCount > 3:
+                triCount = math.floor(vCount/3)
+                for i in range(triCount):
+                    polygons.append([polys[i*3], polys[i*3 +1], polys[i*3 +2]])
+            else:
+                polygons.append(polys)
         fileR.setBigEndian(False)
 
         return Geometry(params, polygons)
@@ -1067,6 +1101,15 @@ class Attach:
 
     def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
 
+        if address in labels:
+            name: str = labels[address]
+            if name.startswith("gc_"):
+                name = name[3:]
+        else:
+            name = "Attach_" + str(meshID)
+
+        print("\n === reading gc:", name, "===")
+
         # reading vertex attributes
         vertPtr = fileR.rUInt(address)
 
@@ -1084,21 +1127,19 @@ class Attach:
         transparentGeom = list()
 
         tmpAddr = fileR.rUInt(address + 8)
+
+        # the geometries in a mesh can reuse parameters, so we gotta store them
+        params = dict()
+
         for o in range(oMeshCount):
-            opaqueGeom.append(Geometry.read(fileR, tmpAddr))
+            opaqueGeom.append(Geometry.read(fileR, tmpAddr, params))
             tmpAddr += 16
 
         tmpAddr = fileR.rUInt(address + 12)
         for t in range(tMeshCount):
-            transparentGeom.append(Geometry.read(fileR, tmpAddr))
+            transparentGeom.append(Geometry.read(fileR, tmpAddr, params))
             tmpAddr += 16
 
-        if address in labels:
-            name: str = labels[address]
-            if name.startswith("gc_"):
-                name = name[3:]
-        else:
-            name = "Attach_" + str(meshID)
 
         return Attach(name, vertices, opaqueGeom, transparentGeom, None)
 
