@@ -585,8 +585,11 @@ class Vertices:
                     t = fileR.rUInt(dataPtr)
                     t = round((t & 0x3F) * 1.5) | (round(((t & 0xFc0) >> 6) * 1.5) << 8) | (round(((t & 0x3F000) >> 12) * 1.5) << 16) | (round(((t & 0xFC0000) >> 18) * 1.5) << 24)
                     t = common.ColorARGB.fromRGBA(t)
-                elif dataType == enums.DataType.RGBX8 or dataType == enums.DataType.RGBX8 or dataType == enums.DataType.RGB8:
+                elif dataType == enums.DataType.RGBX8 or dataType == enums.DataType.RGB8:
                     t = fileR.rUInt(dataPtr) | 0xFF000000
+                    t = common.ColorARGB.fromRGBA(t)
+                elif dataType == enums.DataType.RGBA8:
+                    t = fileR.rUInt(dataPtr)
                     t = common.ColorARGB.fromRGBA(t)
 
                 values.append(t)
@@ -785,22 +788,18 @@ class Attach:
             parameters = list()
             # vtx attribute parameters come first
             parameters.append(VtxAttrFmt(enums.VertexAttribute.Position))
-            if writeNRM:
-                parameters.append(VtxAttrFmt(enums.VertexAttribute.Normal))
-            if writeVC:
-                parameters.append(VtxAttrFmt(enums.VertexAttribute.Color0))
-            if writeUV:
-                parameters.append(VtxAttrFmt(enums.VertexAttribute.Tex0))
-
-            # ID attributes
             idAttribs = enums.IndexAttributeFlags.HasPosition
             if writeNRM:
+                parameters.append(VtxAttrFmt(enums.VertexAttribute.Normal))
                 idAttribs |= enums.IndexAttributeFlags.HasNormal
             if writeVC:
+                parameters.append(VtxAttrFmt(enums.VertexAttribute.Color0))
                 idAttribs |= enums.IndexAttributeFlags.HasColor
             if writeUV:
+                parameters.append(VtxAttrFmt(enums.VertexAttribute.Tex0))
                 idAttribs |= enums.IndexAttributeFlags.HasUV
 
+            # ID attributes
             for l in s:
                 for p in l:
                     if p.posID > 0xFF:
@@ -1066,42 +1065,42 @@ class Attach:
         fileW.wUShort(len(self.transparentGeom))
         self.bounds.write(fileW)
 
-def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
+    def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
 
-    # reading vertex attributes
-    vertPtr = fileR.rUInt(address)
+        # reading vertex attributes
+        vertPtr = fileR.rUInt(address)
 
-    vertices = list()
-    attrType = enums.VertexAttribute(fileR.rByte(vertPtr))
-    while attrType != enums.VertexAttribute.Null:
-        vertices.append(Vertices.read(fileR, vertPtr))
-        vertPtr += 16
+        vertices = list()
         attrType = enums.VertexAttribute(fileR.rByte(vertPtr))
+        while attrType != enums.VertexAttribute.Null:
+            vertices.append(Vertices.read(fileR, vertPtr))
+            vertPtr += 16
+            attrType = enums.VertexAttribute(fileR.rByte(vertPtr))
 
-    oMeshCount = fileR.rUShort(address + 16)
-    tMeshCount = fileR.rUShort(address + 18)
+        oMeshCount = fileR.rUShort(address + 16)
+        tMeshCount = fileR.rUShort(address + 18)
 
-    opaqueGeom = list()
-    transparentGeom = list()
+        opaqueGeom = list()
+        transparentGeom = list()
 
-    tmpAddr = fileR.rUInt(address + 8)
-    for o in range(oMeshCount):
-        opaqueGeom.append(Geometry.read(fileR, tmpAddr))
-        tmpAddr += 16
+        tmpAddr = fileR.rUInt(address + 8)
+        for o in range(oMeshCount):
+            opaqueGeom.append(Geometry.read(fileR, tmpAddr))
+            tmpAddr += 16
 
-    tmpAddr = fileR.rUInt(address + 12)
-    for t in range(tMeshCount):
-        transparentGeom.append(Geometry.read(fileR, tmpAddr))
-        tmpAddr += 16
+        tmpAddr = fileR.rUInt(address + 12)
+        for t in range(tMeshCount):
+            transparentGeom.append(Geometry.read(fileR, tmpAddr))
+            tmpAddr += 16
 
-    if address in labels:
-        name: str = labels[address]
-        if name.startswith("gc_"):
-            name = name[3:]
-    else:
-        name = "Attach_" + str(meshID)
+        if address in labels:
+            name: str = labels[address]
+            if name.startswith("gc_"):
+                name = name[3:]
+        else:
+            name = "Attach_" + str(meshID)
 
-    return Attach(name, vertices, opaqueGeom, transparentGeom, None)
+        return Attach(name, vertices, opaqueGeom, transparentGeom, None)
 
 def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
 
@@ -1112,7 +1111,7 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
     matDicts: List[dict] = list()
 
     for o in models:
-        if o.meshPtr == 0:
+        if o.meshPtr == 0 or o.meshPtr not in attaches:
             continue
         elif o.meshPtr in meshes:
             o.meshes.append(meshes[o.meshPtr])
@@ -1218,8 +1217,33 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
                     elif p.mtx == enums.TexGenMtx.Identity:
                         tmpMat["gc_texMatrixID"] = 'IDENTITY'
 
+                    #texGenType
+                    if p.typ == enums.TexGenType.Matrix3x4:
+                        tmpMat["gc_texGenType"] = 'MTX3X4'
+                    elif p.typ == enums.TexGenType.Matrix2x4:
+                        tmpMat["gc_texGenType"] = 'MTX2X4'
+                    elif p.typ == enums.TexGenType.Bump0:
+                        tmpMat["gc_texGenType"] = 'BUMP0'
+                    elif p.typ == enums.TexGenType.Bump1:
+                        tmpMat["gc_texGenType"] = 'BUMP1'
+                    elif p.typ == enums.TexGenType.Bump2:
+                        tmpMat["gc_texGenType"] = 'BUMP2'
+                    elif p.typ == enums.TexGenType.Bump3:
+                        tmpMat["gc_texGenType"] = 'BUMP3'
+                    elif p.typ == enums.TexGenType.Bump4:
+                        tmpMat["gc_texGenType"] = 'BUMP4'
+                    elif p.typ == enums.TexGenType.Bump5:
+                        tmpMat["gc_texGenType"] = 'BUMP5'
+                    elif p.typ == enums.TexGenType.Bump6:
+                        tmpMat["gc_texGenType"] = 'BUMP6'
+                    elif p.typ == enums.TexGenType.Bump7:
+                        tmpMat["gc_texGenType"] = 'BUMP7'
+                    elif p.typ == enums.TexGenType.SRTG:
+                        tmpMat["gc_texGenType"] = 'SRTG'
+
+
                     #texGenSrc
-                    if tmpMat["gc_texMatrixID"][0] == 'M': #Matrix
+                    if tmpMat["gc_texGenType"][0] == 'M': #Matrix
                         if p.src == enums.TexGenSrc.Position:
                             tmpMat["gc_texGenSourceMtx"] = 'POSITION'
                         elif p.src == enums.TexGenSrc.Normal:
@@ -1245,8 +1269,8 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
                         elif p.src == enums.TexGenSrc.Tex7:
                             tmpMat["gc_texGenSourceMtx"] = 'TEX7'
                         else:
-                            print("Not valid mtx + src combination:", p.mtx, p.src)
-                    elif tmpMat["gc_texMatrixID"][0] == 'B': #Bump
+                            print("Not valid mtx + src combination:", p.typ, p.src)
+                    elif tmpMat["gc_texGenType"][0] == 'B': #Bump
                         if p.src == enums.TexGenSrc.TexCoord0:
                             tmpMat["gc_texGenSourceBmp"] = 'TEXCOORD0'
                         elif p.src == enums.TexGenSrc.TexCoord1:
@@ -1262,38 +1286,14 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
                         elif p.src == enums.TexGenSrc.TexCoord6:
                             tmpMat["gc_texGenSourceBmp"] = 'TEXCOORD6'
                         else:
-                            print("Not valid mtx + src combination:", p.mtx, p.src)
+                            print("Not valid mtx + src combination:", p.typ, p.src)
                     else: #SRTG
                         if p.src == enums.TexGenSrc.Color0:
                             tmpMat["gc_texGenSourceSRTG"] = 'COLOR0'
                         elif p.src == enums.TexGenSrc.Color0:
                             tmpMat["gc_texGenSourceSRTG"] = 'COLOR1'
                         else:
-                            print("Not valid mtx + src combination:", p.mtx, p.src)
-
-                    #texGenType
-                    if p.typ == enums.TexGenType.Matrix3x4:
-                        tmpMat["gc_texGenType"] = 'MTX3X4'
-                    elif p.typ == enums.TexGenType.Matrix2x4:
-                        tmpMat["gc_texGenType"] = 'MTX2X4'
-                    elif p.typ == enums.TexGenType.Bump0:
-                        tmpMat["gc_texGenType"] = 'BUMP0'
-                    elif p.typ == enums.TexGenType.Bump1:
-                        tmpMat["gc_texGenType"] = 'BUMP1'
-                    elif p.typ == enums.TexGenType.Bump2:
-                        tmpMat["gc_texGenType"] = 'BUMP2'
-                    elif p.typ == enums.TexGenType.Bump3:
-                        tmpMat["gc_texGenType"] = 'BUMP3'
-                    elif p.typ == enums.TexGenType.Bump4:
-                        tmpMat["gc_texGenType"] = 'BUMP4'
-                    elif p.typ == enums.TexGenType.Bump5:
-                        tmpMat["gc_texGenType"] = 'BUMP5'
-                    elif p.typ == enums.TexGenType.Bump6:
-                        tmpMat["gc_texGenType"] = 'BUMP6'
-                    elif p.typ == enums.TexGenType.Bump7:
-                        tmpMat["gc_texGenType"] = 'BUMP7'
-                    elif p.typ == enums.TexGenType.SRTG:
-                        tmpMat["gc_texGenType"] = 'SRTG'
+                            print("Not valid mtx + src combination:", p.typ, p.src)
 
                     #texCoordID
                     if p.texID == enums.TexCoordID.TexCoord0:
@@ -1324,8 +1324,8 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
                     tmpMat["b_TextureID"] = p.texID
                     tmpMat["b_clampU"] = not (p.tilemode & enums.TileMode.WrapU)
                     tmpMat["b_clampV"] = not (p.tilemode & enums.TileMode.WrapV)
-                    tmpMat["b_mirrorU"] = not (p.tilemode & enums.TileMode.MirrorU)
-                    tmpMat["b_mirrorV"] = not (p.tilemode & enums.TileMode.MirrorV)
+                    tmpMat["b_mirrorU"] = bool(p.tilemode & enums.TileMode.MirrorU)
+                    tmpMat["b_mirrorV"] = bool(p.tilemode & enums.TileMode.MirrorV)
 
             material = None
 
@@ -1355,10 +1355,15 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
         bm = bmesh.new()
         bm.from_mesh(mesh)
 
-        for vn in vertPairs.keys():
+        normals = list()
+
+        for vn in vertPairs:
             v = pos[vn[0]]
             v = bm.verts.new((v.x, -v.z, v.y))
             vertPairs[vn] = v
+            if nrm is not None:
+                normals.append(nrm[vn[1]])
+
         bm.verts.ensure_lookup_table()
         bm.verts.index_update()
 
@@ -1371,6 +1376,7 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
 
         for matIndex, g in enumerate(geom):
             for p in g.polygons:
+                rev = True
                 for i in range(len(p) - 2):
 
                     polyVerts: List[PolyVert] = list()
@@ -1380,6 +1386,10 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
                         pVert.uvID
                         polyVerts.append(pVert)
                         verts.append(vertPairs[(pVert.posID, pVert.nrmID)])
+                    if rev:
+                        verts = [verts[1], verts[0], verts[2]]
+                        polyVerts = [polyVerts[1], polyVerts[0], polyVerts[2]]
+                    rev = not rev
                     if len(set(verts)) < 3:
                         continue
 
@@ -1401,23 +1411,24 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
                     face.smooth = True
                     face.material_index = geomMaterials[matIndex]
 
-        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-
         bm.to_mesh(mesh)
         bm.clear()
 
         if nrm is not None:
-            normals = [mathutils.Vector((nrm[vn[1]].x, -nrm[vn[1]].z, nrm[vn[1]].y)).normalized() for vn in vertPairs]
+            normals = [mathutils.Vector((n.x, -n.z, n.y)).normalized() for n in normals]
 
             mesh.create_normals_split()
             split_normal = [normals[l.vertex_index] for l in mesh.loops]
             mesh.normals_split_custom_set(split_normal)
+
         mesh.use_auto_smooth = True
         mesh.auto_smooth_angle = 180
 
         # dont ask me why, but blender likes to add sharp edges- we dont need those at all in this case
         for e in mesh.edges:
             e.use_edge_sharp = False
+
+        mesh.saSettings.sa2ExportType = 'VC' if col is not None else 'NRM'
 
         o.meshes.append(mesh)
         meshes[o.meshPtr] = mesh

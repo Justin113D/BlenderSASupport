@@ -59,6 +59,9 @@ class SA1SurfaceFlags(Flag):
     Footprints = 0x100000
     Visible = 0x80000000
 
+    collision = Solid | Water | NoFriction | NoAcceleration | CannotLand | IncreasedAcceleration | Diggable | Unclimbable | Hurt | Footprints
+    known = Solid | Water | NoFriction | NoAcceleration | CannotLand | IncreasedAcceleration | Diggable | Unclimbable | Hurt | Footprints |Visible
+
 class SA2SurfaceFlags(Flag):
     """Surface interaction Flags for SA2 landtable COL"""
     null = 0x00
@@ -76,6 +79,9 @@ class SA2SurfaceFlags(Flag):
     Unknown29 = 0x20000000
     Unknown30 = 0x40000000
     Visible = 0x80000000
+
+    collision = Solid | Water | StandOnSlope | Diggable | Unclimbable | Hurt | CannotLand | Water2 | Unknown24 | Unknown29 | Unknown30
+    known = Solid | Water | StandOnSlope | Diggable | Unclimbable | Hurt | CannotLand | Water2 | NoShadows | noFog | Unknown24 | Unknown29 | Unknown30 | Visible
 
 # GC format Enums and Flags
 

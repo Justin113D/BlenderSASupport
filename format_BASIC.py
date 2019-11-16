@@ -333,9 +333,10 @@ class MeshSet:
         for p in range(polyCount):
             vCount = 3
             if polyType == enums.PolyType.Strips:
-                vCount = fileR.rShort(polyPtr)
-                rev = vCount < 0
+                vCount = fileR.rUShort(polyPtr)
+                rev = bool(vCount & 0x8000)
                 reverse.append(rev)
+                vCount = vCount & 0x7FFF
                 if rev:
                     vCount = abs(vCount)
                 polyPtr += 2
@@ -606,7 +607,7 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
     matDicts: List[dict] = list()
 
     for o in models:
-        if o.meshPtr == 0:
+        if o.meshPtr == 0 or o.meshPtr not in attaches:
             continue
         elif o.meshPtr in meshes:
             o.meshes.append(meshes[o.meshPtr])

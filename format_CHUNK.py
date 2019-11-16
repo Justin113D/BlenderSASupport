@@ -1084,15 +1084,18 @@ class processedAttach:
         else:
             return self.attachName
 
-def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> List[processedAttach]:
+def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> Dict[int, processedAttach]:
 
     vertexBuffer: List[BufferedVertex] = [BufferedVertex() for v in range(0x7FFF)]
     polyCaches: List[List[PolyChunk]] = [[] for i in range(16)] # lets hope nothing uses 17 caches
 
-    pAttaches = list()
+    pAttaches: Dict[int, processedAttach] = dict()
 
+    # we are iterating through the models, and not the attaches, as the attach order needs to be kept
     for o in models:
-        if o.meshPtr == 0:
+        if o.meshPtr == 0 or o.meshPtr not in attaches:
+            continue
+        if o.meshPtr in pAttaches:
             continue
         attach = attaches[o.meshPtr]
         if DO:
@@ -1164,15 +1167,17 @@ def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> List
                                 if not hasColor and vert.hasColor():
                                     hasColor = True
 
-            pAttaches.append(processedAttach(len(pAttaches), attach.name, [BufferedVertex(v.vertices.copy()) for v in vertices], vertexIndices, polyChunks, hasColor))
+            pAttaches[o.meshPtr] = processedAttach(len(pAttaches), attach.name, [BufferedVertex(v.vertices.copy()) for v in vertices], vertexIndices, polyChunks, hasColor)
 
     return pAttaches
 
-def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model):
+def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAttach], armatureRoot: common.Model):
 
     import bmesh
 
     tmpMat = common.getDefaultMatDict()
+
+    meshes: Dict[int, bpy.types.Mesh] = dict()
 
     materials: List[bpy.types.Material] = list()
     matDicts: List[dict] = list()
@@ -1180,7 +1185,15 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
     isArmature = armatureRoot != None
     armatureMatrix = armatureRoot.matrix_world if isArmature else None
 
-    for a in attaches:
+    for o in models:
+        if o.meshPtr == 0 or o.meshPtr not in attaches:
+            continue
+        if o.meshPtr in meshes:
+            o.meshes.append(meshes[o.meshPtr])
+            continue
+
+        a = attaches[o.meshPtr]
+
         # getting distinct vertices, so that we can weld them and prevent doubles
         if isArmature:
             # removing double vertices kinda causes trouble...
@@ -1422,4 +1435,5 @@ def ProcessChunkData(attaches: List[processedAttach], armatureRoot: common.Model
 
             armatureRoot.meshes.append(meshOBJ)
         else:
-            a.affectedBy[0].meshes.append(mesh)
+            o.meshes.append(mesh)
+            meshes[o.meshPtr] = mesh

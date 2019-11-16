@@ -238,7 +238,6 @@ class ModelData:
     """A class that holds all necessary data to export an Object/COL"""
 
     name: str
-    fmt: str
 
     origObject: bpy.types.Object # used for exporting the meshes in correct formats
     processedMesh: bpy.types.Mesh # the triangulated mesh
@@ -271,9 +270,11 @@ class ModelData:
              hierarchyDepth: int,
              name: str,
              global_matrix: mathutils.Matrix,
-             fmt: str = '',
              collision: bool = False,
              visible: bool = False):
+
+        if global_matrix == None:
+            return
 
         self.name = name
         self.hierarchyDepth = hierarchyDepth
@@ -282,8 +283,6 @@ class ModelData:
         else:
             self.partOfArmature = False
         if bObject is not None and bObject.type == 'MESH':
-            self.fmt = fmt
-
             self.bounds = BoundingBox(bObject.data.vertices)
             self.bounds.boundCenter = Vector3(global_matrix @ (self.bounds.boundCenter + bObject.location))
             self.bounds.radius *= global_matrix.to_scale()[0]
@@ -470,18 +469,7 @@ class ModelData:
         if self.meshPtr == 0:
             return
 
-        name = self.name
-
-        numberCount = 0
-        while name[numberCount].isdigit():
-            numberCount += 1
-
-        if name[numberCount] == '_':
-            name = name[numberCount + 1:]
-        else:
-            name = name[numberCount:]
-
-        labels[fileW.tell()] = self.name
+        #labels[fileW.tell()] = self.name
 
         if SA2:
             self.bounds.write(fileW)
@@ -831,7 +819,7 @@ def convertObjectData(context: bpy.types.Context,
     hierarchyDepth = 0
     if not lvl:
         if len(noParents) > 1:
-            parent = ModelData(None, None, 0, "root", export_matrix, fmt, False, False)
+            parent = ModelData(None, None, 0, "root", export_matrix, False, False)
             modelData.append(parent)
             hierarchyDepth = 1
 
@@ -927,26 +915,18 @@ def sortChildren(cObject: bpy.types.Object,
     lastSibling = None
     if cObject.type == 'MESH':
         if lvl and fmt != 'SA1' and cObject.saSettings.isCollision and cObject.saSettings.isVisible:
-            model = ModelData(cObject, parent, hierarchyDepth, "vsl_" + cObject.name, export_matrix, 'cnk' if fmt == "SA2" else 'gc', False, True)
+            model = ModelData(cObject, parent, hierarchyDepth, "vsl_" + cObject.name, export_matrix, False, True)
             # collision
             lastSibling = ModelData(cObject, model, hierarchyDepth, "cls_" + cObject.name, export_matrix, 'bsc', True, False)
         else:
-            if fmt == 'SA1' or cObject.saSettings.isCollision and lvl:
-                meshTag = 'bsc' # BASIC is used by all sa1 models and sa2 collisions
-            elif fmt == 'SA2':
-                meshTag = 'cnk' # sa2 format is CHUNK
-            else: # SA2B
-                meshTag = 'gc' # sa2b format is GC
-
             visible = True if not cObject.saSettings.isCollision else cObject.saSettings.isVisible
-
-            model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, meshTag, cObject.saSettings.isCollision, visible)
+            model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, cObject.saSettings.isCollision, visible)
     elif fmt == 'SA2' and not lvl and cObject.type == 'ARMATURE':
         visible = True if not cObject.saSettings.isCollision else cObject.saSettings.isVisible
         model = Armature(cObject, parent, hierarchyDepth, cObject.name, export_matrix, "cnk", cObject.saSettings.isCollision, visible)
     else:
         # everything that is not a mesh should be written as an empty
-        model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, fmt, False, False)
+        model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, False, False)
 
     result.append(model)
 
@@ -1269,7 +1249,7 @@ class Model:
         print("    rotation:", "(", str(rot.x) + ",", str(rot.y) + ",", str(rot.z), ")")
         print("    scale:", str(Vector3(self.matrix_local.to_scale())))
 
-def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int, parent, labels: dict, result: list) -> int:
+def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int, parent, labels: dict, result: list) -> Model:
 
     if address in labels:
         label: str = labels[address]
@@ -1299,7 +1279,8 @@ def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int,
         matrix_world = matrix_local.copy()
 
     model = Model(name, objFlags, meshPtr, matrix_world, matrix_local, parent)
-    result.append(model)
+    if result is not None:
+        result.append(model)
 
     childPtr = fileR.rUInt(address + 44)
     if childPtr > 0:
@@ -1312,6 +1293,99 @@ def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int,
         model.sibling = sibling
 
     return model
+
+class Col:
+    saProps: dict
+
+    unknown1: int # sa1 COL
+    unknown2: int # both COL
+    unknown3: int # both COL
+
+    model: Model
+
+    def __init__(self,
+                 unknown1: int,
+                 unknown2: int,
+                 unknown3: int,
+                 saProps: dict,
+                 model: Model):
+        self.unknown1 = unknown1
+        self.unknown2 = unknown2
+        self.unknown3 = unknown3
+        self.saProps = saProps
+        self.model = model
+
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, address: int, labels: dict, SA2: bool):
+
+        address += 16
+        from . import __init__
+        from .__init__ import SAObjectSettings
+        saProps = SAObjectSettings.defaultDict()
+
+        if SA2:
+            objectPtr = fileR.rUInt(address)
+            unknown1 = 0
+            unknown2 = fileR.rInt(address + 4)
+            unknown3 = fileR.rInt(address + 8)
+            f = fileR.rUInt(address+12)
+
+            from .enums import SA2SurfaceFlags
+            saProps["isCollision"] = bool((f & ~SA2SurfaceFlags.collision.value) & 0xFFFFFFFF)
+            saProps["solid"] = bool(f & SA2SurfaceFlags.Solid.value)
+            saProps["water"] = bool(f & SA2SurfaceFlags.Water.value)
+            saProps["cannotLand"] = bool(f & SA2SurfaceFlags.CannotLand.value)
+            saProps["diggable"] = bool(f & SA2SurfaceFlags.Diggable.value)
+            saProps["unclimbable"] = bool(f & SA2SurfaceFlags.Unclimbable.value)
+            saProps["hurt"] = bool(f & SA2SurfaceFlags.Hurt.value)
+            saProps["isVisible"] = bool(f & SA2SurfaceFlags.Visible.value)
+
+            saProps["standOnSlope"] = bool(f & SA2SurfaceFlags.StandOnSlope.value)
+            saProps["water2"] = bool(f & SA2SurfaceFlags.Water2.value)
+            saProps["noShadows"] = bool(f & SA2SurfaceFlags.NoShadows.value)
+            saProps["noFog"] = bool(f & SA2SurfaceFlags.noFog.value)
+            saProps["unknown24"] = bool(f & SA2SurfaceFlags.Unknown24.value)
+            saProps["unknown29"] = bool(f & SA2SurfaceFlags.Unknown29.value)
+            saProps["unknown30"] = bool(f & SA2SurfaceFlags.Unknown30.value)
+
+            saProps["userFlags"] = hex4((f & ~SA2SurfaceFlags.known.value) & 0xFFFFFFFF )
+        else:
+            objectPtr = fileR.rUInt(address + 8)
+            unknown1 = fileR.rInt(address)
+            unknown2 = fileR.rInt(address + 4)
+            unknown3 = fileR.rInt(address + 12)
+            f = enums.SA1SurfaceFlags(fileR.rUInt(address+16))
+            from .enums import SA1SurfaceFlags
+
+            saProps["isCollision"] =  bool((f.value & ~SA1SurfaceFlags.collision) & 0xFFFFFFFF)
+            saProps["solid"] = bool(f & SA1SurfaceFlags.Solid.value)
+            saProps["water"] = bool(f & SA1SurfaceFlags.Water.value)
+            saProps["cannotLand"] = bool(f & SA1SurfaceFlags.CannotLand.value)
+            saProps["diggable"] = bool(f & SA1SurfaceFlags.Diggable.value)
+            saProps["unclimbable"] = bool(f & SA1SurfaceFlags.Unclimbable.value)
+            saProps["hurt"] = bool(f & SA1SurfaceFlags.Hurt.value)
+            saProps["isVisible"] = bool(f & SA1SurfaceFlags.Visible.value)
+
+            saProps["noFriction"] = bool(f & SA1SurfaceFlags.NoFriction.value)
+            saProps["noAcceleration"] = bool(f & SA1SurfaceFlags.NoAcceleration.value)
+            saProps["increasedAcceleration"] = bool(f & SA1SurfaceFlags.IncreasedAcceleration.value)
+            saProps["footprints"] = bool(f & SA1SurfaceFlags.Footprints.value)
+
+            saProps["userFlags"] = hex4((f & ~SA1SurfaceFlags.known.value) & 0xFFFFFFFF )
+
+        model = readObjects(fileR, objectPtr, 0, None, labels, None)
+
+        return Col(unknown1, unknown2, unknown3, saProps, model)
+
+    def toBlenderObject(self) -> bpy.types.Object:
+
+        data = None if len(self.model.meshes) < 1 else self.model.meshes[0]
+        obj = bpy.data.objects.new(self.model.name, data)
+        obj.matrix_world = self.model.matrix_world
+        obj.saSettings.fromDictionary(self.saProps)
+
+        return obj
+
 
 def getDefaultMatDict() -> dict:
     d = dict()

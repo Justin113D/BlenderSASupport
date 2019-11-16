@@ -425,7 +425,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
 class ImportMDL(bpy.types.Operator, ImportHelper):
     """Imports any adventure mdl file"""
     bl_idname = "import_scene.mdl"
-    bl_label = "Adv model (.*mdl)"
+    bl_label = "Sonic Adv. model (.*mdl)"
     bl_options = {'PRESET', 'UNDO'}
 
     filter_glob: StringProperty(
@@ -443,6 +443,29 @@ class ImportMDL(bpy.types.Operator, ImportHelper):
         from . import file_MDL
 
         return file_MDL.read(context, self.filepath, self.console_debug_output)
+
+class ImportLVL(bpy.types.Operator, ImportHelper):
+    """Imports any adventure mdl file"""
+    bl_idname = "import_scene.lvl"
+    bl_label = "Sonic Adv. level (.*lvl)"
+    bl_options = {'PRESET', 'UNDO'}
+
+    filter_glob: StringProperty(
+        default="*.sa1lvl;*.sa2lvl;*.sa2blvl;",
+        options={'HIDDEN'},
+        )
+
+    console_debug_output: BoolProperty(
+            name = "Console Output",
+            description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
+            default = False,
+            )
+
+    def execute(self, context):
+        from . import file_LVL
+
+        return file_LVL.read(context, self.filepath, self.console_debug_output)
+
 
 # operators
 class StrippifyTest(bpy.types.Operator):
@@ -902,6 +925,33 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         default=False
         )
 
+    @classmethod
+    def defaultDict(cls) -> dict:
+        d = dict()
+        d["isCollision"] = False
+        d["solid"] = False
+        d["water"] = False
+        d["cannotLand"] = False
+        d["diggable"] = False
+        d["unclimbable"] = False
+        d["hurt"] = False
+        d["isVisible"] = False
+        d["userFlags"] = common.hex4(0)
+
+        d["standOnSlope"] = False
+        d["water2"] = False
+        d["noShadows"] = False
+        d["noFog"] = False
+        d["unknown24"] = False
+        d["unknown29"] = False
+        d["unknown30"] = False
+
+        d["noFriction"] = False
+        d["noAcceleration"] = False
+        d["increasedAcceleration"] = False
+        d["footprints"] = False
+        return d
+
     def toDictionary(self) -> dict:
         d = dict()
         d["isCollision"] = self.isCollision
@@ -928,6 +978,30 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         d["footprints"] = self.footprints
 
         return d
+
+    def fromDictionary(self, d: dict):
+        self.isCollision = d["isCollision"]
+        self.solid = d["solid"]
+        self.water = d["water"]
+        self.cannotLand = d["cannotLand"]
+        self.diggable = d["diggable"]
+        self.unclimbable = d["unclimbable"]
+        self.hurt = d["hurt"]
+        self.isVisible = d["isVisible"]
+        self.userFlags = d["userFlags"]
+
+        self.standOnSlope = d["standOnSlope"]
+        self.water2 = d["water2"]
+        self.noShadows = d["noShadows"]
+        self.noFog = d["noFog"]
+        self.unknown24 = d["unknown24"]
+        self.unknown29 = d["unknown29"]
+        self.unknown30 = d["unknown30"]
+
+        self.noFriction = d["noFriction"]
+        self.noAcceleration = d["noAcceleration"]
+        self.increasedAcceleration = d["increasedAcceleration"]
+        self.footprints = d["footprints"]
 
 class SASettings(bpy.types.PropertyGroup):
     """Information global to the scene"""
@@ -1763,7 +1837,8 @@ def menu_func_exportsa(self, context):
     self.layout.menu("TOPBAR_MT_SA_export")
 
 def menu_func_importsa(self, context):
-    self.layout.operator("import_scene.mdl")
+    self.layout.operator(ImportMDL.bl_idname)
+    self.layout.operator(ImportLVL.bl_idname)
 
 classes = (
     TOPBAR_MT_SA_export,
@@ -1774,6 +1849,7 @@ classes = (
     ExportSA2LVL,
     ExportSA2BLVL,
     ImportMDL,
+    ImportLVL,
 
     StrippifyTest,
     ArmatureFromObjects,

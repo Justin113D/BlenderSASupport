@@ -1,6 +1,8 @@
 import bpy
 import os
 import mathutils
+
+from typing import List, Dict
 from . import fileHelper, enums, common, format_BASIC, format_GC, format_CHUNK, __init__
 
 DO = False # Debug out
@@ -76,21 +78,24 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
 
                     if cnkType == enums.Chunktypes.Label: # labels
                          while fileR.rLong(tmpAddr) != -1:
-                         labels[fileR.rUInt(tmpAddr)] = fileR.rString(cnkBase + fileR.rUInt(tmpAddr + 4))
-                         tmpAddr += 8
+                              labels[fileR.rUInt(tmpAddr)] = fileR.rString(cnkBase + fileR.rUInt(tmpAddr + 4))
+                              tmpAddr += 8
                     elif cnkType == enums.Chunktypes.Author: # Author name
                          context.scene.saSettings.author = fileR.rString(tmpAddr)
                     elif cnkType == enums.Chunktypes.Description: # File description
                          context.scene.saSettings.description = fileR.rString(tmpAddr)
+                    elif cnkType == enums.Chunktypes.Animation and DO: # Animation
+                         print("Animation metadata found")
+                    elif cnkType == enums.Chunktypes.Morph and DO: # Morph
+                         print("Morph metadata found")
                     elif cnkType == enums.Chunktypes.Tool and DO: # Tool
                          print("Tool metadata found")
                     elif cnkType == enums.Chunktypes.Texture and DO: # texture
                          print("Texture metadata found")
                     elif cnkType == enums.Chunktypes.End: # end
                          finished = True
-                    else: # everything else
-                         if DO:
-                         print("invalid Chunk type:", cnkType.value)
+                    elif DO:
+                              print("invalid Chunk type:", cnkType.value)
 
                     tmpAddr = cnkNext
 
@@ -108,6 +113,99 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
           print(" == Reading Models ==")
 
      # get landtable data
+     tmpAddr = fileR.rUInt(8)
+
+     if file_format == 'SA1':
+          colCount = fileR.rUShort(tmpAddr)
+          animCount = fileR.rUShort(tmpAddr + 2)
+          flags = fileR.rUInt(tmpAddr + 4)
+          context.scene.saSettings.drawDistance = fileR.rFloat(tmpAddr + 8)
+          colPtr = fileR.rUInt(tmpAddr + 12)
+          animPtr = fileR.rUInt(tmpAddr + 16)
+          context.scene.saSettings.texFileName = fileR.rString(fileR.rUInt(tmpAddr + 20))
+          context.scene.saSettings.texListPointer = hex8(fileR.rUInt(tmpAddr + 24))
+          unknown2 = fileR.rUInt(tmpAddr + 28)
+          unknown3 = fileR.rUInt(tmpAddr + 32)
+     else:
+          colCount = fileR.rUShort(tmpAddr)
+          vColCount = fileR.rUShort(tmpAddr + 2)
+          context.scene.saSettings.drawDistance = fileR.rFloat(tmpAddr + 12)
+          colPtr = fileR.rUInt(tmpAddr + 16)
+          animPtr = fileR.rUInt(tmpAddr + 20)
+          context.scene.saSettings.texFileName = fileR.rString(fileR.rUInt(tmpAddr + 24))
+          context.scene.saSettings.texListPointer = hex8(fileR.rUInt(tmpAddr + 28))
+
+     # create collections
+     cName = os.path.splitext(os.path.basename(filepath))[0]
+     collection = bpy.data.collections.new("Import_" + cName)
+     context.scene.collection.children.link(collection)
+
+     vCollection = bpy.data.collections.new(cName + "_Visual")
+     collection.children.link(vCollection)
+
+     cCollection = bpy.data.collections.new(cName + "_Collision")
+     collection.children.link(cCollection)
+
+     # read cols
+     COLs: List[common.Col] = list()
+
+     colSize = 36 if file_format == 'SA1' else 32
+     tmpAddr = colPtr
+     isSA2 = file_format != 'SA1'
+     for i in range(colCount):
+          COLs.append(common.Col.read(fileR, tmpAddr, labels, isSA2))
+          tmpAddr += colSize
+
+
+
+     if file_format == 'SA1':
+          meshes = dict()
+
+          for i in range(ColCount):
+               if COLs[i].model.meshPtr > 0 and COLs[i].model.meshPtr not in meshes:
+                    meshes[COLs[i].model.meshPtr] = format_BASIC.Attach.read(fileR, COLs[i].model.meshPtr, i, labels)
+
+          format_BASIC.process_BASIC([c.model for c in COLs], meshes)
+
+          for c in COLs:
+               obj = c.toBlenderObject()
+               if c.saProps["isCollision"]:
+                    cCollection.objects.link(obj)
+                    if c.saProps["isVisible"]:
+                         vCollection.objects.link(obj)
+               else:
+                    vCollection.objects.link(obj)
+
+     else:
+          vmeshes = dict()
+          cmeshes = dict()
+
+          for i in range(vColCount):
+               if COLs[i].model.meshPtr > 0 and COLs[i].model.meshPtr not in vmeshes:
+                    if file_format == 'SA2':
+                         vmeshes[COLs[i].model.meshPtr] = format_CHUNK.Attach.read(fileR, COLs[i].model.meshPtr, i, labels)
+                    else:
+                         vmeshes[COLs[i].model.meshPtr] = format_GC.Attach.read(fileR, COLs[i].model.meshPtr, i, labels)
+          for i in range(colCount - vColCount):
+               col = COLs[i + vColCount]
+               if col.model.meshPtr > 0 and col.model.meshPtr not in cmeshes:
+                    cmeshes[col.model.meshPtr] = format_BASIC.Attach.read(fileR, col.model.meshPtr, vColCount + i, labels)
+
+          if file_format == 'SA2':
+               processedAttaches = format_CHUNK.OrderChunks([c.model for c in COLs], vmeshes)
+               format_CHUNK.ProcessChunkData([c.model for c in COLs], processedAttaches, None)
+          else: # sa2b
+               format_GC.process_GC([c.model for c in COLs], vmeshes)
+          format_BASIC.process_BASIC([c.model for c in COLs], cmeshes)
+
+          for i, c in enumerate(COLs):
+               obj = c.toBlenderObject()
+               if i < vColCount:
+                    vCollection.objects.link(obj)
+               else:
+                    cCollection.objects.link(obj)
+
+     return {'FINISHED'}
 
 
 

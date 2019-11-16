@@ -167,7 +167,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
          elif file_format == 'SA1':
             attaches[o.meshPtr] = format_BASIC.Attach.read(fileR, o.meshPtr, len(attaches), labels)
          elif file_format == 'SA2B':
-            attaches[o.meshPtr] = format_GC.read(fileR, o.meshPtr, len(attaches), labels)
+            attaches[o.meshPtr] = format_GC.Attach.read(fileR, o.meshPtr, len(attaches), labels)
 
 
    isArmature = False
@@ -176,14 +176,14 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
 
       processedAttaches = format_CHUNK.OrderChunks(objects, attaches)
 
-      for a in processedAttaches:
+      for a in processedAttaches.values():
          if len(a.affectedBy) > 1:
             isArmature = True
             break
       root = None
       if isArmature:
          root = objects[0]
-      format_CHUNK.ProcessChunkData(processedAttaches, root)
+      format_CHUNK.ProcessChunkData(objects, processedAttaches, root)
    elif file_format == 'SA1':
       format_BASIC.process_BASIC(objects, attaches)
    elif file_format == 'SA2B':
