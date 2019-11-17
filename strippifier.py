@@ -6,6 +6,8 @@
 from collections import Counter
 from typing import List
 
+raiseTopoErrorG = True
+
 class TopologyError(Exception):
 
     def __init__(self, message):
@@ -66,16 +68,18 @@ class Triangle:
         if None in self.edges:
             self.edges = None
 
-    def addEdge(self, v1, v2, edges):
+    def addEdge(self, v1: Vertex, v2: Vertex, edges: List[Edge]):
         e = v1.isConnectedWith(v2)
         if e is None:
             e = v1.connect(v2)
             e.triangles.append(self)
             self.edges.append(e)
+            edges.append(e)
         else: # if edge existed before, then it has to have a triangle attached to it
-            self.neighbours.append(e.triangles[0])
-            e.triangles[0].neighbours.append(self)
-            e.setTriangle(self)
+            if raiseTopoErrorG and len(e.triangles) > 1:
+                    raise TopologyError("Some Edge has more than 2 faces! cant strippify!")
+            else:
+                e.addTriangle(self)
 
         return e
 
@@ -170,18 +174,12 @@ class Triangle:
         #print(e is None)
         #getting the other triangle
         t = None
-        if e.triangles[0] is self:
-            if len(e.triangles) == 1:
-                return None
-            else:
-                t = e.triangles[1]
-        else:
-            t = e.triangles[0]
+        for tri in e.triangles:
+            if tri is not self and not tri.used:
+                t = tri
+                break
 
-        if t.used:
-            return None
-        else:
-            return t
+        return t
 
     def __str__(self):
         return str(self.index) + ": " + str(self.used) + ", " + "(" + str(self.vertices[0]) + ", " + str(self.vertices[1]) + ", " + str(self.vertices[2]) +")"
@@ -195,12 +193,15 @@ class Edge:
         self.vertices = [vertex1, vertex2]
         self.triangles = list()
 
-    def setTriangle(self, triangle):
-        """Sets a triangle to be part of the adjacency"""
-        if len(self.triangles) < 2:
+    def addTriangle(self, triangle: Triangle):
+        if triangle not in self.triangles:
+            for t in self.triangles:
+                t.neighbours.append(triangle)
+                triangle.neighbours.append(t)
             self.triangles.append(triangle)
         else:
-            raise TopologyError("Some Edge has more than 2 faces! cant strippify!")
+            print("Triangle already in edge")
+
 
     def __str__(self):
         return str(self.vertices[0]) + ", " + str(self.vertices[1])
@@ -319,12 +320,15 @@ class Strippifier:
                     return
                 self.indexC2 = 0
 
-    def Strippify(self, indexList, doSwaps = False, concat = False):
+    def Strippify(self, indexList, doSwaps = False, concat = False, raiseTopoError = False):
         """creates a triangle strip from a triangle list.
 
         If concat is True, all strips will be combined into one.
 
         If its False, it will return an array of strips"""
+        global raiseTopoErrorG
+        raiseTopoErrorG = raiseTopoError
+
         self.strips = list()
 
         # reading the index data into a mesh
@@ -473,6 +477,7 @@ class Strippifier:
                     result.extend(self.strips[i])
                     result.append(result[-1])
                 del result[-1]
+            result = [result]
         else: # or we just return as is
             result = self.strips
 

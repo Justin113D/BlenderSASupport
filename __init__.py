@@ -493,6 +493,12 @@ class StrippifyTest(bpy.types.Operator):
         default = False
         )
 
+    raiseTopoError: BoolProperty(
+        name = "Raise Topo Error",
+        description = "Raise Topo Error if any occur",
+        default = False
+        )
+
     def invoke(self, context, event):
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
@@ -535,34 +541,27 @@ class StrippifyTest(bpy.types.Operator):
         # strippifying it
         from . import strippifier
         stripf = strippifier.Strippifier()
-        indexStrips = stripf.Strippify(indexList, doSwaps = self.doSwaps, concat = self.doConcat)
+        try:
+            indexStrips = stripf.Strippify(indexList, doSwaps = self.doSwaps, concat = self.doConcat, raiseTopoError=self.raiseTopoError)
+        except strippifier.TopologyError as e:
+            self.report({'WARNING'}, "Export stopped!\n" + str(e))
+            return {'CANCELLED'}
 
-        if not self.doConcat:
-            empty = bpy.data.objects.new(obj.data.name + "_str", None)
-            context.collection.objects.link(empty)
-            for i, s in enumerate(indexStrips):
-                # making them lists so blender can use them
-                indexList = list()
-                for j in range(0, len(s)-2):
-                    p = [s[j], s[j+1], s[j+2]]
-                    indexList.append(p)
 
-                mesh = bpy.data.meshes.new(name = obj.data.name + "_str_" + str(i))
-                mesh.from_pydata(verts, [], indexList)
-                meObj = bpy.data.objects.new(mesh.name, object_data = mesh)
-                context.collection.objects.link(meObj)
-                meObj.parent = empty
-        else:
+        empty = bpy.data.objects.new(obj.data.name + "_str", None)
+        context.collection.objects.link(empty)
+        for i, s in enumerate(indexStrips):
+            # making them lists so blender can use them
             indexList = list()
-            for i in range(0, len(indexStrips) - 2):
-                p = [indexStrips[i], indexStrips[i+1], indexStrips[i+2]]
-                if len(set(p)) == 3:
-                    indexList.append(p)
+            for j in range(0, len(s)-2):
+                p = [s[j], s[j+1], s[j+2]]
+                indexList.append(p)
 
-            mesh = bpy.data.meshes.new(name = obj.data.name + "_str")
+            mesh = bpy.data.meshes.new(name = obj.data.name + "_str_" + str(i))
             mesh.from_pydata(verts, [], indexList)
             meObj = bpy.data.objects.new(mesh.name, object_data = mesh)
             context.collection.objects.link(meObj)
+            meObj.parent = empty
 
         return {'FINISHED'}
 
@@ -673,7 +672,7 @@ def qmeUpdate(context, newValue):
                     mats.append(m)
 
     for m in mats:
-        matProps = m.saSettings
+        matProps: SAMaterialSettings = m.saSettings
 
         if matQEditor.b_apply_diffuse and newValue:
             matProps.b_Diffuse = matQProps.b_Diffuse
@@ -748,6 +747,32 @@ def qmeUpdate(context, newValue):
 
         if matQProps.b_flatShading:
             matProps.b_flatShading = newValue
+
+        if matQProps.b_unknown:
+            matProps.b_unknown = newValue
+
+        if matQEditor.gc_apply_shadowStencil and newValue:
+            matProps.gc_shadowStencil = matQProps.gc_shadowStencil
+
+        if matQEditor.gc_apply_texID and newValue:
+            matProps.gc_texCoordID = matQProps.gc_texCoordID
+
+        if matQEditor.gc_apply_typ and newValue:
+            matProps.gc_texGenType = matQProps.gc_texGenType
+
+        if matQProps.gc_texGenType[0] == 'M':
+            if matQEditor.gc_apply_mtx and newValue:
+                matProps.gc_texMatrixID = matQProps.gc_texMatrixID
+            if matQEditor.gc_apply_src and newValue:
+                matProps.gc_texGenSourceMtx = matQProps.gc_texGenSourceMtx
+
+        elif matQProps.gc_texGenType[0] == 'B':
+            if matQEditor.gc_apply_src and newValue:
+                matProps.gc_texGenSourceBmp = matQProps.gc_texGenSourceBmp
+
+        else: #srtg
+            if matQEditor.gc_apply_src and newValue:
+                matProps.gc_texGenSourceSRTG = matQProps.gc_texGenSourceSRTG
 
 class qmeUpdateSet(bpy.types.Operator):
     """Quick Material Editor Updater for setting selected field to true"""
@@ -842,7 +867,6 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         description="The character will leave footprints behind when walking on this models surface",
         default=False
         )
-
 
     hurt: BoolProperty(
         name="Hurt",
@@ -1004,7 +1028,6 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         self.noFriction = d["noFriction"]
         self.noAcceleration = d["noAcceleration"]
         self.increasedAcceleration = d["increasedAcceleration"]
-
 
 class SASettings(bpy.types.PropertyGroup):
     """Information global to the scene"""
@@ -1477,13 +1500,43 @@ class SAMaterialPanelSettings(bpy.types.PropertyGroup):
 
     b_apply_texID: BoolProperty(
         name = "Apply texture ID",
-        description="Sets the texture ID of all material when pressing 'Update'",
+        description="Sets the texture ID of all selected materials when pressing 'Update'",
         default=False
         )
 
     b_apply_filter: BoolProperty(
         name = "Apply filter type",
-        description="Sets the filter type of all material when pressing 'Update'",
+        description="Sets the filter type of all selected materials when pressing 'Update'",
+        default=False
+        )
+
+    gc_apply_shadowStencil: BoolProperty(
+        name = "Apply shadow stencil",
+        description="Sets the shadow stencil of all selected materials when pressing 'Update'",
+        default=False
+        )
+
+    gc_apply_texID: BoolProperty(
+        name = "Apply Texcoord ID",
+        description="Sets the Texcoord ID of all selected materials when pressing 'Update'",
+        default=False
+        )
+
+    gc_apply_typ: BoolProperty(
+        name = "Apply Type",
+        description="Sets the generation Type of all selected materials when pressing 'Update'",
+        default=False
+        )
+
+    gc_apply_mtx: BoolProperty(
+        name = "Apply Matrix",
+        description="Sets the Matrix of all selected materials when pressing 'Update'",
+        default=False
+        )
+
+    gc_apply_src: BoolProperty(
+        name = "Apply Source",
+        description="Sets the generation Source of all selected materials when pressing 'Update'",
         default=False
         )
 
@@ -1584,8 +1637,6 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
             )
 
         if menuProps.expandedBGeneral:
-
-
             box.prop(matProps, "b_useTexture")
             box.prop(matProps, "b_useEnv")
             box.prop(matProps, "b_useAlpha")
@@ -1612,41 +1663,25 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
 
         if menuProps.expandedGC:
 
-            split = box.split(factor=0.6)
-            split.label(text = "Shadow Stencil:")
-            split.prop(matProps, "gc_shadowStencil", text="")
+            propAdv(box, "Shadow Stencil:", matProps, "gc_shadowStencil", menuProps, "gc_apply_shadowStencil", qe)
 
             box.prop(menuProps, "expandedGCTexGen",
                 icon="TRIA_DOWN" if menuProps.expandedGCTexGen else "TRIA_RIGHT",
                 emboss = False
                 )
             if menuProps.expandedGCTexGen:
-                    split = box.split(factor=0.5)
-                    split.label(text = "Texcoord ID (output slot)")
-                    split.prop(matProps, "gc_texCoordID", text = "")
+                propAdv(box, "Output slot:", matProps, "gc_texCoordID", menuProps, "gc_apply_texID", qe)
+                propAdv(box, "Generation Type:", matProps, "gc_texGenType", menuProps, "gc_apply_typ", qe)
 
-                    split = box.split(factor=0.5)
-                    split.label(text = "Generation Type")
-                    split.prop(matProps, "gc_texGenType", text="")
+                if matProps.gc_texGenType[0] == 'M': #matrix
+                    propAdv(box, "Matrix ID:", matProps, "gc_texMatrixID", menuProps, "gc_apply_mtx", qe)
+                    propAdv(box, "Source:", matProps, "gc_texGenSourceMtx", menuProps, "gc_apply_src", qe)
 
-                    if matProps.gc_texGenType[0] == 'M': #matrix
-                        split = box.split(factor=0.5)
-                        split.label(text = "Matrix ID")
-                        split.prop(matProps, "gc_texMatrixID", text="")
+                elif matProps.gc_texGenType[0] == 'B': # Bump
+                    propAdv(box, "Source:", matProps, "gc_texGenSourceBmp", menuProps, "gc_apply_src", qe)
 
-                        split = box.split(factor=0.5)
-                        split.label(text = "Source")
-                        split.prop(matProps, "gc_texGenSourceMtx", text="")
-
-                    elif matProps.gc_texGenType[0] == 'B': # Bump
-                        split = box.split(factor=0.5)
-                        split.label(text = "Source")
-                        split.prop(matProps, "gc_texGenSourceBmp", text="")
-
-                    else: #SRTG
-                        split = box.split(factor=0.5)
-                        split.label(text = "Source")
-                        split.prop(matProps, "gc_texGenSourceSRTG", text="")
+                else: #SRTG
+                    propAdv(box, "Source:", matProps, "gc_texGenSourceSRTG", menuProps, "gc_apply_src", qe)
 
 class SAObjectPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_saProperties"
