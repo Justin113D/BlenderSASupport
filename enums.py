@@ -71,6 +71,7 @@ class SA2SurfaceFlags(Flag):
     Unclimbable = 0x80
     StandOnSlope = 0x100
     Hurt = 0x0400
+    Footprints = 0x800
     CannotLand = 0x1000
     Water2 = 0x2000
     NoShadows = 0x8000

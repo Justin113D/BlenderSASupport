@@ -414,6 +414,8 @@ class ModelData:
                 flags |= SA2SurfaceFlags.Unclimbable
             if p["hurt"]:
                 flags |= SA2SurfaceFlags.Hurt
+            if p["footprints"]:
+                flags |= SA2SurfaceFlags.Footprints
             if p["cannotLand"]:
                 flags |= SA2SurfaceFlags.CannotLand
             if p["water2"]:
@@ -1336,6 +1338,7 @@ class Col:
             saProps["solid"] = bool(f & SA2SurfaceFlags.Solid.value)
             saProps["water"] = bool(f & SA2SurfaceFlags.Water.value)
             saProps["cannotLand"] = bool(f & SA2SurfaceFlags.CannotLand.value)
+            saProps["footprints"] = bool(f & SA2SurfaceFlags.Footprints.value)
             saProps["diggable"] = bool(f & SA2SurfaceFlags.Diggable.value)
             saProps["unclimbable"] = bool(f & SA2SurfaceFlags.Unclimbable.value)
             saProps["hurt"] = bool(f & SA2SurfaceFlags.Hurt.value)

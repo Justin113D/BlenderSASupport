@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (0,6,4),
+    "version": (0,7,3),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -837,6 +837,13 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         default=False
         )
 
+    footprints: BoolProperty(
+        name="Footprints",
+        description="The character will leave footprints behind when walking on this models surface",
+        default=False
+        )
+
+
     hurt: BoolProperty(
         name="Hurt",
         description="The character will take damage when coming in contact with this model",
@@ -919,11 +926,6 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         default=False
         )
 
-    footprints: BoolProperty(
-        name="Footprints",
-        description="The character will leave footprints behind when walking on this models surface",
-        default=False
-        )
 
     @classmethod
     def defaultDict(cls) -> dict:
@@ -989,6 +991,7 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         self.hurt = d["hurt"]
         self.isVisible = d["isVisible"]
         self.userFlags = d["userFlags"]
+        self.footprints = d["footprints"]
 
         self.standOnSlope = d["standOnSlope"]
         self.water2 = d["water2"]
@@ -1001,7 +1004,7 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         self.noFriction = d["noFriction"]
         self.noAcceleration = d["noAcceleration"]
         self.increasedAcceleration = d["increasedAcceleration"]
-        self.footprints = d["footprints"]
+
 
 class SASettings(bpy.types.PropertyGroup):
     """Information global to the scene"""
@@ -1700,6 +1703,7 @@ class SAObjectPanel(bpy.types.Panel):
             box.prop(objProps, "standOnSlope")
             box.prop(objProps, "diggable")
             box.prop(objProps, "unclimbable")
+            box.prop(objProps, "footprints")
             box.prop(objProps, "hurt")
             box.prop(objProps, "cannotLand")
             box.prop(objProps, "water2")
