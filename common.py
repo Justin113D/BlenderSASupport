@@ -919,13 +919,13 @@ def sortChildren(cObject: bpy.types.Object,
         if lvl and fmt != 'SA1' and cObject.saSettings.isCollision and cObject.saSettings.isVisible:
             model = ModelData(cObject, parent, hierarchyDepth, "vsl_" + cObject.name, export_matrix, False, True)
             # collision
-            lastSibling = ModelData(cObject, model, hierarchyDepth, "cls_" + cObject.name, export_matrix, 'bsc', True, False)
+            lastSibling = ModelData(cObject, model, hierarchyDepth, "cls_" + cObject.name, export_matrix, True, False)
         else:
             visible = True if not cObject.saSettings.isCollision else cObject.saSettings.isVisible
             model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, cObject.saSettings.isCollision, visible)
     elif fmt == 'SA2' and not lvl and cObject.type == 'ARMATURE':
         visible = True if not cObject.saSettings.isCollision else cObject.saSettings.isVisible
-        model = Armature(cObject, parent, hierarchyDepth, cObject.name, export_matrix, "cnk", cObject.saSettings.isCollision, visible)
+        model = Armature(cObject, parent, hierarchyDepth, cObject.name, export_matrix, cObject.saSettings.isCollision, visible)
     else:
         # everything that is not a mesh should be written as an empty
         model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, False, False)
