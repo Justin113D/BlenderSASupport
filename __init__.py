@@ -468,6 +468,7 @@ class ImportLVL(bpy.types.Operator, ImportHelper):
 
 
 # operators
+
 class StrippifyTest(bpy.types.Operator):
     bl_idname = "object.strippifytest"
     bl_label = "Strippify (testing)"
@@ -823,6 +824,7 @@ class qmeReset(bpy.types.Operator):
         return {'FINISHED'}
 
 # property groups
+
 class SAObjectSettings(bpy.types.PropertyGroup):
     """hosts all properties to edit the surface flags of a COL"""
     # used in both
@@ -1557,6 +1559,7 @@ class SAMeshSettings(bpy.types.PropertyGroup):
         min=0, max = 32767,
         default = 0
     )
+
 
 # panels
 
