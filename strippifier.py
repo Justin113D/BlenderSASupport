@@ -68,7 +68,7 @@ class Triangle:
         if None in self.edges:
             self.edges = None
 
-    def addEdge(self, v1: Vertex, v2: Vertex, edges: List[Edge]):
+    def addEdge(self, v1, v2, edges):
         e = v1.isConnectedWith(v2)
         if e is None:
             e = v1.connect(v2)

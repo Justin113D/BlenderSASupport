@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (0,7,32),
+    "version": (0,7,33),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -474,14 +474,6 @@ class StrippifyTest(bpy.types.Operator):
     bl_label = "Strippify (testing)"
     bl_description = "Strippifies the active model object and puts each strip into a new object"
 
-    def mesh_triangulate(self, me):
-        import bmesh
-        bm = bmesh.new()
-        bm.from_mesh(me)
-        bmesh.ops.triangulate(bm, faces=bm.faces, quad_method='FIXED', ngon_method='EAR_CLIP')
-        bm.to_mesh(me)
-        bm.free()
-
     doConcat: BoolProperty(
         name = "Concat",
         description="Combines all strips into one big strip",
@@ -512,32 +504,15 @@ class StrippifyTest(bpy.types.Operator):
             return {'FINISHED'}
 
         ob_for_convert = obj.original
-        me = ob_for_convert.to_mesh()
-        self.mesh_triangulate(me)
-
-        # creating the vertex list
-        verts = []
-        oIDtodID = [0] * len(me.vertices)
-
-        for IDo, vo in enumerate(me.vertices):
-            vert = [vo.co.x, vo.co.y, vo.co.z]
-            found = -1
-            for IDd, vd in enumerate(verts):
-                if vert == vd:
-                    found = IDd
-                    break
-            if found == -1:
-                verts.append(vert)
-                oIDtodID[IDo] = len(verts) - 1
-            else:
-                oIDtodID[IDo] = found
+        me = ob_for_convert.to_mesh(preserve_all_data_layers=True)
+        common.trianglulateMesh(me)
 
         # creating the index list
         indexList = [0] * len(me.polygons) * 3
 
         for i, p in enumerate(me.polygons):
             for j, li in enumerate(p.loop_indices):
-                indexList[i * 3 + j] = oIDtodID[me.loops[li].vertex_index]
+                indexList[i * 3 + j] = me.loops[li].vertex_index
 
         # strippifying it
         from . import strippifier
@@ -545,7 +520,7 @@ class StrippifyTest(bpy.types.Operator):
         try:
             indexStrips = stripf.Strippify(indexList, doSwaps = self.doSwaps, concat = self.doConcat, raiseTopoError=self.raiseTopoError)
         except strippifier.TopologyError as e:
-            self.report({'WARNING'}, "Export stopped!\n" + str(e))
+            self.report({'WARNING'}, "Topology error!\n" + str(e))
             return {'CANCELLED'}
 
 
@@ -553,10 +528,24 @@ class StrippifyTest(bpy.types.Operator):
         context.collection.objects.link(empty)
         for i, s in enumerate(indexStrips):
             # making them lists so blender can use them
+
+            verts = dict()
+            for p in s:
+                verts[p] = me.vertices[p].co
+
             indexList = list()
+            rev = True
             for j in range(0, len(s)-2):
-                p = [s[j], s[j+1], s[j+2]]
+                if rev:
+                    p = [s[j+1], s[j], s[j+2]]
+                else:
+                    p = [s[j], s[j+1], s[j+2]]
                 indexList.append(p)
+                rev = not rev
+
+            keys = list(verts.keys())
+            indexList = [[keys.index(i) for i in l] for l in indexList]
+            verts = list(verts.values())
 
             mesh = bpy.data.meshes.new(name = obj.data.name + "_str_" + str(i))
             mesh.from_pydata(verts, [], indexList)
@@ -658,6 +647,8 @@ class ArmatureFromObjects(bpy.types.Operator):
 
 
         return {'FINISHED'}
+
+#  quick material edit
 
 def qmeUpdate(context, newValue):
 
@@ -822,6 +813,8 @@ class qmeReset(bpy.types.Operator):
                 setattr(menuProps, p, False)
 
         return {'FINISHED'}
+
+#  quick object edit
 
 # property groups
 

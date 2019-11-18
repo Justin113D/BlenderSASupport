@@ -1024,7 +1024,7 @@ def getMeshes(meshesToConvert: List[ModelData],
 
     return outMeshes, materials
 
-def trianglulateMesh(mesh: bpy.types.Mesh) -> bpy.types.Mesh:
+def trianglulateMesh(mesh: bpy.types.Mesh):
     """Transforms a mesh into a mesh only consisting of triangles, so that it can be stripped"""
 
     # if we use custom normals, we gotta correct them manually, since blenders triangulate is shit
