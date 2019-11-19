@@ -46,10 +46,11 @@ from bpy.props import (
     StringProperty
     )
 from bpy_extras.io_utils import ExportHelper, ImportHelper#, path_reference_mode
+from typing import List, Dict, Union
 
 class TOPBAR_MT_SA_export(bpy.types.Menu):
+    '''The export submenu in the export menu'''
     bl_label = "SA Formats"
-    #bl_idname = "export_scene.samenu"
 
     def draw(self, context):
         layout = self.layout
@@ -65,25 +66,25 @@ class TOPBAR_MT_SA_export(bpy.types.Menu):
 
 # export operators
 
-def removeFile():
+def removeFile() -> None:
+    '''Removes the currently assigned temporary export file'''
 
+    # get the export file (its set from outside this script, so for some reason it only works with the __init__ in front of it)
     fileW = __init__.exportedFile
+    # if the file is assigned, close and remove it
     if fileW is not None:
         fileW.close()
         os.remove(fileW.filepath)
         __init__.exportedFile = None
 
 def exportFile(op, mdl: bool, context, **keywords):
+    '''Exports the '''
     try:
         if mdl:
             out = file_MDL.write(context, **keywords)
         else:
             out = file_LVL.write(context, **keywords)
-    except strippifier.TopologyError as e:
-        op.report({'WARNING'}, "Export stopped!\n" + str(e))
-        removeFile()
-        return {'CANCELLED'}
-    except common.ExportError as e:
+    except (strippifier.TopologyError, common.ExportError) as e:
         op.report({'WARNING'}, "Export stopped!\n" + str(e))
         removeFile()
         return {'CANCELLED'}
@@ -92,7 +93,7 @@ def exportFile(op, mdl: bool, context, **keywords):
         raise e
 
     # moving and renaming the temporary file
-    # also removing the file that existed before
+    # Note: this is also removing the file that existed before
     fileW = __init__.exportedFile
     filepath = keywords["filepath"]
     if(os.path.isfile(filepath)):
@@ -102,7 +103,7 @@ def exportFile(op, mdl: bool, context, **keywords):
     return {'FINISHED'}
 
 class ExportSA1MDL(bpy.types.Operator, ExportHelper):
-    """Export Objects into an SA1 model file"""
+    """Export objects into an SA1 model file"""
     bl_idname = "export_scene.sa1mdl"
     bl_label = "SA1 model (.sa1mdl)"
     bl_options = {'PRESET', 'UNDO'}
@@ -155,7 +156,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
         layout.prop(self, "console_debug_output")
 
 class ExportSA2MDL(bpy.types.Operator, ExportHelper):
-    """Export Objects into an SA2 model file"""
+    """Export objects into an SA2 model file"""
     bl_idname = "export_scene.sa2mdl"
     bl_label = "SA2 model (.sa2mdl)"
     bl_options = {'PRESET', 'UNDO'}
@@ -208,7 +209,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         layout.prop(self, "console_debug_output")
 
 class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
-    """Export Objects into an SA2B model file"""
+    """Export objects into an SA2B model file"""
     bl_idname = "export_scene.sa2bmdl"
     bl_label = "SA2B model (.sa2bmdl)"
     bl_options = {'PRESET', 'UNDO'}
@@ -423,7 +424,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
 # import operators
 
 class ImportMDL(bpy.types.Operator, ImportHelper):
-    """Imports any adventure mdl file"""
+    """Imports any sonic adventure mdl file"""
     bl_idname = "import_scene.mdl"
     bl_label = "Sonic Adv. model (.*mdl)"
     bl_options = {'PRESET', 'UNDO'}
@@ -445,7 +446,7 @@ class ImportMDL(bpy.types.Operator, ImportHelper):
         return file_MDL.read(context, self.filepath, self.console_debug_output)
 
 class ImportLVL(bpy.types.Operator, ImportHelper):
-    """Imports any adventure mdl file"""
+    """Imports any sonic adventure lvl file"""
     bl_idname = "import_scene.lvl"
     bl_label = "Sonic Adv. level (.*lvl)"
     bl_options = {'PRESET', 'UNDO'}
@@ -470,9 +471,10 @@ class ImportLVL(bpy.types.Operator, ImportHelper):
 # operators
 
 class StrippifyTest(bpy.types.Operator):
+    '''An operator for test-strippifying a model'''
     bl_idname = "object.strippifytest"
     bl_label = "Strippify (testing)"
-    bl_description = "Strippifies the active model object and puts each strip into a new object"
+    bl_description = "Strippifies the active model object"
 
     doConcat: BoolProperty(
         name = "Concat",
@@ -497,7 +499,6 @@ class StrippifyTest(bpy.types.Operator):
         return wm.invoke_props_dialog(self)
 
     def execute(self, context):
-        #os.system("cls")
         obj = context.active_object
         if obj is None or not isinstance(obj.data, bpy.types.Mesh):
             print("active object not a mesh")
@@ -556,11 +557,13 @@ class StrippifyTest(bpy.types.Operator):
         return {'FINISHED'}
 
 class ArmatureFromObjects(bpy.types.Operator):
+    '''Generates an armature based on the selected node and its child hierarchy'''
     bl_idname = "object.armaturefromobjects"
     bl_label = "Armature from objects"
     bl_description = "Generate an armature from object. Select the parent of all objects, which will represent the root"
 
-    def addChildren(parent, result, resultMeshes):
+    @classmethod
+    def addChildren(cls, parent, result, resultMeshes):
         if parent.type == 'MESH':
             resultMeshes.append(len(result))
         result.append(parent)
@@ -651,11 +654,12 @@ class ArmatureFromObjects(bpy.types.Operator):
 #  quick edit
 
 def qeUpdate(context, newValue):
+    '''Updates all selected objects with according properties'''
 
     qEditSettings = context.scene.saSettings
-
     objects = context.selected_objects
 
+    # If the user specified to change materials...
     if context.scene.saSettings.useMatEdit:
         matQProps = context.scene.saSettings.matQProps
 
@@ -722,6 +726,7 @@ def qeUpdate(context, newValue):
                 if qEditSettings.gc_apply_src and newValue:
                     matProps.gc_texGenSourceSRTG = matQProps.gc_texGenSourceSRTG
 
+    # If the user specified to change objects...
     if context.scene.saSettings.useObjEdit:
         for o in objects:
 
@@ -733,6 +738,7 @@ def qeUpdate(context, newValue):
             if qEditSettings.obj_apply_userFlags and newValue:
                 objProps.userFlags = qEditSettings.objQProps.userFlags
 
+    # If the user specified to change meshes...
     if context.scene.saSettings.useMeshEdit:
 
         meshes = list()
@@ -1623,7 +1629,46 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         self.gc_texGenType = d["gc_texGenType"]
         self.gc_texCoordID = d["gc_texCoordID"]
 
+    @classmethod
+    def getDefaultMatDict(cls) -> Dict[str, Union[str, bool, List[int]]]:
+        d = dict()
+        d["b_Diffuse"] = (1.0, 1.0, 1.0, 1.0)
+        d["b_Specular"] = (1.0, 1.0, 1.0, 1.0)
+        d["b_Ambient"] =(1.0, 1.0, 1.0, 1.0)
+        d["b_Exponent"] = 1
+        d["b_TextureID"] = 0
+        d["b_d_025"] = False
+        d["b_d_050"] = False
+        d["b_d_100"] = False
+        d["b_d_200"] = False
+        d["b_use_Anisotropy"] = False
+        d["b_texFilter"] = 'BILINEAR'
+        d["b_clampV"] = False
+        d["b_clampU"] = False
+        d["b_mirrorV"] = False
+        d["b_mirrorU"] = False
+        d["b_ignoreSpecular"] = False
+        d["b_useAlpha"] = False
+        d["b_srcAlpha"] = 'SRC'
+        d["b_destAlpha"] = 'INV_SRC'
+        d["b_useTexture"] = True
+        d["b_useEnv"] = False
+        d["b_doubleSided"] = True
+        d["b_flatShading"] = False
+        d["b_ignoreLighting"] = False
+        d["b_ignoreAmbient"] = False
+        d["b_unknown"] = False
+        d["gc_shadowStencil"] = 1
+        d["gc_texMatrixID"] = 'IDENTITY'
+        d["gc_texGenSourceMtx"] = 'TEX0'
+        d["gc_texGenSourceBmp"] = 'TEXCOORD0'
+        d["gc_texGenSourceSRTG"] = 'COLOR0'
+        d["gc_texGenType"] = 'MTX2X4'
+        d["gc_texCoordID"] = 'TEXCOORD0'
+        return d
+
 class SAMeshSettings(bpy.types.PropertyGroup):
+    '''Settings used by the exporters for specific meshes'''
 
     sa2ExportType: EnumProperty(
         name = "SA2 Export Type",
@@ -1644,6 +1689,7 @@ class SAMeshSettings(bpy.types.PropertyGroup):
 # panels
 
 def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):
+    '''For quick edit properties, to put simply'''
 
     if not autoScale:
         split = layout.split(factor=0.5)
@@ -1846,7 +1892,7 @@ class SAObjectPanel(bpy.types.Panel):
     bl_context = "object"
 
     @classmethod
-    def poll(self, context):
+    def poll(cls, context):
         return context.active_object.type == 'MESH'
 
     def draw(self, context):
@@ -1864,7 +1910,7 @@ class SAMeshPanel(bpy.types.Panel):
     bl_context = "data"
 
     @classmethod
-    def poll(self, context):
+    def poll(cls, context):
         return context.active_object.type == 'MESH'
 
     def draw(self, context):

@@ -36,7 +36,8 @@ class Material:
         self.textureID = textureID
         self.mFlags = materialFlags
 
-    def fromBlenderMat(material: bpy.types.Material):
+    @classmethod
+    def fromBlenderMat(cls, material: bpy.types.Material):
 
         matProps = material.saSettings
         diffuse = ColorARGB(c = matProps.b_Diffuse)
@@ -138,7 +139,8 @@ class Material:
         print("    Texture ID:", self.textureID)
         print("    Flags:", self.mFlags, "\n")
 
-    def writeMaterials(fileW: fileHelper.FileWriter, materials: List[bpy.types.Material], labels: dict):
+    @classmethod
+    def writeMaterials(cls, fileW: fileHelper.FileWriter, materials: List[bpy.types.Material], labels: dict):
         """writes materials as BASIC materal data"""
         mats = list()
 
@@ -168,7 +170,8 @@ class Material:
         fileW.wInt(self.textureID)
         fileW.wUInt(self.mFlags.value)
 
-    def read(fileR: fileHelper.FileReader, address: int, index: int):
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, address: int, index: int):
         diffuse = ColorARGB.fromARGB(fileR.rUInt(address))
         specular = ColorARGB.fromARGB(fileR.rUInt(address + 4))
         specularExponent = fileR.rFloat(address + 8)
@@ -313,7 +316,8 @@ class MeshSet:
         if self.UVPtr > 0:
             labels[self.UVPtr] = name + "uv" + str(self.meshSetID)
 
-    def read(fileR: fileHelper.FileReader, address: int, meshName: str, setID: int):
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, address: int, meshName: str, setID: int):
 
 
         header = fileR.rUShort(address)
@@ -400,7 +404,8 @@ class Attach:
         self.materials = materials
         self.bounds = bounds
 
-    def fromMesh(mesh: bpy.types.Mesh,
+    @classmethod
+    def fromMesh(cls, mesh: bpy.types.Mesh,
                  export_matrix: mathutils.Matrix,
                  materials: List[Material],
                  isCollision: bool = False):
@@ -558,7 +563,8 @@ class Attach:
             print("    Mesh set Ptr:", common.hex4(setPtr))
             print("    Mesh sets:", len(self.meshSets), "\n")
 
-    def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
 
         if address in labels:
             name: str = labels[address]
@@ -598,7 +604,7 @@ class Attach:
 
         return Attach(name, positions, normals, meshSets, materials, None)
 
-def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
+def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach], collision = False):
 
     import bmesh
     meshes: Dict[int, bpy.types.Mesh] = dict()
@@ -620,8 +626,9 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
         matIDs = list()
 
         from .enums import MaterialFlags
+        from .__init__ import SAMaterialSettings
         for m in attach.materials:
-            d = common.getDefaultMatDict()
+            d = SAMaterialSettings.getDefaultMatDict()
 
             d["b_Diffuse"] = m.diffuse.toBlenderTuple()
             d["b_Specular"] = m.specular.toBlenderTuple()
@@ -697,7 +704,8 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach]):
                     break
 
             if material is None:
-                material = bpy.data.materials.new(name="material_" + str(len(materials)))
+
+                material = bpy.data.materials.new(name= ("collision_" if collision else "material_") + str(len(materials)))
                 material.saSettings.readMatDict(d)
 
                 materials.append(material)

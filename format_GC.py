@@ -30,7 +30,8 @@ class Parameter:
         fileW.wUInt(self.pType.value)
         fileW.wUInt(self.data)
 
-    def read(fileR: fileHelper.FileReader, address: int):
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, address: int):
         pType = enums.ParameterType(fileR.rUInt(address))
         data = fileR.rUInt(address+4)
 
@@ -433,7 +434,8 @@ class Geometry:
         fileW.wUInt(self.polygonPtr)
         fileW.wUInt(self.polygonSize)
 
-    def read(fileR: fileHelper.FileReader, address: int, paramDict: dict):
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, address: int, paramDict: dict):
 
         paramPtr = fileR.rUInt(address)
         paramCount = fileR.rUInt(address + 4)
@@ -578,7 +580,8 @@ class Vertices:
         fileW.wUInt(self.dataPtr)
         fileW.wUInt(len(self.data) * self.getCompSize())
 
-    def read(fileR: fileHelper.FileReader, address: int):
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, address: int):
 
         vType = enums.VertexAttribute(fileR.rByte(address))
         fracBitCount = enums.VertexAttribute(fileR.rByte(address + 1))
@@ -666,7 +669,8 @@ class Attach:
         self.transparentGeom = transparentGeom
         self.bounds = bounds
 
-    def fromMesh(mesh: bpy.types.Mesh,
+    @classmethod
+    def fromMesh(cls, mesh: bpy.types.Mesh,
                  export_matrix: mathutils.Matrix,
                  materials: List[bpy.types.Material]):
 
@@ -1100,7 +1104,8 @@ class Attach:
         fileW.wUShort(len(self.transparentGeom))
         self.bounds.write(fileW)
 
-    def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
 
         if address in labels:
             name: str = labels[address]
@@ -1195,9 +1200,10 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
 
         meshMaterials = list()
         geomMaterials = list()
+        from .__init__ import SAMaterialSettings
 
         for g in geom:
-            tmpMat = common.getDefaultMatDict()
+            tmpMat = SAMaterialSettings.getDefaultMatDict()
 
             for p in g.params:
                 if p.pType == enums.ParameterType.AmbientColor:

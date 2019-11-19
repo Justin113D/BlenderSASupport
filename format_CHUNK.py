@@ -92,18 +92,22 @@ class VertexChunk:
         self.indexBufferOffset = indexBufferOffset
         self.vertices = vertices
 
+    def vertexSize(self) -> int:
+        if self.chunkType == enums.ChunkType.Vertex_VertexDiffuse8:
+            return 4
+        elif self.chunkType == enums.ChunkType.Vertex_VertexNormal:
+            return 6
+        elif self.chunkType == enums.ChunkType.Vertex_VertexNormalNinjaFlags:
+            return 7
+        else:
+            print("unsupported chunk format:", self.chunkType)
+            return 0
+
     def write(self, fileW: fileHelper.FileWriter):
         fileW.wByte(self.chunkType.value)
         fileW.wByte(self.weightType.value)
 
-        if self.chunkType == enums.ChunkType.Vertex_VertexDiffuse8:
-            vertexSize = 4
-        elif self.chunkType == enums.ChunkType.Vertex_VertexNormal:
-            vertexSize = 6
-        elif self.chunkType == enums.ChunkType.Vertex_VertexNormalNinjaFlags:
-            vertexSize = 7
-        else:
-            print("unsupported chunk format:", self.chunkType)
+        vertexSize = self.vertexSize()
 
         fileW.wUShort((vertexSize * len(self.vertices)) + 1)
         fileW.wUShort(self.indexBufferOffset)
@@ -258,7 +262,8 @@ class PolyChunk_Texture(PolyChunk):
         self.anisotropy = anisotropy
         self.filtering = filtering
 
-    def read(fileR: fileHelper.FileReader, address: int):
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, address: int):
         flags = enums.TextureIDFlags(fileR.rByte(address))
         header = fileR.rUShort(address + 1)
         texID = header & 0x1FFF
@@ -297,7 +302,8 @@ class PolyChunk_Material(PolyChunk):
         self.specular = specular
         self.specularity = specularity
 
-    def read(fileR: fileHelper.FileReader, chunkType: enums.ChunkType, address: int):
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, chunkType: enums.ChunkType, address: int):
 
         alphaInstruction = enums.SA2AlphaInstructions(fileR.rByte(address))
         address += 3
@@ -321,7 +327,6 @@ class PolyChunk_Material(PolyChunk):
             address += 4
 
         return PolyChunk_Material(alphaInstruction, diffuse, ambient, specular, specularity), address
-
 
     def write(self, fileW: fileHelper.FileWriter):
         super(PolyChunk_Material, self).write(fileW)
@@ -356,7 +361,8 @@ class PolyChunk_Strip(PolyChunk):
         else:
             self.reversedStrips = reversedStrips
 
-    def read(fileR: fileHelper.FileReader, chunkType: enums.ChunkType, address: int):
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, chunkType: enums.ChunkType, address: int):
 
         flags = enums.StripFlags(fileR.rByte(address))
         address += 1
@@ -421,14 +427,17 @@ class PolyChunk_Strip(PolyChunk):
 
         return polyChunk, address
 
-    def write(self, fileW: fileHelper.FileWriter):
-        super(PolyChunk_Strip, self).write(fileW)
-        fileW.wByte(self.flags.value)
+    def getSize(self):
         size = 1
         stripSize = 3 if self.chunkType == enums.ChunkType.Strip_StripUVN else 1
         for s in self.strips:
             size += (len(s) * stripSize) + 1
-        fileW.wUShort(size)
+        return size
+
+    def write(self, fileW: fileHelper.FileWriter):
+        super(PolyChunk_Strip, self).write(fileW)
+        fileW.wByte(self.flags.value)
+        fileW.wUShort(self.getSize())
 
         fileW.wUShort(min(0x3FFF, len(self.strips)))
 
@@ -460,11 +469,67 @@ class Attach:
                  polyChunks: List[PolyChunk],
                  bounds: BoundingBox):
         self.name = name
-        self.vertexChunks = vertexChunks
         self.polyChunks = polyChunks
         self.bounds = bounds
 
-    def getPolygons(mesh: bpy.types.Mesh,
+        self.vertexChunks = list()
+        # getting the most out of the vertex chunks
+        for v in vertexChunks:
+            if v.vertexSize() * len(v.vertices) < 0xFFFF:
+                self.vertexChunks.append(v)
+            else:
+                vertices = v.vertices
+                offset = v.indexBufferOffset
+
+                while len(vertices) > 0:
+                    vCount = min(0xFFFF - offset, math.floor(min(len(vertices) * v.vertexSize(), 0xFFFF) / v.vertexSize()))
+
+                    chunkV = vertices[:vCount]
+                    vertices = vertices[vCount:]
+                    print("set:", len(chunkV), len(vertices))
+
+                    self.vertexChunks.append( VertexChunk(v.chunkType, v.weightType, v.weightContinue, offset, chunkV) )
+                    offset += vCount
+
+        # optimizing poly chunks (well, only the strips)
+        self.polyChunks = list()
+        for p in polyChunks:
+            if not isinstance(p, PolyChunk_Strip):
+                self.polyChunks.append(p)
+            else:
+                p: PolyChunk_Strip = p
+
+                if p.getSize() > 0xFFFF or len(p.strips) > 0x3FFF:
+
+                    polyCSize = 3 if p.chunkType == enums.ChunkType.Strip_StripUVN else 1
+
+                    cSize = 1
+                    strips = list()
+                    revStrips = list()
+
+                    for c in range(len(strips))
+                        strip =  p.strips[c]
+                        stripSize = (len(strip) * polyCSize) + 1
+
+                        if cSize + stripSize > 0xFFFF or len(strips) >= 0x3FFF:
+                            self.polyChunks.append(PolyChunk_Strip(polyCSize == 3, p.flags, strips, revStrips))
+                            strips = list()
+                            revStrips = list()
+                            cSize = 1
+
+                        strips.append(strip)
+                        revStrips.append(p.reversedStrips[c])
+
+                        cSize += stripSize
+
+                    if len(strips) > 0:
+                        self.polyChunks.append(PolyChunk_Strip(polyCSize == 3, p.flags, strips, revStrips))
+
+                else:
+                    polyChunks.append(p)
+
+    @classmethod
+    def getPolygons(cls, mesh: bpy.types.Mesh,
                     writeUVs: bool,
                     polyVerts: List[PolyVert],
                     materials: List[bpy.types.Material]):
@@ -523,11 +588,14 @@ class Attach:
             # getting material
             stripUVs = writeUVs
             material = None
-            matName = mesh.materials[mID].name
-            if matName in materials:
-                material = materials[matName]
+            if len(mesh.materials) == 0:
+                print(" Mesh has no materials")
             else:
-                print(" Material", matName, "not found")
+                matName = mesh.materials[mID].name
+                if matName in materials:
+                    material = materials[matName]
+                else:
+                    print(" Material", matName, "not found")
 
             stripFlags = enums.StripFlags.null
 
@@ -632,7 +700,8 @@ class Attach:
 
         return polyChunks
 
-    def fromMesh(mesh: bpy.types.Mesh,
+    @classmethod
+    def fromMesh(cls, mesh: bpy.types.Mesh,
                  export_matrix: mathutils.Matrix,
                  materials: List[bpy.types.Material]):
 
@@ -754,7 +823,8 @@ class Attach:
 
         return attachPtr
 
-    def read(fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
+    @classmethod
+    def read(cls, fileR: fileHelper.FileReader, address: int, meshID: int, labels: dict):
 
         if address in labels:
             name: str = labels[address]
@@ -1174,8 +1244,9 @@ def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> Dict
 def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAttach], armatureRoot: common.Model):
 
     import bmesh
+    from .__init__ import SAMaterialSettings
 
-    tmpMat = common.getDefaultMatDict()
+    tmpMat = SAMaterialSettings.getDefaultMatDict()
 
     meshes: Dict[int, bpy.types.Mesh] = dict()
 

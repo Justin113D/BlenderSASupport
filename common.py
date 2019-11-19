@@ -65,7 +65,8 @@ class ColorARGB:
         self.g = round(c[1] * 255)
         self.b = round(c[2] * 255)
 
-    def fromRGBA(value: int):
+    @classmethod
+    def fromRGBA(cls, value: int):
         col = ColorARGB()
 
         col.r = (value >> 24) & 0xFF
@@ -81,7 +82,8 @@ class ColorARGB:
         fileW.wByte(self.g)
         fileW.wByte(self.r)
 
-    def fromARGB(value: int):
+    @classmethod
+    def fromARGB(cls, value: int):
         col = ColorARGB()
         col.a = (value >> 24) & 0xFF
         col.r = (value >> 16) & 0xFF
@@ -321,7 +323,8 @@ class ModelData:
         self.unknown2 = 0
         self.unknown3 = 0
 
-    def updateMeshes(objList: list, meshList: list):
+    @classmethod
+    def updateMeshes(cls, objList: list, meshList: list):
         for o in objList:
             o.processedMesh = None
             if o.origObject is not None and o.origObject.type == 'MESH':
@@ -329,7 +332,8 @@ class ModelData:
                     if m.name == o.origObject.data.name:
                         o.processedMesh = m
 
-    def updateMeshPointer(objList: list, meshDict: dict):
+    @classmethod
+    def updateMeshPointer(cls, objList: list, meshDict: dict):
         """Updates the mesh pointer of a ModelData list utilizing a meshDict"""
         for o in objList:
             if o.processedMesh is not None:
@@ -435,7 +439,8 @@ class ModelData:
 
         return flags
 
-    def writeObjectList(objects: list, fileW: fileHelper.FileWriter, labels: dict, lvl: bool = False):
+    @classmethod
+    def writeObjectList(cls, objects: list, fileW: fileHelper.FileWriter, labels: dict, lvl: bool = False):
 
         for o in reversed(objects):
             o.writeObject(fileW, labels, lvl)
@@ -555,7 +560,8 @@ class Bone:
         if parentBone is not None:
             parentBone.children.append(self)
 
-    def getBones(bBone: bpy.types.Bone,
+    @classmethod
+    def getBones(cls, bBone: bpy.types.Bone,
                 parent, #: Bone
                 hierarchyDepth: int,
                 export_matrix: mathutils.Matrix,
@@ -1403,41 +1409,27 @@ class Col:
 
         return obj
 
+def fixMaterialNames(objects: List[bpy.types.Object]):
 
-def getDefaultMatDict() -> dict:
-    d = dict()
-    d["b_Diffuse"] = (1.0, 1.0, 1.0, 1.0)
-    d["b_Specular"] = (1.0, 1.0, 1.0, 1.0)
-    d["b_Ambient"] =(1.0, 1.0, 1.0, 1.0)
-    d["b_Exponent"] = 1
-    d["b_TextureID"] = 0
-    d["b_d_025"] = False
-    d["b_d_050"] = False
-    d["b_d_100"] = False
-    d["b_d_200"] = False
-    d["b_use_Anisotropy"] = False
-    d["b_texFilter"] = 'BILINEAR'
-    d["b_clampV"] = False
-    d["b_clampU"] = False
-    d["b_mirrorV"] = False
-    d["b_mirrorU"] = False
-    d["b_ignoreSpecular"] = False
-    d["b_useAlpha"] = False
-    d["b_srcAlpha"] = 'SRC'
-    d["b_destAlpha"] = 'INV_SRC'
-    d["b_useTexture"] = True
-    d["b_useEnv"] = False
-    d["b_doubleSided"] = True
-    d["b_flatShading"] = False
-    d["b_ignoreLighting"] = False
-    d["b_ignoreAmbient"] = False
-    d["b_unknown"] = False
-    d["gc_shadowStencil"] = 1
-    d["gc_texMatrixID"] = 'IDENTITY'
-    d["gc_texGenSourceMtx"] = 'TEX0'
-    d["gc_texGenSourceBmp"] = 'TEXCOORD0'
-    d["gc_texGenSourceSRTG"] = 'COLOR0'
-    d["gc_texGenType"] = 'MTX2X4'
-    d["gc_texCoordID"] = 'TEXCOORD0'
-    return d
+    materials: List[bpy.types.Material] = list()
+    collisionMats: List[bpy.types.Material] = list()
 
+    for o in objects:
+        if o.type == 'MESH':
+            for m in o.data.materials:
+                if m.name[0] == 'c':
+                    if m not in collisionMats:
+                        collisionMats.append(m)
+                elif m not in materials:
+                    materials.append(m)
+
+    materials.sort(key=lambda x: x.name)
+    collisionMats.sort(key=lambda x: x.name)
+
+    zfillLengthM = len(str(len(materials)))
+    zfillLengthC = len(str(len(collisionMats)))
+
+    for i, m in enumerate(materials):
+        m.name = "material_" + str(i).zfill(zfillLengthM)
+    for i, m in enumerate(collisionMats):
+        m.name = "collision_" + str(i).zfill(zfillLengthC)

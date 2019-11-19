@@ -218,7 +218,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
                format_CHUNK.ProcessChunkData([c.model for c in COLs], processedAttaches, None)
           else: # sa2b
                format_GC.process_GC([c.model for c in COLs], vmeshes)
-          format_BASIC.process_BASIC([c.model for c in COLs], cmeshes)
+          format_BASIC.process_BASIC([c.model for c in COLs], cmeshes, collision=True)
 
           for i, c in enumerate(COLs):
                obj = c.toBlenderObject()
@@ -226,6 +226,14 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
                     vCollection.objects.link(obj)
                else:
                     cCollection.objects.link(obj)
+
+          allobjects = list()
+          allobjects.extend(vCollection.objects)
+          allobjects.extend(cCollection.objects)
+          allobjects = set(allobjects)
+
+          common.fixMaterialNames(allobjects)
+
 
      return {'FINISHED'}
 
