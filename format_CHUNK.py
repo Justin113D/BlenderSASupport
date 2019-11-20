@@ -526,7 +526,7 @@ class Attach:
                         self.polyChunks.append(PolyChunk_Strip(polyCSize == 3, p.flags, strips, revStrips))
 
                 else:
-                    polyChunks.append(p)
+                    self.polyChunks.append(p)
 
     @classmethod
     def getPolygons(cls, mesh: bpy.types.Mesh,
