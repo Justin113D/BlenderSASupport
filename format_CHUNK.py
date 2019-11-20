@@ -507,7 +507,7 @@ class Attach:
                     strips = list()
                     revStrips = list()
 
-                    for c in range(len(strips))
+                    for c in range(len(strips)):
                         strip =  p.strips[c]
                         stripSize = (len(strip) * polyCSize) + 1
 
