@@ -1,4 +1,5 @@
 __pycache__/
 .vscode/
 .vs/
-BlenderSA.code-workspace
+*.code-workspace
+*blend1

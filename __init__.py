@@ -46,7 +46,7 @@ from bpy.props import (
     StringProperty
     )
 from bpy_extras.io_utils import ExportHelper, ImportHelper#, path_reference_mode
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Tuple
 
 class TOPBAR_MT_SA_export(bpy.types.Menu):
     '''The export submenu in the export menu'''
@@ -421,6 +421,22 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         layout.separator()
         layout.prop(self, "console_debug_output")
 
+class ExportPAK(bpy.types.Operator, ExportHelper):
+    """Imports any sonic adventure texture file"""
+    bl_idname = "export_texture.pak"
+    bl_label = "Export as PAK (SA2)"
+
+    def execute(self, context):
+        return {'FINISHED'}
+
+class ExportPVMX(bpy.types.Operator, ExportHelper):
+    """Imports any sonic adventure texture file"""
+    bl_idname = "export_texture.pvmx"
+    bl_label = "Export as PVMX (SADX)"
+
+    def execute(self, context):
+        return {'FINISHED'}
+
 # import operators
 
 class ImportMDL(bpy.types.Operator, ImportHelper):
@@ -467,6 +483,58 @@ class ImportLVL(bpy.types.Operator, ImportHelper):
 
         return file_LVL.read(context, self.filepath, self.console_debug_output)
 
+class ImportTexFile(bpy.types.Operator, ImportHelper):
+    """Imports any sonic adventure texture file"""
+    bl_idname = "import_texture.tex"
+    bl_label = "Import SA tex file"
+
+    filter_glob: StringProperty(
+        default="*.pak;*.gvm;*.pvm;*.pvmx;*.txt",
+        options={'HIDDEN'},
+        )
+
+    def stop(self):
+        self.report({'WARNING'}, "File not a valid texture file!")
+        return {'CANCELLED'}
+
+    def execute(self, context):
+        import os
+        extension = os.path.splitext(self.filepath)[1]
+        if extension == '.txt':
+            #reading all lines from the index file
+            content: List[str] = None
+            with open(self.filepath) as f:
+                content = f.readlines()
+            folder = os.path.dirname(self.filepath)
+            textures: List[Tuple[int, str]] = list()
+
+            # validating index file
+            for c in content:
+                c = c.strip().split(',')
+                if len(c) != 2:
+                    return self.stop()
+                try:
+                    gIndex = int(c[0])
+                except:
+                    return self.stop()
+                texturePath = folder + "\\" + c[1]
+                if not os.path.isfile(texturePath):
+                    return self.stop()
+                textures.append((gIndex, texturePath))
+
+            bpy.ops.scene.sacleartexturelist()
+            texList = context.scene.saSettings.textureList
+            for i, t in textures:
+                img = bpy.data.images.load(t)
+                img.use_fake_user = True
+                tex = texList.add()
+                tex.globalID = i
+                tex.name = os.path.splitext(os.path.basename(t))[0]
+                tex.image = img
+
+
+
+        return {'FINISHED'}
 
 # operators
 
@@ -650,6 +718,274 @@ class ArmatureFromObjects(bpy.types.Operator):
 
 
         return {'FINISHED'}
+
+class AddTextureSlot(bpy.types.Operator):
+    bl_idname = "scene.saaddtexturesslot"
+    bl_label="Add texture"
+    bl_description="Adds texture to the texture list"
+
+
+    def execute(self, context):
+        settings = context.scene.saSettings
+
+        # getting next usable global id
+        ids = list()
+        for t in settings.textureList:
+            ids.append(t.globalID)
+        ids.sort(key=lambda x: x)
+        globalID = -1
+        for i, index in enumerate(ids):
+            if i != index:
+                globalID = i
+                break
+        if globalID == -1:
+            globalID = len(settings.textureList)
+
+        # creating texture
+        tex = settings.textureList.add()
+        #tex.image_user
+        settings.active_texture_index = len(settings.textureList) -1
+
+        tex.name = "Texture"
+        tex.globalID = globalID
+
+        return {'FINISHED'}
+
+class RemoveTextureSlot(bpy.types.Operator):
+    bl_idname = "scene.saremovetexturesslot"
+    bl_label="Remove texture"
+    bl_description="Removes the selected texture from the texture list"
+
+    def execute(self, context):
+        settings = context.scene.saSettings
+        settings.textureList.remove(settings.active_texture_index)
+
+        settings.active_texture_index -= 1
+        if len(settings.textureList) == 0:
+            settings.active_texture_index = -1
+        elif settings.active_texture_index < 0:
+            settings.active_texture_index = 0
+
+        return {'FINISHED'}
+
+class MoveTextureSlot(bpy.types.Operator):
+    bl_idname = "scene.samovetexturesslot"
+    bl_label="Move texture"
+    bl_info="Moves texture slot in list"
+
+    direction: EnumProperty(
+        name="Direction",
+        items=( ('UP',"up","up"),
+                ('DOWN',"down","down"), )
+        )
+
+    def execute(self, context):
+        settings = context.scene.saSettings
+        newIndex = settings.active_texture_index + (-1 if self.direction == 'UP' else 1)
+        if not (newIndex == -1 or newIndex >= len(settings.textureList)):
+            if settings.correct_Material_Textures:
+                for m in bpy.data.materials:
+                    props: SAMaterialSettings = m.saSettings
+                    if props.b_TextureID == newIndex:
+                        props.b_TextureID = settings.active_texture_index
+                    elif props.b_TextureID == settings.active_texture_index:
+                        props.b_TextureID = newIndex
+
+            settings.textureList.move(settings.active_texture_index, newIndex)
+
+            settings.active_texture_index = newIndex
+        return {'FINISHED'}
+
+class ClearTextureList(bpy.types.Operator):
+    bl_idname = "scene.sacleartexturelist"
+    bl_label="Clear list"
+    bl_info="Removes all entries from the list"
+
+    def execute(self, context):
+        settings = context.scene.saSettings
+        settings.active_texture_index = -1
+        settings.textureList.clear()
+        return {'FINISHED'}
+
+class AutoNameTextures(bpy.types.Operator):
+    bl_idname = "scene.saautonametexlist"
+    bl_label="Autoname entries"
+    bl_info="Renames all entries to the assigned texture"
+
+    def execute(self, context):
+        texList = context.scene.saSettings.textureList
+
+        for t in texList:
+            if t.image is not None:
+                t.name = os.path.splitext(t.image.name)[0]
+            else:
+                t.name = "Texture"
+        return {'FINISHED'}
+
+class UpdateMaterials(bpy.types.Operator):
+    bl_idname = "scene.saupdatemats"
+    bl_label="Update Materials"
+    bl_info="Sets material nodetrees and variables to imitate how they would look in sadx/sa2"
+
+    def addDriver(inputSocket, scene, path, entry = -1):
+        #curve = inputSocket.driver_add("default_value")
+        #driver = curve.driver
+        #driver.type = 'AVERAGE'
+        #variable = driver.variables.new()
+        #variable.targets[0].id_type = 'SCENE'
+        #variable.targets[0].id = scene
+        #variable.targets[0].data_path = "saSettings." + path + ("" if entry == -1 else "[" + str(entry) + "]")
+        #curve.update()
+        inputSocket.default_value = getattr(scene.saSettings, path) if entry == -1 else getattr(scene.saSettings, path)[entry]
+
+    def execute(self, context):
+
+        # remove old trees
+
+        ng = bpy.data.node_groups
+
+        n = ng.find("UV Tiling")
+        if n > -1:
+            ng.remove(ng[n])
+
+        n = ng.find("SAShader")
+        if n > -1:
+            ng.remove(ng[n])
+
+        n = ng.find("EnvMap")
+        if n > -1:
+            ng.remove(ng[n])
+
+        # now reload them them
+        directory = os.path.dirname(os.path.realpath(__file__)) + "\\Shaders.blend\\NodeTree\\"
+        bpy.ops.wm.append(filename="UV Tiling", directory=directory)
+        bpy.ops.wm.append(filename="SAShader", directory=directory)
+        bpy.ops.wm.append(filename="EnvMap", directory=directory)
+
+        tilingGroup = ng[ng.find("UV Tiling")]
+        saShaderGroup = ng[ng.find("SAShader")]
+        envMapGroup = ng[ng.find("EnvMap")]
+
+        # Drivers dont update automatically when set like this, and i cant find a way to update them through python, so we'll just set them temporarily
+        nd = saShaderGroup.nodes
+        lightDirNode: bpy.types.ShaderNodeCombineXYZ = nd[nd.find("LightDir")]
+        lightColNode: bpy.types.ShaderNodeCombineRGB = nd[nd.find("LightCol")]
+        ambientColNode: bpy.types.ShaderNodeCombineRGB = nd[nd.find("AmbientCol")]
+        displSpecularNode: bpy.types.ShaderNodeValue = nd[nd.find("DisplSpecular")]
+
+        UpdateMaterials.addDriver(lightDirNode.inputs[0], context.scene, "LightDir", 0)
+        UpdateMaterials.addDriver(lightDirNode.inputs[1], context.scene, "LightDir", 1)
+        UpdateMaterials.addDriver(lightDirNode.inputs[2], context.scene, "LightDir", 2)
+
+        UpdateMaterials.addDriver(lightColNode.inputs[0], context.scene, "LightColor", 0)
+        UpdateMaterials.addDriver(lightColNode.inputs[1], context.scene, "LightColor", 1)
+        UpdateMaterials.addDriver(lightColNode.inputs[2], context.scene, "LightColor", 2)
+
+        UpdateMaterials.addDriver(ambientColNode.inputs[0], context.scene, "LightAmbientColor", 0)
+        UpdateMaterials.addDriver(ambientColNode.inputs[1], context.scene, "LightAmbientColor", 1)
+        UpdateMaterials.addDriver(ambientColNode.inputs[2], context.scene, "LightAmbientColor", 2)
+
+        UpdateMaterials.addDriver(displSpecularNode.outputs[0], context.scene, "DisplaySpecular")
+
+        # The materials know whether the shader displays vertex colors based on the object color, its weird i know, but i didnt find any better way
+        for o in context.scene.objects:
+            if o.type == 'MESH':
+                isNrm = o.data.saSettings.sa2ExportType == 'NRM'
+                r = o.color[0]
+                import math
+                rc = bool(math.floor(r * 1000) % 2)
+
+                if isNrm and not rc:
+                    r = (math.floor(r * 1000) + 1 if r < 1 else -1) / 1000.0
+                elif not isNrm and rc:
+                    r = (math.floor(r * 1000) + -1 if r > 0 else 1) / 1000.0
+                o.color[0] = r
+
+
+        # now its time to set all of the materials
+        for m in bpy.data.materials:
+            #creating an settings nodes
+            mProps = m.saSettings
+            m.use_nodes = True
+            tree: bpy.types.NodeTree = m.node_tree
+            nodes = tree.nodes
+            nodes.clear()
+
+            out = nodes.new("ShaderNodeOutputMaterial")
+            saShader = nodes.new("ShaderNodeGroup")
+            saShader.node_tree = saShaderGroup
+
+            saShader.inputs[2].default_value = mProps.b_Diffuse
+            saShader.inputs[3].default_value = mProps.b_Diffuse[3]
+            saShader.inputs[4].default_value = mProps.b_ignoreLighting
+
+            saShader.inputs[5].default_value = mProps.b_Specular
+            saShader.inputs[6].default_value = mProps.b_Specular[3]
+            saShader.inputs[7].default_value = mProps.b_Exponent
+            saShader.inputs[8].default_value = mProps.b_ignoreSpecular
+
+            saShader.inputs[9].default_value = mProps.b_Ambient
+            saShader.inputs[10].default_value = mProps.b_Ambient[3]
+            saShader.inputs[11].default_value = mProps.b_ignoreAmbient
+
+            saShader.inputs[12].default_value = mProps.b_flatShading
+
+            saShader.location = (-200, 0)
+
+            tree.links.new(out.inputs[0], saShader.outputs[0])
+
+            if mProps.b_useTexture:
+                try:
+                    img = context.scene.saSettings.textureList[mProps.b_TextureID]
+                except IndexError:
+                    img = None
+
+                if img is not None:
+                    tex = nodes.new("ShaderNodeTexImage")
+                    tex.image = img.image
+                    tex.interpolation = 'Closest' if mProps.b_texFilter == 'POINT' else 'Smart'
+                    tex.location = (-500, 0)
+                    tree.links.new(tex.outputs[0], saShader.inputs[0])
+                    tree.links.new(tex.outputs[1], saShader.inputs[1])
+
+
+                    uvNode = nodes.new("ShaderNodeGroup")
+                    if mProps.b_useEnv:
+                        uvNode.node_tree = envMapGroup
+                    else:
+                        uvNode.node_tree = tilingGroup
+
+                        uvNode.inputs[1].default_value = mProps.b_mirrorU
+                        uvNode.inputs[2].default_value = mProps.b_mirrorV
+                        uvNode.inputs[3].default_value = mProps.b_clampU
+                        uvNode.inputs[4].default_value = mProps.b_clampV
+
+                        uvSrc = nodes.new("ShaderNodeUVMap")
+                        uvSrc.location = (-900, 0)
+                        tree.links.new(uvSrc.outputs[0], uvNode.inputs[0])
+                    tree.links.new(uvNode.outputs[0], tex.inputs[0])
+                    uvNode.location = (-700, 0)
+                else:
+                    saShader.inputs[0].default_value = (1,0,1,1)
+
+            if mProps.b_useAlpha:
+                m.blend_method = context.scene.saSettings.viewportAlphaType
+                m.alpha_threshold = context.scene.saSettings.viewportAlphaCutoff
+            else:
+                m.blend_method = 'OPAQUE'
+            m.shadow_method = 'NONE'
+            m.use_backface_culling = not mProps.b_doubleSided
+
+        # setting the color management
+        context.scene.display_settings.display_device = 'sRGB'
+        context.scene.view_settings.view_transform = 'Standard'
+        context.scene.view_settings.look = 'None'
+        context.scene.view_settings.exposure = 0
+        context.scene.view_settings.gamma = 1
+        context.scene.sequencer_colorspace_settings.name = 'sRGB'
+        context.scene.view_settings.use_curve_mapping = False
+        return {'FINISHED'}
+
 
 #  quick edit
 
@@ -878,7 +1214,7 @@ class SASettings(bpy.types.PropertyGroup):
         )
 
     texFileName: StringProperty(
-        name="Texture file name",
+        name="Tex-File name",
         description="The name of the texture file specified in the landtable info (lvl format)",
         default=""
         )
@@ -906,6 +1242,77 @@ class SASettings(bpy.types.PropertyGroup):
         description="Enables double sided collision detection. This is supposed to be used as a failsafe for people unexperienced with how normals work",
         default=True
         )
+
+    active_texture_index: IntProperty(
+        name="Active texture index",
+        description="Index of active item in texture list",
+        default=-1
+        )
+
+    correct_Material_Textures: BoolProperty(
+        name="Update Materials",
+        description="If a texture is being moved, the material's texture id's will be adjusted so that every material keeps the same texture",
+        default=True
+        )
+
+    LightDir: FloatVectorProperty(
+        name="Light Direction",
+        description="The direction of the emulated light (seen from the y+ axis)",
+        subtype='DIRECTION',
+        default=(0.0,0.0,1.0),
+        min = 0,
+        max = 1,
+        size=3
+        )
+
+    LightColor: FloatVectorProperty(
+        name="Light Color",
+        description="The color of the emulated light",
+        default=(1.0,1.0,1.0),
+        subtype='COLOR_GAMMA',
+        min = 0,
+        max = 1,
+        size=3
+        )
+
+    LightAmbientColor: FloatVectorProperty(
+        name="Light Ambient Color",
+        description="The ambient color of the emulated light",
+        default=(0.3,0.3,0.3),
+        subtype='COLOR_GAMMA',
+        min = 0,
+        max = 1,
+        size=3
+        )
+
+    DisplaySpecular: BoolProperty(
+        name="Viewport Specular",
+        description="Display specular in the blender material view",
+        default=True
+        )
+
+    viewportAlphaType: EnumProperty(
+        name="Viewport Alpha Type",
+        description="The Eevee alpha type to display transparent materials",
+        items=(('BLEND', "Blend", "The default blending"),
+               ('HASHED', "Hashed", "Hashed transparency"),
+               ('CLIP', "Clip", "Sharp edges for certain thresholds")),
+        default='BLEND'
+        )
+
+    viewportAlphaCutoff: FloatProperty(
+        name="Viewport blend Cutoff",
+        description="Cutoff value for the eevee alpha cutoff transparency",
+        min = 0,
+        max = 1,
+        default=0.5
+        )
+
+    #panel stuff
+
+    expandedLTPanel: BoolProperty( name="Landtable data", default=False )
+    expandedTexturePanel: BoolProperty( name="Texture list", default=False )
+    expandedLightingPanel: BoolProperty( name="Lighting data", default=False )
 
     expandedQEPanel: BoolProperty( name="Quick Edit", default=False )
 
@@ -940,9 +1347,7 @@ class SASettings(bpy.types.PropertyGroup):
         description="A menu for quickly assigning mesh properties to mutliple objects",
         default=False)
 
-
     # Quick material edit properties
-
 
     b_apply_diffuse: BoolProperty(
         name = "Apply diffuse",
@@ -1676,7 +2081,7 @@ class SAMeshSettings(bpy.types.PropertyGroup):
         items = ( ('VC', "Colors", "Only vertex colors are gonna be written"),
                   ('NRM', "Normals", "Only normals are gonna be written"),
                 ),
-        default = 'VC'
+        default = 'NRM'
         )
 
     sa2IndexOffset: IntProperty(
@@ -1685,6 +2090,175 @@ class SAMeshSettings(bpy.types.PropertyGroup):
         min=0, max = 32767,
         default = 0
     )
+
+def texUpdate(self, context):
+    settings = context.scene.saSettings
+
+    # checking if texture object is in list
+    index = -1
+    tList = settings.textureList
+    for i, t in enumerate(tList):
+        if t == self:
+            index = i
+            break
+
+    if index == -1:
+        print("Texture slot not found in list")
+        return
+
+    if self.name != self.prevName:
+        if self.name.isspace() or self.name == "":
+            self.name = self.prevName
+            return
+
+        names = list()
+        for t in tList:
+            if t == self:
+                continue
+            names.append(t.name)
+
+        if self.name not in names:
+            self.prevName = self.name
+            return
+
+        # check if the texture has a number tag
+        splits = self.name.split(".")
+        isNumberTag = len(splits) > 1 and splits[-1].isdecimal()
+
+        if isNumberTag:
+            name = self.name[:len(self.name) - 1 - len(splits[-1])]
+            number = int(splits[-1])
+        else:
+            name = self.name
+            number = 0
+
+        numbers = list()
+
+        for t in context.scene.saSettings.textureList:
+            if t == self:
+                continue
+            splits = t.name.split(".")
+            if len(splits) > 1 and splits[-1].isdecimal():
+                tname = t.name[:len(t.name) - 1 - len(splits[-1])]
+                if tname == name:
+                    numbers.append(int(splits[-1]))
+            elif t.name == name:
+                numbers.append(0)
+
+
+        numbers.sort(key=lambda x: x)
+        found = False
+        for i, n in enumerate(numbers):
+            if i != n:
+                found = True
+                break
+        if not found:
+            i += 1
+        self.name = name + "." + str(i).zfill(3)
+
+    if self.globalID != self.prevGlobalID:
+        ids = list()
+        for t in settings.textureList:
+            if t == self:
+                continue
+            ids.append(t.globalID)
+
+        if self.globalID not in ids:
+            self.prevGlobalID = self.globalID
+            return
+
+        ids.sort(key=lambda x: x)
+        current = 0
+        if self.globalID == self.prevGlobalID - 1: # if value was just reduced by one
+            found = -1
+            for index in ids:
+                if current < index:
+                    current = index
+                    t = index - 1
+                    if t < self.prevGlobalID:
+                        found = t
+                    else:
+                        break
+
+                current += 1
+
+            if found == -1:
+                self.globalID = self.prevGlobalID
+            else:
+                self.globalID = found
+        elif self.globalID == self.prevGlobalID + 1: # if value was just raise by one
+            found = -1
+            oldIndex = ids[0]
+            for index in ids:
+                if current < index:
+                    current = index
+                    t = oldIndex + 1
+                    if t > self.prevGlobalID:
+                        found = t
+                        break
+                oldIndex = index
+                current += 1
+
+            if found == -1:
+                self.globalID = ids[-1] + 1
+            else:
+                self.globalID = found
+        else:  # everything else
+            closestFree = -1
+            oldindex = ids[0]
+            for index in ids:
+                if current < index:
+                    current = index
+                    if index < self.globalID:
+                        t = index - 1
+                    else:
+                        t = oldindex + 1
+
+                    if abs(t - self.globalID) < abs(closestFree - self.globalID) or closestFree == -1:
+                        closestFree = t
+                    elif abs(t - self.globalID) > abs(closestFree - self.globalID):
+                        break
+                    elif self.globalID < self.prevGlobalID:
+                        closestFree = t
+                        break
+
+                oldindex = index
+                current += 1
+
+            if closestFree == -1:
+                closestFree = self.prevGlobalID
+
+            self.globalID = closestFree
+
+class SATexture(bpy.types.PropertyGroup):
+
+    name: StringProperty(
+        name = "Slot name",
+        description="The name of the slot",
+        maxlen=0x20,
+        default="",
+        update=texUpdate
+        )
+
+    prevName: StringProperty(
+        name="Previous name",
+        maxlen=0x20,
+        default=""
+        )
+
+    globalID: IntProperty(
+        name="Global ID",
+        description="The global texture id in the texture file",
+        default=0,
+        min = 0,
+        update=texUpdate
+        )
+
+    prevGlobalID: IntProperty(
+        name="Previous Global ID",
+        min = 0,
+        default=0,
+        )
 
 # panels
 
@@ -1884,6 +2458,13 @@ def drawMeshPanel(layout: bpy.types.UILayout, meshProps, qe = False):
     propAdv(layout, "Export Type (SA2)", meshProps, "sa2ExportType", sProps, "me_apply_ExportType", qe = qe)
     propAdv(layout, "+ Vertex Offset (SA2)", meshProps, "sa2IndexOffset", sProps, "me_apply_addVO", qe = qe)
 
+class SCENE_UL_SATexList(bpy.types.UIList):
+
+    def draw_item(self, context, layout: bpy.types.UILayout, data, item, icon, active_data, active_propname, index, flt_flag):
+        split = layout.split(factor=0.6)
+        split.prop(item, "name", text="", emboss=False, icon_value=icon, icon= 'X' if item.image == None else 'CHECKMARK')
+        split.prop(item, "globalID", text=str(index), emboss=False, icon_value=icon)
+
 class SAObjectPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_saProperties"
     bl_label = "SA Object Properties"
@@ -1938,6 +2519,22 @@ class SAMaterialPanel(bpy.types.Panel):
 
         drawMaterialPanel(layout, menuProps, matProps)
 
+class SCENE_MT_Texture_Context_Menu(bpy.types.Menu):
+    bl_label = "Texture list specials"
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.saSettings
+
+        layout.prop(settings, "correct_Material_Textures")
+        layout.operator(AutoNameTextures.bl_idname)
+        layout.operator(ClearTextureList.bl_idname)
+        layout.separator()
+        layout.operator(ImportTexFile.bl_idname)
+        layout.separator()
+        layout.operator(ExportPVMX.bl_idname)
+        layout.operator(ExportPAK.bl_idname)
+
 class SAScenePanel(bpy.types.Panel):
     bl_idname = "SCENE_PT_saProperties"
     bl_label = "SA file info"
@@ -1953,22 +2550,80 @@ class SAScenePanel(bpy.types.Panel):
         layout.prop(settings, "description")
 
         layout.separator(factor=2)
-        layout.label(text="Landtable data")
-        layout.prop(settings, "landtableName")
-        layout.prop(settings, "texFileName")
 
-        split = layout.split(factor=0.5)
-        split.label(text="Draw Distance:")
-        split.prop(settings, "drawDistance", text="")
+        box = layout.box()
+        box.prop(settings, "expandedLTPanel",
+            icon="TRIA_DOWN" if settings.expandedLTPanel else "TRIA_RIGHT",
+            emboss = False
+            )
+        if settings.expandedLTPanel:
+            box.prop(settings, "landtableName")
 
-        split = layout.split(factor=0.3)
-        split.label(text="TexListPtr (hex):")
-        split = split.split(factor=0.1)
-        split.alignment='RIGHT'
-        split.label(text="0x")
-        split.prop(settings, "texListPointer", text="")
+            split = box.split(factor=0.5)
+            split.label(text="Draw Distance:")
+            split.prop(settings, "drawDistance", text="")
 
-        layout.prop(settings, "doubleSidedCollision")
+            row = box.row()
+            row.alignment='LEFT'
+            row.label(text="TexListPtr:  0x")
+            row.alignment='EXPAND'
+            row.prop(settings, "texListPointer", text="")
+
+            box.prop(settings, "doubleSidedCollision")
+
+        box = layout.box()
+        box.prop(settings, "expandedTexturePanel",
+            icon="TRIA_DOWN" if settings.expandedTexturePanel else "TRIA_RIGHT",
+            emboss = False
+            )
+
+        if settings.expandedTexturePanel:
+            split = box.split(factor=0.4)
+            split.label(text="Tex-file name")
+            split.prop(settings, "texFileName", text="")
+            row = box.row()
+            row.template_list("SCENE_UL_SATexList", "", settings, "textureList", settings, "active_texture_index")
+
+            col = row.column()
+            col.operator(AddTextureSlot.bl_idname, icon='ADD', text="")
+            col.operator(RemoveTextureSlot.bl_idname, icon='REMOVE', text="")
+
+            col.separator()
+            col.operator(MoveTextureSlot.bl_idname, icon='TRIA_UP', text="").direction = 'UP'
+            col.operator(MoveTextureSlot.bl_idname, icon='TRIA_DOWN', text="").direction = 'DOWN'
+            col.menu("SCENE_MT_Texture_Context_Menu", icon='DOWNARROW_HLT', text="")
+
+            if settings.active_texture_index >= 0:
+                tex = settings.textureList[settings.active_texture_index]
+                box.prop_search(tex, "image", bpy.data, "images")
+
+        box = layout.box()
+        box.prop(settings, "expandedLightingPanel",
+            icon="TRIA_DOWN" if settings.expandedLightingPanel else "TRIA_RIGHT",
+            emboss = False
+            )
+
+        if settings.expandedLightingPanel:
+            split = box.split(factor=0.5)
+            split.label(text="Light Direction")
+            split.prop(settings, "LightDir", text="")
+
+            split = box.split(factor=0.5)
+            split.label(text="Light Color")
+            split.prop(settings, "LightColor", text="")
+
+            split = box.split(factor=0.5)
+            split.label(text="Ambient Light")
+            split.prop(settings, "LightAmbientColor", text="")
+
+            box.separator(factor=0.5)
+            box.prop(settings, "DisplaySpecular")
+            split = box.split(factor=0.5)
+            split.label(text="Viewport blend mode")
+            split.prop(settings, "viewportAlphaType", text="")
+            if settings.viewportAlphaType == 'CUT':
+                box.prop(settings, "viewportAlphaCutoff")
+
 
 class SA3DPanel(bpy.types.Panel):
     bl_idname = 'MESH_PT_satools'
@@ -2044,6 +2699,8 @@ class SA3DPanel(bpy.types.Panel):
                 drawMeshPanel(box, settings.meshQProps, qe=True)
                 box.separator()
 
+        layout.operator(UpdateMaterials.bl_idname)
+        layout.separator()
         layout.operator(ArmatureFromObjects.bl_idname)
         layout.operator(StrippifyTest.bl_idname)
 
@@ -2062,11 +2719,20 @@ classes = (
     ExportSA1LVL,
     ExportSA2LVL,
     ExportSA2BLVL,
+    ExportPAK,
+    ExportPVMX,
     ImportMDL,
     ImportLVL,
+    ImportTexFile,
 
     StrippifyTest,
     ArmatureFromObjects,
+    AddTextureSlot,
+    RemoveTextureSlot,
+    MoveTextureSlot,
+    ClearTextureList,
+    AutoNameTextures,
+    UpdateMaterials,
 
     qeReset,
     qeInvert,
@@ -2078,9 +2744,12 @@ classes = (
     SAMaterialSettings,
     SAEditPanelSettings,
     SAMeshSettings,
+    SATexture,
 
+    SCENE_UL_SATexList,
     SAObjectPanel,
     SAMaterialPanel,
+    SCENE_MT_Texture_Context_Menu,
     SAScenePanel,
     SA3DPanel,
     SAMeshPanel,
@@ -2090,12 +2759,18 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
-    SASettings.editorSettings = bpy.props.PointerProperty(type=SAEditPanelSettings)
+    SATexture.image = bpy.props.PointerProperty(type=bpy.types.Image)
 
+    SASettings.editorSettings = bpy.props.PointerProperty(type=SAEditPanelSettings)
     SASettings.qEditorSettings = bpy.props.PointerProperty(type=SAEditPanelSettings)
     SASettings.matQProps = bpy.props.PointerProperty(type=SAMaterialSettings)
     SASettings.objQProps = bpy.props.PointerProperty(type=SAObjectSettings)
     SASettings.meshQProps = bpy.props.PointerProperty(type=SAMeshSettings)
+    SASettings.textureList = bpy.props.CollectionProperty(
+        type=SATexture,
+        name="Texture list",
+        description= "The textures used by sonic adventure"
+        )
 
     bpy.types.Scene.saSettings = bpy.props.PointerProperty(type=SASettings)
     bpy.types.Object.saSettings = bpy.props.PointerProperty(type=SAObjectSettings)
