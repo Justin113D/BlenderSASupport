@@ -525,7 +525,13 @@ class ImportTexFile(bpy.types.Operator, ImportHelper):
             bpy.ops.scene.sacleartexturelist()
             texList = context.scene.saSettings.textureList
             for i, t in textures:
-                img = bpy.data.images.load(t)
+                img = None
+                for image in bpy.data.images:
+                    if image.filepath == t:
+                        img = image
+                        break
+                if img is None:
+                    img = bpy.data.images.load(t)
                 img.use_fake_user = True
                 tex = texList.add()
                 tex.globalID = i
@@ -804,6 +810,12 @@ class ClearTextureList(bpy.types.Operator):
     def execute(self, context):
         settings = context.scene.saSettings
         settings.active_texture_index = -1
+
+        for t in settings.textureList:
+            if t.image is not None:
+                t.image.use_fake_user = False
+
+
         settings.textureList.clear()
         return {'FINISHED'}
 
@@ -888,17 +900,17 @@ class UpdateMaterials(bpy.types.Operator):
         UpdateMaterials.addDriver(displSpecularNode.outputs[0], context.scene, "DisplaySpecular")
 
         # The materials know whether the shader displays vertex colors based on the object color, its weird i know, but i didnt find any better way
+        import math
         for o in context.scene.objects:
             if o.type == 'MESH':
                 isNrm = o.data.saSettings.sa2ExportType == 'NRM'
                 r = o.color[0]
-                import math
                 rc = bool(math.floor(r * 1000) % 2)
 
-                if isNrm and not rc:
-                    r = (math.floor(r * 1000) + 1 if r < 1 else -1) / 1000.0
-                elif not isNrm and rc:
-                    r = (math.floor(r * 1000) + -1 if r > 0 else 1) / 1000.0
+                if isNrm and rc:
+                    r = (math.floor(r * 1000) + (1 if r < 1 else (-1))) / 1000.0
+                elif not isNrm and not rc:
+                    r = (math.floor(r * 1000) + ((-1) if r > 0 else 1)) / 1000.0
                 o.color[0] = r
 
 
