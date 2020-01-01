@@ -127,7 +127,7 @@ class UV:
 
     def __init__(self, uv = (0.0, 0.0)):
         self.x = max(-32767, min(32767, round(uv[0] * 256)))
-        self.y = max(-32767, min(32767, round((1-uv[1]) * 256))
+        self.y = max(-32767, min(32767, round((1-uv[1]) * 256)))
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
