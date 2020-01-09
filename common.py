@@ -311,12 +311,13 @@ class ModelData:
         # settings space data
 
         obj_mat: mathutils.Matrix = global_matrix @ matrix
+        scale = matrix.to_scale()
         rot: mathutils.Euler = matrix.to_euler('XZY')
         rot = global_matrix @ mathutils.Vector((rot.x, rot.y, rot.z))
 
         self.position = Vector3(obj_mat.to_translation())
         self.rotation = BAMSRotation(rot)
-        self.scale = Vector3(obj_mat.to_scale())
+        self.scale = Vector3((scale.x, scale.z, scale.y))
 
         # settings the unknowns
         self.unknown1 = 0
