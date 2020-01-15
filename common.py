@@ -326,6 +326,7 @@ class ModelData:
 
     @classmethod
     def updateMeshes(cls, objList: list, meshList: list):
+
         for o in objList:
             o.processedMesh = None
             if o.origObject is not None and o.origObject.type == 'MESH':
@@ -334,10 +335,13 @@ class ModelData:
                         o.processedMesh = m
 
     @classmethod
-    def updateMeshPointer(cls, objList: list, meshDict: dict):
+    def updateMeshPointer(cls, objList: list, meshDict: dict, cMeshDict: list):
         """Updates the mesh pointer of a ModelData list utilizing a meshDict"""
         for o in objList:
             if o.processedMesh is not None:
+                if cMeshDict is not None and o.saProps["isCollision"]:
+                    o.meshPtr = cMeshDict[o.processedMesh.name]
+                else:
                     o.meshPtr = meshDict[o.processedMesh.name]
             else:
                 o.meshPtr = 0
@@ -855,6 +859,9 @@ def convertObjectData(context: bpy.types.Context,
         meshObjects, toConvert, addESplit, modifierStates = evaluateMeshModifiers(mObjects, apply_modifs)
         meshes, materials = getMeshes(toConvert, meshObjects, apply_modifs, context.evaluated_depsgraph_get(), addESplit, modifierStates)
 
+        for k, v in modifierStates.items():
+            k.show_viewport = v
+
         ModelData.updateMeshes(objects, meshes)
 
         if fmt == 'SA2': # since sa2 can have armatures, we need to handle things a little different...
@@ -886,14 +893,24 @@ def convertObjectData(context: bpy.types.Context,
             if o.origObject.type == 'MESH':
                 if o.saProps["isCollision"]:
                     cObjects.append(o)
-                else:
+                if not o.saProps["isCollision"]  or o.saProps["isCollision"] and o.saProps["isVisible"]:
                     vObjects.append(o)
 
         mObjects1, toConvert1, addESplit1, modifierStates1 = evaluateMeshModifiers(cObjects, apply_modifs)
         mObjects2, toConvert2, addESplit2, modifierStates2 = evaluateMeshModifiers(vObjects, apply_modifs)
         despgraph = context.evaluated_depsgraph_get()
-        cMeshes, dontUse = getMeshes(toConvert1, mObjects1, apply_modifs, despgraph, addESplit1, modifierStates1)
         vMeshes, materials = getMeshes(toConvert2, mObjects2, apply_modifs, despgraph, addESplit2, modifierStates2)
+
+        finished = dict()
+        for m in vMeshes:
+            finished[m.name] = m
+
+        cMeshes, dontUse = getMeshes(toConvert1, mObjects1, apply_modifs, despgraph, addESplit1, modifierStates1, finished)
+
+        for k, v in modifierStates1.items():
+            k.show_viewport = v
+        for k, v in modifierStates2.items():
+            k.show_viewport = v
 
         meshes = list()
         meshes.extend(cMeshes)
@@ -927,6 +944,7 @@ def sortChildren(cObject: bpy.types.Object,
             model = ModelData(cObject, parent, hierarchyDepth, "vsl_" + cObject.name, export_matrix, False, True)
             # collision
             lastSibling = ModelData(cObject, model, hierarchyDepth, "cls_" + cObject.name, export_matrix, True, False)
+            result.append(lastSibling)
         else:
             visible = True if not cObject.saSettings.isCollision else cObject.saSettings.isVisible
             model = ModelData(cObject, parent, hierarchyDepth, cObject.name, export_matrix, cObject.saSettings.isCollision, visible)
@@ -1003,12 +1021,22 @@ def getMeshes(meshesToConvert: List[ModelData],
               apply_modifs: bool,
               depsgraph,
               addESplit: Dict[bpy.types.Object, bpy.types.EdgeSplitModifier],
-              modifierStates: Dict[bpy.types.Modifier, bool]):
+              modifierStates: Dict[bpy.types.Modifier, bool],
+              finished = dict()):
     outMeshes = list()
     materials: Dict[str, bpy.types.Material] = dict()
 
     for o in meshesToConvert:
         obj = o.origObject
+        if not (o.saProps["isCollision"] and not o.saProps["isVisible"]):
+            for m in obj.data.materials:
+                if m.name not in materials:
+                    materials[m.name] = m
+
+        if obj.data.name in finished:
+            outMeshes.append(finished[obj.data.name])
+            continue
+
         if len(o.origObject.data.vertices) == 0:
             continue
         t_apply_modifs = False if o in mObjects else apply_modifs
@@ -1020,14 +1048,11 @@ def getMeshes(meshesToConvert: List[ModelData],
         if obj in addESplit:
             obj.modifiers.remove(addESplit[obj])
 
-        outMeshes.append(me)
-        if not (o.saProps["isCollision"] and not o.saProps["isVisible"]):
-            for m in obj.data.materials:
-                if m.name not in materials:
-                    materials[m.name] = m
+        me.saSettings.sa2ExportType = obj.data.saSettings.sa2ExportType
+        me.saSettings.sa2IndexOffset = obj.data.saSettings.sa2IndexOffset
 
-    for k, v in modifierStates.items():
-        k.show_viewport = v
+        outMeshes.append(me)
+
 
     return outMeshes, materials
 

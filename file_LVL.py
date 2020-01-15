@@ -237,8 +237,6 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
 
      return {'FINISHED'}
 
-
-
 def write(context,
          filepath, *,
          export_format,
@@ -287,7 +285,8 @@ def write(context,
      fileW.wUInt(0) # landtable address
      fileW.wUInt(0) # methadata address
      labels = dict() # for labels methadata
-     meshDict = dict()
+     cMeshDict = None
+     vMeshDict = dict()
 
      from bpy_extras.io_utils import axis_conversion
      global_matrix = (mathutils.Matrix.Scale(global_scale, 4) @ axis_conversion(to_forward='-Z', to_up='Y',).to_4x4())
@@ -308,7 +307,7 @@ def write(context,
           for m in meshes:
                mesh = format_BASIC.Attach.fromMesh(m, global_matrix, bscMaterials)
                if mesh is not None:
-                    mesh.write(fileW, labels, meshDict)
+                    mesh.write(fileW, labels, vMeshDict)
           if DO:
                print(" - - - - \n")
      else:
@@ -325,12 +324,17 @@ def write(context,
                return {'FINISHED'}
 
           #writing the collision meshes
+          cMeshDict = dict()
           if DO:
                print(" == Writing BASIC attaches == \n")
           for m in cMeshes:
                mesh = format_BASIC.Attach.fromMesh(m, global_matrix, [], isCollision=True)
                if mesh is not None:
-                    mesh.write(fileW, labels, meshDict)
+                    mesh.write(fileW, labels, cMeshDict)
+                    if DO:
+                         print("Mesh written:", mesh.name)
+          if DO:
+               print("")
 
           #writing visual meshes
           if export_format == 'SA2':
@@ -339,17 +343,23 @@ def write(context,
                for m in vMeshes:
                     mesh = format_CHUNK.Attach.fromMesh(m, global_matrix, materials)
                     if mesh is not None:
-                         mesh.write(fileW, labels, meshDict)
+                         mesh.write(fileW, labels, vMeshDict)
+                         if DO:
+                              print("Mesh written:", mesh.name)
           else:
                if DO:
                     print(" == Writing GC attaches == \n")
                for m in vMeshes:
                     mesh = format_GC.Attach.fromMesh(m, global_matrix, materials)
                     if mesh is not None:
-                         mesh.write(fileW, labels, meshDict)
+                         mesh.write(fileW, labels, vMeshDict)
+                         if DO:
+                              print("Mesh written:", mesh.name)
+          if DO:
+               print("")
 
      # writing model data
-     ModelData.updateMeshPointer(objects, meshDict)
+     ModelData.updateMeshPointer(objects, vMeshDict, cMeshDict)
      ModelData.writeObjectList(objects, fileW, labels, True)
 
      #write COLs
