@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (0,8,5),
+    "version": (0,8,6),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -967,10 +967,10 @@ class UpdateMaterials(bpy.types.Operator):
                     else:
                         uvNode.node_tree = tilingGroup
 
-                        uvNode.inputs[1].default_value = mProps.b_mirrorU
-                        uvNode.inputs[2].default_value = mProps.b_mirrorV
-                        uvNode.inputs[3].default_value = mProps.b_clampU
-                        uvNode.inputs[4].default_value = mProps.b_clampV
+                        uvNode.inputs[1].default_value = mProps.b_mirrorV
+                        uvNode.inputs[2].default_value = mProps.b_mirrorU
+                        uvNode.inputs[3].default_value = mProps.b_clampV
+                        uvNode.inputs[4].default_value = mProps.b_clampU
 
                         uvSrc = nodes.new("ShaderNodeUVMap")
                         uvSrc.location = (-900, 0)

@@ -442,7 +442,16 @@ class Geometry:
         polyPtr = fileR.rUInt(address + 8)
         polySize = fileR.rUInt(address + 12)
 
+        if DO:
+            print("   Param Count:", paramCount)
+            print("   Poly Size:", polySize, "\n")
+
         # reading parameters
+        try:
+            print(paramDict[enums.ParameterType.Texture].texID,"->")
+        except:
+            print("nope ->")
+
         for i in range(paramCount):
             param = Parameter.read(fileR, paramPtr)
             if param.pType == enums.ParameterType.VtxAttrFmt:
@@ -450,9 +459,15 @@ class Geometry:
             else:
                 paramDict[param.pType] = param
             paramPtr += 8
+        print(paramDict[enums.ParameterType.Texture].texID,"\n")
 
         idAttr = enums.IndexAttributeFlags.null
-        params: List[Parameter] = paramDict.values()
+
+        params = list()
+
+        for p in paramDict.values():
+            params.append(copy.deepcopy(p))
+
         if enums.ParameterType.IndexAttributeFlags in paramDict:
             idAttr = paramDict[enums.ParameterType.IndexAttributeFlags].indexAttributes
         else:
@@ -471,8 +486,6 @@ class Geometry:
             vCount = fileR.rUShort(tmpAddr)
             tmpAddr += 2
             polys = list()
-            if DO:
-                print(polyType, vCount)
             if vCount == 0:
                 break
             for i in range(vCount):
@@ -1139,6 +1152,8 @@ class Attach:
         params = dict()
 
         for o in range(oMeshCount):
+            if DO:
+                print(" -- Geometry", o, "--")
             opaqueGeom.append(Geometry.read(fileR, tmpAddr, params))
             tmpAddr += 16
 
@@ -1371,8 +1386,9 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
                         tmpMat["gc_texCoordID"] = 'TEXCOORDNULL'
                 elif p.pType == enums.ParameterType.Texture:
                     tmpMat["b_TextureID"] = p.texID
-                    tmpMat["b_clampU"] = not (p.tilemode & enums.TileMode.WrapU)
-                    tmpMat["b_clampV"] = not (p.tilemode & enums.TileMode.WrapV)
+                    print(p.texID)
+                    tmpMat["b_clampU"] = not bool(p.tilemode & enums.TileMode.WrapU)
+                    tmpMat["b_clampV"] = not bool(p.tilemode & enums.TileMode.WrapV)
                     tmpMat["b_mirrorU"] = bool(p.tilemode & enums.TileMode.MirrorU)
                     tmpMat["b_mirrorV"] = bool(p.tilemode & enums.TileMode.MirrorV)
 
@@ -1394,6 +1410,7 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
                 meshMaterials.append(material)
 
             geomMaterials.append(meshMaterials.index(material))
+        print("")
 
         # creating the mesh
 
