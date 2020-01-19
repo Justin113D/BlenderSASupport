@@ -1277,11 +1277,10 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAt
             vertexSets = list()
             for v in a.vertices:
                 vertexSets.append((v.getLocalPos(), v.getLocalNrm()))
-                if v.hasColor():
-                    hasColor = True
+            #vDistinct = vertexSets
             vDistinct, vIDs = common.getDistinctwID(vertexSets)
 
-        vertexIndices = a.vertexIndices
+        vertexIndices = copy.deepcopy(a.vertexIndices)
 
         for i in range(len(vertexIndices)):
             vertexIndices[i] = vIDs[vertexIndices[i]]
@@ -1433,6 +1432,8 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAt
 
         if not a.hasColor:
             mesh.saSettings.sa2ExportType = 'NRM'
+        else:
+            mesh.saSettings.sa2ExportType = 'VC'
 
         bm = bmesh.new()
         bm.from_mesh(mesh)
@@ -1467,7 +1468,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAt
             for l, pc in zip(face.loops, p):
                 l[uvLayer].uv = pc.uv.getBlenderUV()
                 if a.hasColor:
-                    l[colorLayer] = a.vertices[vertexIndices[pc.index]].getColor()
+                    l[colorLayer] = a.vertices[a.vertexIndices[pc.index]].getColor()
 
             if i in matMarkers:
                 matIndex = matMarkers[i]
