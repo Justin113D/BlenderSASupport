@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (0,8,8),
+    "version": (0,8,7),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -851,7 +851,6 @@ class UpdateMaterials(bpy.types.Operator):
         inputSocket.default_value = getattr(scene.saSettings, path) if entry == -1 else getattr(scene.saSettings, path)[entry]
 
     def execute(self, context):
-        objects = context.selected_objects
         # remove old trees
 
         ng = bpy.data.node_groups
@@ -901,10 +900,7 @@ class UpdateMaterials(bpy.types.Operator):
 
         # The materials know whether the shader displays vertex colors based on the object color, its weird i know, but i didnt find any better way
         import math
-
-        materials = list()
-
-        for o in objects:
+        for o in context.scene.objects:
             if o.type == 'MESH':
                 isNrm = o.data.saSettings.sa2ExportType == 'NRM'
                 r = o.color[0]
@@ -916,14 +912,8 @@ class UpdateMaterials(bpy.types.Operator):
                     r = (math.floor(r * 1000) + ((-1) if r > 0 else 1)) / 1000.0
                 o.color[0] = r
 
-                for m in o.data.materials:
-                    if m not in materials:
-                        materials.append(m)
-
-
-
         # now its time to set all of the materials
-        for m in materials:
+        for m in bpy.data.materials:
             #creating an settings nodes
             mProps = m.saSettings
             m.use_nodes = True
