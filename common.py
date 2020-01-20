@@ -335,7 +335,7 @@ class ModelData:
                         o.processedMesh = m
 
     @classmethod
-    def updateMeshPointer(cls, objList: list, meshDict: dict, cMeshDict: list):
+    def updateMeshPointer(cls, objList: list, meshDict: dict, cMeshDict: list = None):
         """Updates the mesh pointer of a ModelData list utilizing a meshDict"""
         for o in objList:
             if o.processedMesh is not None:
