@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (0,8,9),
+    "version": (0,9,0),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -23,6 +23,8 @@ if "bpy" in locals():
         importlib.reload(format_GC)
     if "format_CHUNK" in locals():
         importlib.reload(format_CHUNK)
+    if "setReader" in locals():
+        importlib.reload(setReader)
     if "strippifier" in locals():
         importlib.reload(strippifier)
     if "fileHelper" in locals():
@@ -34,7 +36,7 @@ if "bpy" in locals():
 
 import bpy
 import os
-from . import fileHelper, common
+from . import fileHelper, common, setReader
 from bpy.props import (
     BoolProperty,
     BoolVectorProperty,
@@ -45,7 +47,7 @@ from bpy.props import (
     EnumProperty,
     StringProperty
     )
-from bpy_extras.io_utils import ExportHelper, ImportHelper#, path_reference_mode
+from bpy_extras.io_utils import ExportHelper, ImportHelper
 from typing import List, Dict, Union, Tuple
 
 class TOPBAR_MT_SA_export(bpy.types.Menu):
@@ -538,10 +540,22 @@ class ImportTexFile(bpy.types.Operator, ImportHelper):
                 tex.name = os.path.splitext(os.path.basename(t))[0]
                 tex.image = img
 
-
-
         return {'FINISHED'}
 
+class LoadSetFile(bpy.types.Operator, ImportHelper):
+    """Loads a Set file and places objects at the correct locations"""
+    bl_idname = "object.load_set"
+    bl_label = "Load SET file"
+
+    filter_glob: StringProperty(
+        default="*.bin",
+        options={'HIDDEN'},
+        )
+
+    def execute(self, context):
+        setReader.ReadFile(self.filepath, context)
+
+        return {'FINISHED'}
 # operators
 
 class StrippifyTest(bpy.types.Operator):
@@ -2634,6 +2648,7 @@ class SAScenePanel(bpy.types.Panel):
             if settings.viewportAlphaType == 'CUT':
                 box.prop(settings, "viewportAlphaCutoff")
 
+        layout.operator(LoadSetFile.bl_idname)
 
 class SA3DPanel(bpy.types.Panel):
     bl_idname = 'MESH_PT_satools'
@@ -2734,6 +2749,7 @@ classes = (
     ImportMDL,
     ImportLVL,
     ImportTexFile,
+    LoadSetFile,
 
     StrippifyTest,
     ArmatureFromObjects,

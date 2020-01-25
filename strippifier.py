@@ -37,6 +37,14 @@ class Mesh:
                             self.edges)
             self.triangles[int(i / 3)] = tri
 
+        # checking for tripple edges
+        triEdgeCount = 0
+        for e in self.edges:
+            if len(e.triangles) > 2:
+                triEdgeCount += 1
+
+        if triEdgeCount > 0:
+            print("There are", triEdgeCount, "edges with more than two faces")
 
 class Triangle:
 
@@ -77,7 +85,7 @@ class Triangle:
             edges.append(e)
         else: # if edge existed before, then it has to have a triangle attached to it
             if raiseTopoErrorG and len(e.triangles) > 1:
-                    raise TopologyError("Some Edge has more than 2 faces! cant strippify!")
+                raise TopologyError("Some Edge has more than 2 faces! cant strippify!")
             else:
                 e.addTriangle(self)
 

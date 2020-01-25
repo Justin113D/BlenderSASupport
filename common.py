@@ -154,7 +154,7 @@ class Vector3(mathutils.Vector):
         fileW.wFloat(self.z)
 
     def __str__(self):
-        return "(" + str(self.x) + ", " + str(self.y) + ", " + str(self.z) + ")"
+        return "(" + str(round(self.x, 3)) + ", " + str(round(self.y, 3)) + ", " + str(round(self.z, 3)) + ")"
 
 class BAMSRotation(mathutils.Vector):
     """XYZ Rotation used for the adventure games"""
@@ -172,7 +172,7 @@ class BAMSRotation(mathutils.Vector):
         fileW.wInt(round(self.z))
 
     def __str__(self):
-        return "(" + str(BAMSToRad(self.x)) + ", " + str(BAMSToRad(self.y)) + ", " + str(BAMSToRad(self.z)) + ")"
+        return "(" + str(round(BAMSToRad(self.x), 3)) + ", " + str(round(BAMSToRad(self.y), 3)) + ", " + str(round(BAMSToRad(self.z), 3)) + ")"
         #return "(" + '{:04x}'.format(round(self.x)) + ", " + '{:04x}'.format(round(self.y)) + ", " + '{:04x}'.format(round(self.z)) + ")"
 
 class BoundingBox:
