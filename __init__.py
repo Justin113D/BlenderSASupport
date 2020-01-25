@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (0,9,0),
+    "version": (0,9,1),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -80,9 +80,18 @@ def removeFile() -> None:
         __init__.exportedFile = None
 
 def exportFile(op, mdl: bool, context, **keywords):
-    '''Exports the '''
+
+    profile_output = keywords["profile_output"]
+    del keywords["profile_output"]
+
+    if profile_output:
+        import cProfile, pstats
+        pr = cProfile.Profile()
+        pr.enable()
+
     try:
         if mdl:
+
             out = file_MDL.write(context, **keywords)
         else:
             out = file_LVL.write(context, **keywords)
@@ -94,10 +103,21 @@ def exportFile(op, mdl: bool, context, **keywords):
         removeFile()
         raise e
 
+    filepath = keywords["filepath"]
+
+    if profile_output:
+        pr.disable()
+        prPath = filepath + ".profile"
+        if(os.path.isfile(prPath)):
+            os.remove(prPath)
+        with open(prPath, 'w') as prStream:
+            ps = pstats.Stats(pr, stream=prStream)
+            ps.sort_stats("cumulative").print_stats()
+
     # moving and renaming the temporary file
     # Note: this is also removing the file that existed before
     fileW = __init__.exportedFile
-    filepath = keywords["filepath"]
+
     if(os.path.isfile(filepath)):
         os.remove(filepath)
     os.rename(fileW.filepath, filepath)
@@ -141,6 +161,12 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
         default = False,
         )
 
+    profile_output: BoolProperty(
+        name = "Profiling output",
+        description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
+        default = False
+        )
+
     def execute(self, context):
         from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
@@ -156,6 +182,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
         layout.prop(self, "apply_modifs")
         layout.separator()
         layout.prop(self, "console_debug_output")
+        layout.prop(self, "profile_output")
 
 class ExportSA2MDL(bpy.types.Operator, ExportHelper):
     """Export objects into an SA2 model file"""
@@ -194,6 +221,12 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         default = False,
         )
 
+    profile_output: BoolProperty(
+        name = "Profiling output",
+        description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
+        default = False
+        )
+
     def execute(self, context):
         from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
@@ -209,6 +242,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         layout.prop(self, "apply_modifs")
         layout.separator()
         layout.prop(self, "console_debug_output")
+        layout.prop(self, "profile_output")
 
 class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
     """Export objects into an SA2B model file"""
@@ -247,6 +281,12 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
         default = False,
         )
 
+    profile_output: BoolProperty(
+        name = "Profiling output",
+        description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
+        default = False
+        )
+
     def execute(self, context):
         from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
@@ -262,6 +302,7 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
         layout.prop(self, "apply_modifs")
         layout.separator()
         layout.prop(self, "console_debug_output")
+        layout.prop(self, "profile_output")
 
 class ExportSA1LVL(bpy.types.Operator, ExportHelper):
     """Export scene into an SA1 level file"""
@@ -300,6 +341,12 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
         default = False,
         )
 
+    profile_output: BoolProperty(
+        name = "Profiling output",
+        description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
+        default = False
+        )
+
     def execute(self, context):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
@@ -315,6 +362,7 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
         layout.prop(self, "apply_modifs")
         layout.separator()
         layout.prop(self, "console_debug_output")
+        layout.prop(self, "profile_output")
 
 class ExportSA2LVL(bpy.types.Operator, ExportHelper):
     """Export scene into an SA2 level file"""
@@ -353,6 +401,12 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
         default = False,
         )
 
+    profile_output: BoolProperty(
+        name = "Profiling output",
+        description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
+        default = False
+        )
+
     def execute(self, context):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
@@ -368,6 +422,7 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
         layout.prop(self, "apply_modifs")
         layout.separator()
         layout.prop(self, "console_debug_output")
+        layout.prop(self, "profile_output")
 
 class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
     """Export scene into an SA2B level file"""
@@ -406,6 +461,12 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         default = False,
         )
 
+    profile_output: BoolProperty(
+        name = "Profiling output",
+        description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
+        default = False
+        )
+
     def execute(self, context):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
@@ -422,6 +483,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         layout.prop(self, "apply_modifs")
         layout.separator()
         layout.prop(self, "console_debug_output")
+        layout.prop(self, "profile_output")
 
 class ExportPAK(bpy.types.Operator, ExportHelper):
     """Imports any sonic adventure texture file"""
