@@ -98,9 +98,13 @@ def exportFile(op, mdl: bool, context, **keywords):
     except (strippifier.TopologyError, common.ExportError) as e:
         op.report({'WARNING'}, "Export stopped!\n" + str(e))
         removeFile()
+        if profile_output:
+            pr.disable()
         return {'CANCELLED'}
     except Exception as e:
         removeFile()
+        if profile_output:
+            pr.disable()
         raise e
 
     filepath = keywords["filepath"]
