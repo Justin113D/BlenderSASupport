@@ -1301,10 +1301,10 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAt
             if noDoubleVerts:
                 vertexSets = list()
                 for v in a.vertices.values():
-                    nrm = v.getLocalNrm()
-                    normals.append(nrm)
-                    vertexSets.append((v.getLocalPos(), nrm))
+                    vertexSets.append((v.getLocalPos(), v.getLocalNrm()))
                 vDistinct, t = common.getDistinctwID(vertexSets)
+
+                normals = [d[1] for d in vDistinct]
 
                 for i, k in enumerate(a.vertices.keys()):
                     vIDs[k] = t[i]
