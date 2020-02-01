@@ -1355,7 +1355,11 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAt
                     meshMaterials.append(material)
 
                 matIndex = meshMaterials.index(material)
-                matMarkers[len(polygons)] = matIndex
+
+                if len(matMarkers) == 0 or matMarkers[lastAdded] != matIndex:
+                    lastAdded = len(polygons)
+                    matMarkers[lastAdded] = matIndex
+
 
                 for si, s in enumerate(c.strips):
                     rev = c.reversedStrips[si]
@@ -1472,6 +1476,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAt
         # creating the polygons
         split_normals = list()
         doubleFaces = 0
+        matIndex = 0
         for i, p in enumerate(polygons):
             verts = []
             for c in p:
@@ -1482,11 +1487,11 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAt
                 doubleFaces += 1
                 continue
 
-            for i, c in enumerate(p):
-                split_normals.append(normals[c.index])
-                face.loops[i][uvLayer].uv = c.uv.getBlenderUV()
+            for li, c in enumerate(p):
+                split_normals.append(normals[vIDs[c.index]])
+                face.loops[li][uvLayer].uv = c.uv.getBlenderUV()
                 if a.hasColor:
-                    face.loops[i][colorLayer] = a.vertices[c.index].getColor()
+                    face.loops[li][colorLayer] = a.vertices[c.index].getColor()
 
             if i in matMarkers:
                 matIndex = matMarkers[i]
