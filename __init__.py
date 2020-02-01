@@ -104,7 +104,7 @@ def exportFile(op, mdl: bool, context, **keywords):
     except Exception as e:
         removeFile()
         if profile_output:
-            pr.disable()
+            pqr.disable()
         raise e
 
     filepath = keywords["filepath"]
@@ -518,16 +518,22 @@ class ImportMDL(bpy.types.Operator, ImportHelper):
         options={'HIDDEN'},
         )
 
+    noDoubleVerts: BoolProperty(
+        name = "Merge double vertices",
+        description = "Merge the doubled vertices after importing",
+        default = True,
+        )
+
     console_debug_output: BoolProperty(
-            name = "Console Output",
-            description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-            default = False,
-            )
+        name = "Console Output",
+        description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
+        default = False,
+        )
 
     def execute(self, context):
         from . import file_MDL
 
-        return file_MDL.read(context, self.filepath, self.console_debug_output)
+        return file_MDL.read(context, self.filepath, self.noDoubleVerts, self.console_debug_output)
 
 class ImportLVL(bpy.types.Operator, ImportHelper):
     """Imports any sonic adventure lvl file"""
@@ -540,6 +546,12 @@ class ImportLVL(bpy.types.Operator, ImportHelper):
         options={'HIDDEN'},
         )
 
+    noDoubleVerts: BoolProperty(
+        name = "Merge double vertices",
+        description = "Merge the doubled vertices after importing",
+        default = True,
+        )
+
     console_debug_output: BoolProperty(
             name = "Console Output",
             description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
@@ -549,7 +561,7 @@ class ImportLVL(bpy.types.Operator, ImportHelper):
     def execute(self, context):
         from . import file_LVL
 
-        return file_LVL.read(context, self.filepath, self.console_debug_output)
+        return file_LVL.read(context, self.filepath, self.noDoubleVerts, self.console_debug_output)
 
 class ImportTexFile(bpy.types.Operator, ImportHelper):
     """Imports any sonic adventure texture file"""

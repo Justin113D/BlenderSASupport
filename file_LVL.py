@@ -13,7 +13,7 @@ def hex8(number : int):
 def hex16(number : int):
     return '{:016x}'.format(number)
 
-def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
+def read(context: bpy.types.Context, filepath: str, noDoubleVerts: bool, console_debug_output: bool):
 
      global DO
      DO = console_debug_output
@@ -215,7 +215,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
 
           if file_format == 'SA2':
                processedAttaches = format_CHUNK.OrderChunks([c.model for c in COLs], vmeshes)
-               format_CHUNK.ProcessChunkData([c.model for c in COLs], processedAttaches, None)
+               format_CHUNK.ProcessChunkData([c.model for c in COLs], processedAttaches, noDoubleVerts, None)
           else: # sa2b
                format_GC.process_GC([c.model for c in COLs], vmeshes)
           format_BASIC.process_BASIC([c.model for c in COLs], cmeshes, collision=True)

@@ -10,7 +10,7 @@ DO = False # Debug out
 def hex8(number : int):
     return '{:08x}'.format(number)
 
-def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
+def read(context: bpy.types.Context, filepath: str, noDoubleVerts: bool, console_debug_output: bool):
 
    global DO
    DO = console_debug_output
@@ -183,7 +183,7 @@ def read(context: bpy.types.Context, filepath: str, console_debug_output: bool):
       root = None
       if isArmature:
          root = objects[0]
-      format_CHUNK.ProcessChunkData(objects, processedAttaches, root)
+      format_CHUNK.ProcessChunkData(objects, processedAttaches, noDoubleVerts, root)
    elif file_format == 'SA1':
       format_BASIC.process_BASIC(objects, attaches)
    elif file_format == 'SA2B':
