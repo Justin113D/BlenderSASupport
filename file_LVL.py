@@ -21,6 +21,7 @@ def read(context: bpy.types.Context, filepath: str, noDoubleVerts: bool, console
      format_BASIC.DO = DO
      format_CHUNK.DO = DO
      format_GC.DO = DO
+
      if DO:
           os.system("cls")
 
@@ -240,6 +241,7 @@ def read(context: bpy.types.Context, filepath: str, noDoubleVerts: bool, console
 def write(context,
          filepath, *,
          export_format,
+         write_Specular,
          use_selection,
          apply_modifs,
          global_scale,
@@ -254,6 +256,8 @@ def write(context,
      format_BASIC.DO = DO
      format_CHUNK.DO = DO
      format_GC.DO = DO
+
+     format_CHUNK.writeSpecular = write_Specular
 
      if DO:
           # clear console and enable debug outputs

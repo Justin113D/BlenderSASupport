@@ -12,6 +12,7 @@ from .common import Vector3, ColorARGB, UV, BoundingBox
 from .__init__ import SAMaterialSettings
 
 DO = False
+writeSpecular = True
 
 class Vertex:
     """A single vertex in the model, stored in vertex chunksd"""
@@ -296,7 +297,7 @@ class PolyChunk_Material(PolyChunk):
                  ambient: ColorARGB,
                  specular: ColorARGB,
                  specularity: int):
-        super(PolyChunk_Material, self).__init__(enums.ChunkType.Material_DiffuseAmbientSpecular)
+        super(PolyChunk_Material, self).__init__(enums.ChunkType.Material_DiffuseAmbientSpecular if writeSpecular else enums.ChunkType.Material_DiffuseAmbient)
         self.alphaInstruction = alphaInstruction
         self.diffuse = diffuse
         self.ambient = ambient
@@ -332,11 +333,12 @@ class PolyChunk_Material(PolyChunk):
     def write(self, fileW: fileHelper.FileWriter):
         super(PolyChunk_Material, self).write(fileW)
         fileW.wByte(self.alphaInstruction.value)
-        fileW.wUShort(6) # size (amount of 2 byte sets)
+        fileW.wUShort(6 if writeSpecular else 4) # size (amount of 2 byte sets)
         self.diffuse.writeARGB(fileW)
         self.ambient.writeARGB(fileW)
-        self.specular.writeRGB(fileW)
-        fileW.wByte(self.specularity)
+        if writeSpecular:
+            self.specular.writeRGB(fileW)
+            fileW.wByte(self.specularity)
 
 class PolyChunk_Strip(PolyChunk):
 
@@ -601,8 +603,8 @@ class Attach:
             stripFlags = enums.StripFlags.null
 
             if material is None:
-                polyChunks.append(PolyChunk_Texture(0, enums.TextureIDFlags.null, True, enums.TextureFiltering.Bilinear))
                 polyChunks.append(PolyChunk_Material(enums.SA2AlphaInstructions.SA_SRC | enums.SA2AlphaInstructions.DA_INV_SRC, ColorARGB(), ColorARGB(), ColorARGB(), 255))
+                polyChunks.append(PolyChunk_Texture(0, enums.TextureIDFlags.null, True, enums.TextureFiltering.Bilinear))
             else:
                 matProps: SAMaterialSettings = material.saSettings
 
@@ -635,7 +637,7 @@ class Attach:
                 elif matProps.b_texFilter == 'BLEND':
                     filtering = enums.TextureFiltering.Blend
 
-                polyChunks.append(PolyChunk_Texture(matProps.b_TextureID, textureFlags, matProps.b_use_Anisotropy, filtering))
+
 
                 # getting alpha
                 alphaflags = enums.SA2AlphaInstructions.null
@@ -677,6 +679,7 @@ class Attach:
                     alphaflags = enums.SA2AlphaInstructions.SA_SRC | enums.SA2AlphaInstructions.DA_INV_SRC
 
                 polyChunks.append(PolyChunk_Material(alphaflags, ColorARGB(matProps.b_Diffuse), ColorARGB(matProps.b_Ambient), ColorARGB(matProps.b_Specular), round(matProps.b_Exponent * 255)))
+                polyChunks.append(PolyChunk_Texture(matProps.b_TextureID, textureFlags, matProps.b_use_Anisotropy, filtering))
 
                 #getting strip flags
                 if matProps.b_ignoreLighting:
@@ -922,6 +925,9 @@ class Attach:
 
                     #if (chunkType == enums.ChunkType.Bits_CachePolygonList or chunkType == enums.ChunkType.Bits_DrawPolygonList) and DO:
                     #    print(chunk.data)
+
+                if DO:
+                    print(chunkType)
 
                 polygonChunks.append(chunk)
                 chunkType = enums.ChunkType(fileR.rByte(tmpAddr))

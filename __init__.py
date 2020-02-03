@@ -207,6 +207,12 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         default=1.0,
         )
 
+    write_Specular: BoolProperty(
+        name = "Write Specular",
+        description = "Write specular info to materials",
+        default = False
+        )
+
     use_selection: BoolProperty(
         name="Selection Only",
         description="Export selected objects only",
@@ -242,6 +248,8 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         layout.alignment = 'RIGHT'
 
         layout.prop(self, "global_scale")
+        layout.separator()
+        layout.prop(self, "write_Specular")
         layout.prop(self, "use_selection")
         layout.prop(self, "apply_modifs")
         layout.separator()
@@ -387,6 +395,12 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
         default=1.0,
         )
 
+    write_Specular: BoolProperty(
+        name = "Write Specular",
+        description = "Write specular info to materials",
+        default = False
+        )
+
     use_selection: BoolProperty(
         name="Selection Only",
         description="Export selected objects only",
@@ -422,6 +436,8 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
         layout.alignment = 'RIGHT'
 
         layout.prop(self, "global_scale")
+        layout.separator()
+        layout.prop(self, "write_Specular")
         layout.prop(self, "use_selection")
         layout.prop(self, "apply_modifs")
         layout.separator()
