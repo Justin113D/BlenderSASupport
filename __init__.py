@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (0,9,4),
+    "version": (0,9,5),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -25,6 +25,8 @@ if "bpy" in locals():
         importlib.reload(format_CHUNK)
     if "setReader" in locals():
         importlib.reload(setReader)
+    if "file_SAANIM" in locals():
+        importlib.reload(file_SAANIM)
     if "strippifier" in locals():
         importlib.reload(strippifier)
     if "fileHelper" in locals():
@@ -45,7 +47,8 @@ from bpy.props import (
     IntProperty,
     IntVectorProperty,
     EnumProperty,
-    StringProperty
+    StringProperty,
+    CollectionProperty
     )
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 from typing import List, Dict, Union, Tuple
@@ -546,10 +549,19 @@ class ImportMDL(bpy.types.Operator, ImportHelper):
         default = False,
         )
 
+    files = CollectionProperty(
+        name='File paths',
+        type=bpy.types.OperatorFileListElement
+        )
+
     def execute(self, context):
         from . import file_MDL
 
-        return file_MDL.read(context, self.filepath, self.noDoubleVerts, self.console_debug_output)
+        path = os.path.dirname(self.filepath)
+        for f in self.files:
+            file_MDL.read(context, path + "\\" + f.name, self.noDoubleVerts, self.console_debug_output)
+
+        return {'FINISHED'}
 
 class ImportLVL(bpy.types.Operator, ImportHelper):
     """Imports any sonic adventure lvl file"""
@@ -568,6 +580,11 @@ class ImportLVL(bpy.types.Operator, ImportHelper):
         default = True,
         )
 
+    files = CollectionProperty(
+        name='File paths',
+        type=bpy.types.OperatorFileListElement
+        )
+
     console_debug_output: BoolProperty(
             name = "Console Output",
             description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
@@ -577,7 +594,10 @@ class ImportLVL(bpy.types.Operator, ImportHelper):
     def execute(self, context):
         from . import file_LVL
 
-        return file_LVL.read(context, self.filepath, self.noDoubleVerts, self.console_debug_output)
+        path = os.path.dirname(self.filepath)
+        for f in self.files:
+            file_LVL.read(context, path + "\\" + f.name, self.noDoubleVerts, self.console_debug_output)
+        return {'FINISHED'}
 
 class ImportTexFile(bpy.types.Operator, ImportHelper):
     """Imports any sonic adventure texture file"""
@@ -648,7 +668,28 @@ class LoadSetFile(bpy.types.Operator, ImportHelper):
 
     def execute(self, context):
         setReader.ReadFile(self.filepath, context)
+        return {'FINISHED'}
 
+class LoadAnimFile(bpy.types.Operator, ImportHelper):
+    """Loads animations from saanim files to a selected armature"""
+    bl_idname = "object.load_saanim"
+    bl_label = "Load SAANIM file"
+
+    filter_glob: StringProperty(
+        default="*.saanim",
+        options={'HIDDEN'},
+        )
+
+    files = CollectionProperty(
+        name='File paths',
+        type=bpy.types.OperatorFileListElement
+        )
+
+    def execute(self, context):
+        path = os.path.dirname(self.filepath)
+        for f in self.files:
+            print(path + "\\" + f.name)
+        #setReader.ReadFile(self.filepath, context)
         return {'FINISHED'}
 # operators
 
@@ -2743,6 +2784,7 @@ class SAScenePanel(bpy.types.Panel):
                 box.prop(settings, "viewportAlphaCutoff")
 
         layout.operator(LoadSetFile.bl_idname)
+        #layout.operator(LoadAnimFile.bl_idname)
 
 class SA3DPanel(bpy.types.Panel):
     bl_idname = 'MESH_PT_satools'
@@ -2844,6 +2886,7 @@ classes = (
     ImportLVL,
     ImportTexFile,
     LoadSetFile,
+    LoadAnimFile,
 
     StrippifyTest,
     ArmatureFromObjects,
