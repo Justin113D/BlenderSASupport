@@ -2118,7 +2118,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
         return d
 
     def readMatDict(self, d):
-        self.b_Diffused = d["b_Diffuse"]
+        self.b_Diffuse = d["b_Diffuse"]
         self.b_Specular = d["b_Specular"]
         self.b_Ambient = d["b_Ambient"]
         self.b_Exponent = d["b_Exponent"]
