@@ -1053,7 +1053,6 @@ def getMeshes(meshesToConvert: List[ModelData],
 
         outMeshes.append(me)
 
-
     return outMeshes, materials
 
 def trianglulateMesh(mesh: bpy.types.Mesh):

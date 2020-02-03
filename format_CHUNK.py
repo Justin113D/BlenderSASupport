@@ -535,7 +535,7 @@ class Attach:
     def getPolygons(cls, mesh: bpy.types.Mesh,
                     writeUVs: bool,
                     polyVerts: List[PolyVert],
-                    materials: List[bpy.types.Material]):
+                    materials: Dict[str, bpy.types.Material]):
 
         # getting the distinct polygons
         distinctPolys = list()
@@ -1380,7 +1380,8 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAt
                             continue
                         polygons.append(p)
 
-            elif c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular or c.chunkType == enums.ChunkType.Bits_BlendAlpha:
+            # if material or blendalpha
+            elif (c.chunkType.value > 15 and c.chunkType.value < 32) or c.chunkType == enums.ChunkType.Bits_BlendAlpha:
                 instr = c.alphaInstruction
                 from .enums import SA2AlphaInstructions
 
@@ -1418,7 +1419,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAt
                 else:
                     tmpMat["b_destAlpha"] = 'ZERO'
 
-                if c.chunkType == enums.ChunkType.Material_DiffuseAmbientSpecular:
+                if c.chunkType.value > 15 and c.chunkType.value < 32:
                     tmpMat["b_Diffuse"] = c.diffuse.toBlenderTuple()
                     tmpMat["b_Ambient"] = c.ambient.toBlenderTuple()
                     tmpMat["b_Specular"] = c.specular.toBlenderTuple()
