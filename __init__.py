@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (0,9,5),
+    "version": (1,0,0),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -549,7 +549,7 @@ class ImportMDL(bpy.types.Operator, ImportHelper):
         default = False,
         )
 
-    files = CollectionProperty(
+    files: CollectionProperty(
         name='File paths',
         type=bpy.types.OperatorFileListElement
         )
@@ -580,7 +580,7 @@ class ImportLVL(bpy.types.Operator, ImportHelper):
         default = True,
         )
 
-    files = CollectionProperty(
+    files: CollectionProperty(
         name='File paths',
         type=bpy.types.OperatorFileListElement
         )
@@ -673,23 +673,39 @@ class LoadSetFile(bpy.types.Operator, ImportHelper):
 class LoadAnimFile(bpy.types.Operator, ImportHelper):
     """Loads animations from saanim files to a selected armature"""
     bl_idname = "object.load_saanim"
-    bl_label = "Load SAANIM file"
+    bl_label = "Load Anim JSON file"
+    bl_description = "Loads JSON animation files to a selected armature"
 
     filter_glob: StringProperty(
-        default="*.saanim",
+        default="*.json",
         options={'HIDDEN'},
         )
 
-    files = CollectionProperty(
+    files: CollectionProperty(
         name='File paths',
         type=bpy.types.OperatorFileListElement
         )
 
+    @classmethod
+    def poll(self, context):
+        active = context.active_object
+        if active is None:
+            return False
+        return active.type == 'ARMATURE'
+
     def execute(self, context):
+        from . import file_SAANIM
         path = os.path.dirname(self.filepath)
+
+        if context.active_object.animation_data == None:
+            context.active_object.animation_data_create()
+
         for f in self.files:
-            print(path + "\\" + f.name)
-        #setReader.ReadFile(self.filepath, context)
+            try:
+                file_SAANIM.read(path + "\\" + f.name, context.active_object)
+            except file_SAANIM.ArmatureInvalidException as e:
+                self.report({'WARNING'}, "Couldnt load anim file!\n" + str(e))
+                return {'CANCELLED'}
         return {'FINISHED'}
 # operators
 
@@ -795,6 +811,7 @@ class ArmatureFromObjects(bpy.types.Operator):
             ArmatureFromObjects.addChildren(c, result, resultMeshes)
 
     def execute(self, context):
+        import mathutils
 
         if len(context.selected_objects) == 0 or bpy.context.object.mode != 'OBJECT':
             return {'CANCELLED'}
@@ -826,6 +843,7 @@ class ArmatureFromObjects(bpy.types.Operator):
         boneMap = dict()
         bones = objects[1:]
 
+        scales = dict()
 
         for b in bones:
             boneName = b.name
@@ -833,11 +851,20 @@ class ArmatureFromObjects(bpy.types.Operator):
             bone.layers[0] = True
             bone.head = (0,0,0)
             bone.tail = (1,0,0)
-            bone.matrix = globalMatrix.inverted() @ b.matrix_world
+
+            pos, rot, _ = b.matrix_world.decompose()
+
+            matrix = mathutils.Matrix.Translation(pos) @ rot.to_matrix().to_4x4()
+
+            bone.matrix = globalMatrix.inverted() @ matrix
 
             if b.parent in bones:
                 bone.parent = boneMap[b.parent]
             boneMap[b] = bone
+
+            _, _, poseScale = b.matrix_local.decompose()
+            if poseScale.x != 1 or poseScale.y != 1 or poseScale.z != 1:
+                scales[boneName] = poseScale
 
         bpy.ops.object.mode_set(mode='OBJECT')
         meshCount = 0
@@ -857,6 +884,7 @@ class ArmatureFromObjects(bpy.types.Operator):
 
             bpy.ops.object.mode_set(mode='OBJECT')
             meshObj.select_set(True, view_layer=context.view_layer)
+            meshObj.scale = (1,1,1)
             bpy.ops.object.transform_apply(location = True, scale = True, rotation = True)
 
             modif = meshObj.modifiers.new("deform", 'ARMATURE')
@@ -868,9 +896,9 @@ class ArmatureFromObjects(bpy.types.Operator):
             meshCount += 1
             meshObj.select_set(False, view_layer=context.view_layer)
 
-
-
-
+        for b in armatureObj.pose.bones:
+            if b.name in scales:
+                b.scale = scales[b.name]
 
         return {'FINISHED'}
 
@@ -2784,7 +2812,7 @@ class SAScenePanel(bpy.types.Panel):
                 box.prop(settings, "viewportAlphaCutoff")
 
         layout.operator(LoadSetFile.bl_idname)
-        #layout.operator(LoadAnimFile.bl_idname)
+        layout.operator(LoadAnimFile.bl_idname)
 
 class SA3DPanel(bpy.types.Panel):
     bl_idname = 'MESH_PT_satools'

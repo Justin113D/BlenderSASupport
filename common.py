@@ -21,7 +21,7 @@ def hex4(number: int) -> str:
 def RadToBAMS(v: float) -> int:
     return round((math.degrees(v) / 360.0) * 0xFFFF)
 
-def BAMSToRad(v: float) -> int:
+def BAMSToRad(v: int) -> float:
     return math.radians( v / (0xFFFF / 360.0))
 
 def getDistinctwID(items: list):
@@ -163,7 +163,6 @@ class BAMSRotation(mathutils.Vector):
         self.x = RadToBAMS(self.x)
         self.y = RadToBAMS(self.y)
         self.z = RadToBAMS(self.z)
-
 
     def write(self, fileW):
         """Writes data to file"""
