@@ -10,6 +10,7 @@ class ArmatureInvalidException(Exception):
 def read(filepath: str, obj):
     from .common import BAMSToRad
 
+    print("importing", filepath)
     if filepath.endswith(".json"):
         import json
         f = open(filepath)
@@ -19,17 +20,28 @@ def read(filepath: str, obj):
         action = bpy.data.actions.new(anim["Name"])
         action.use_fake_user = True
         frame_count = anim["Frames"]
-        rate = 1 # get this from the ini!
+        rate = 2 # get this from the ini!
 
         armature = obj.data
 
         # creating the fcurves for later usage
         for m in anim["Models"]:
-            bone = armature.bones[int(m) - 1] # the root is a bone too, but doesnt count as one
-            mdl = anim["Models"][m]
-            basePath = "pose.bones[\"{}\"].".format(bone.name)
+            if int(m) == 0:
+                basePath = ""
+                mtx = obj.matrix_local
+                group = action.groups.new("Root")
+            else:
+                bone = armature.bones[int(m) - 1] # the root is a bone too, but doesnt count as one
+                basePath = "pose.bones[\"{}\"].".format(bone.name)
 
-            group = action.groups.new(bone.name)
+                if bone.parent is None:
+                    mtx = bone.matrix_local
+                else:
+                    mtx = (bone.parent.matrix_local.inverted() @ bone.matrix_local)
+
+                group = action.groups.new(bone.name)
+
+            mdl = anim["Models"][m]
 
             posCurves: list = None
             rotCurves: list = None
@@ -66,10 +78,6 @@ def read(filepath: str, obj):
             scaleFrameID = 0
 
 
-            if bone.parent is None:
-                mtx = bone.matrix_local
-            else:
-                mtx = (bone.parent.matrix_local.inverted() @ bone.matrix_local)
 
             for frame in range(frame_count):
                 frameStr = str(frame)
