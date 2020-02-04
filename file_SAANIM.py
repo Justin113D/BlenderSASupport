@@ -1,7 +1,7 @@
 import bpy
 import mathutils
 
-# Big thanks to @Codenamegamma, without whom this would have taken at least 10 times longer to make!
+# Big thanks to @SageOfMirrors, without whom this would have taken at least 10 times longer to make!
 
 class ArmatureInvalidException(Exception):
     def __init__(self, message):
