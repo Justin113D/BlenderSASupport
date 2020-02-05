@@ -264,7 +264,7 @@ def write(context,
           os.system("cls")
 
      # create the file
-     fileW = fileHelper.FileWriter()#filepath=filepath)
+     fileW = fileHelper.FileWriter()
      __init__.exportedFile = fileW
 
      # write the file header

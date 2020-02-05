@@ -18,8 +18,19 @@ def center(p1: float, p2:float) -> float:
 def hex4(number: int) -> str:
     return '{:08x}'.format(number)
 
-def RadToBAMS(v: float) -> int:
-    return round((math.degrees(v) / 360.0) * 0xFFFF)
+def RadToBAMS(v: float, asInt = False) -> int:
+    val = round((math.degrees(v) / 360.0) * 0x10000)
+    if not asInt:
+        while val > 0xFFFF:
+            val -= 0x10000
+        while val < 0:
+            val += 0x10000
+    else:
+        while val > 0xFFFFFFFF:
+            val -= 0x100000000
+        while val < 0:
+            val += 0x100000000
+    return val
 
 def BAMSToRad(v: int) -> float:
     return math.radians( v / (0xFFFF / 360.0))

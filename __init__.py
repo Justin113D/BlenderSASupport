@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1,0,1),
+    "version": (1,0,2),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -82,7 +82,7 @@ def removeFile() -> None:
         os.remove(fileW.filepath)
         __init__.exportedFile = None
 
-def exportFile(op, mdl: bool, context, **keywords):
+def exportFile(op, outType, context, **keywords):
 
     profile_output = keywords["profile_output"]
     del keywords["profile_output"]
@@ -93,11 +93,13 @@ def exportFile(op, mdl: bool, context, **keywords):
         pr.enable()
 
     try:
-        if mdl:
-
+        if outType == 'MDL':
             out = file_MDL.write(context, **keywords)
-        else:
+        elif outType == 'LVL':
             out = file_LVL.write(context, **keywords)
+        elif outType == 'ANIM':
+            from . import file_SAANIM
+            out = file_SAANIM(keywords["filepath"], context.active_object)
     except (strippifier.TopologyError, common.ExportError) as e:
         op.report({'WARNING'}, "Export stopped!\n" + str(e))
         removeFile()
@@ -178,7 +180,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
         from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA1'
-        return exportFile(self, True, context, **keywords)
+        return exportFile(self, 'MDL', context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -244,7 +246,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
         from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2'
-        return exportFile(self, True, context, **keywords)
+        return exportFile(self, 'MDL', context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -306,7 +308,7 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
         from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2B'
-        return exportFile(self, True, context, **keywords)
+        return exportFile(self, 'MDL', context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -366,7 +368,7 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA1'
-        return exportFile(self, False, context, **keywords)
+        return exportFile(self, 'LVL', context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -432,7 +434,7 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
         keywords["export_format"] = 'SA2'
-        return exportFile(self, False, context, **keywords)
+        return exportFile(self, 'LVL', context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -495,7 +497,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
 
         keywords["export_format"] = 'SA2B'
-        return exportFile(self, False, context, **keywords)
+        return exportFile(self, 'LVL', context, **keywords)
 
     def draw(self, context):
         layout: bpy.types.UILayout = self.layout
@@ -509,7 +511,6 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         layout.prop(self, "profile_output")
 
 class ExportPAK(bpy.types.Operator, ExportHelper):
-    """Imports any sonic adventure texture file"""
     bl_idname = "export_texture.pak"
     bl_label = "Export as PAK (SA2)"
 
@@ -517,11 +518,51 @@ class ExportPAK(bpy.types.Operator, ExportHelper):
         return {'FINISHED'}
 
 class ExportPVMX(bpy.types.Operator, ExportHelper):
-    """Imports any sonic adventure texture file"""
     bl_idname = "export_texture.pvmx"
     bl_label = "Export as PVMX (SADX)"
 
     def execute(self, context):
+        return {'FINISHED'}
+
+class ExportAnim(bpy.types.Operator, ExportHelper):
+    bl_idname = "object.export_anim"
+    bl_label = "Export anim"
+
+    filename_ext = ".json"
+
+    shortRot: BoolProperty(
+        name = "Short Rotation",
+        description="Save rotation values in a short, not an int. Required for chao anmimations",
+        default = False
+        )
+
+    bezierInterpolation: BoolProperty(
+        name = "Bezier Interpolation",
+        description = "Set keyframe interoplation mode to bezier",
+        default = False
+        )
+
+    currentTransforms: BoolProperty(
+        name = "Current Transforms",
+        description="If e.g. one of the 3 positional channels are not set in the animation, then use the current corresponding channel of the bone for that channel instead of a default value (always 0, except W in quaternions and scales which is 1)",
+        default=False
+        )
+
+    @classmethod
+    def poll(self, context):
+        active = context.active_object
+        if active is None:
+            return False
+        if active.type != 'ARMATURE':
+            return False
+        if active.animation_data is None:
+            return False
+        return active.animation_data.action != None
+
+    def execute(self, context):
+        #return exportFile(self, 'ANIM', context, self.as_keywords())
+        from . import file_SAANIM
+        file_SAANIM.write(self.filepath, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
         return {'FINISHED'}
 
 # import operators
@@ -686,6 +727,15 @@ class LoadAnimFile(bpy.types.Operator, ImportHelper):
         type=bpy.types.OperatorFileListElement
         )
 
+    naming: EnumProperty(
+        name="Animation naming",
+        description="The way in which the animations should be named",
+        items=(('FILE', "File", "Names the animation after the file"),
+               ('CONTENT', "Content", "Names the animation after the contents name"),
+               ('COMB', "File_Content", "Combines both names types to name the animation")),
+        default='FILE'
+        )
+
     @classmethod
     def poll(self, context):
         active = context.active_object
@@ -697,12 +747,12 @@ class LoadAnimFile(bpy.types.Operator, ImportHelper):
         from . import file_SAANIM
         path = os.path.dirname(self.filepath)
 
-        if context.active_object.animation_data == None:
-            context.active_object.animation_data_create()
+        #if context.active_object.animation_data == None:
+        #    context.active_object.animation_data_create()
 
         for f in self.files:
             try:
-                file_SAANIM.read(path + "\\" + f.name, context.active_object)
+                file_SAANIM.read(path + "\\" + f.name, self.naming, context.active_object)
             except file_SAANIM.ArmatureInvalidException as e:
                 self.report({'WARNING'}, "Couldnt load anim file!\n" + str(e))
                 return {'CANCELLED'}
@@ -2812,7 +2862,9 @@ class SAScenePanel(bpy.types.Panel):
                 box.prop(settings, "viewportAlphaCutoff")
 
         layout.operator(LoadSetFile.bl_idname)
-        layout.operator(LoadAnimFile.bl_idname)
+        split = layout.split()
+        split.operator(LoadAnimFile.bl_idname)
+        split.operator(ExportAnim.bl_idname)
 
 class SA3DPanel(bpy.types.Panel):
     bl_idname = 'MESH_PT_satools'
@@ -2910,6 +2962,8 @@ classes = (
     ExportSA2BLVL,
     ExportPAK,
     ExportPVMX,
+    ExportAnim,
+
     ImportMDL,
     ImportLVL,
     ImportTexFile,
