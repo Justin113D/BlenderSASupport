@@ -233,7 +233,7 @@ def setFrameValues(curve: bpy.data.curves, default: int, channel: int, outList: 
             v[channel] = curve.evaluate(k)
 
 # cT = Use the current pose transform as default value for nonexistent channels
-def write(filepath: str, shortRot: bool, bezierInterpolation: bool, cT: bool, obj):
+def write(filepath: str, bakeAll: bool, shortRot: bool, bezierInterpolation: bool, cT: bool, obj):
     from .common import RadToBAMS
     action: bpy.types.Action = obj.animation_data.action
     armature = obj.data
@@ -271,6 +271,7 @@ def write(filepath: str, shortRot: bool, bezierInterpolation: bool, cT: bool, ob
             frame_End = end
 
     models = dict()
+    allFrames = range(0, int(frame_End + 1))
 
     for k, v in curveMap.items():
         if k != None:
@@ -330,7 +331,8 @@ def write(filepath: str, shortRot: bool, bezierInterpolation: bool, cT: bool, ob
         if len(posCurves) > 0:
 
             # determining which frames to write first
-            positions: Dict[int, mathutils.Vector] = {f: mathutils.Vector() for f in getFramesToCalc(posCurves, frame_End)}
+            frames = allFrames if bakeAll else getFramesToCalc(posCurves, frame_End)
+            positions: Dict[int, mathutils.Vector] = {f: mathutils.Vector() for f in frames}
 
             curves = [None] * 3
 
@@ -352,12 +354,13 @@ def write(filepath: str, shortRot: bool, bezierInterpolation: bool, cT: bool, ob
         # next the rotations
         if len(rotCurves) > 0:
 
+            frames = allFrames if bakeAll else getFramesToCalc(rotCurves, frame_End)
             if rotType == 'QUATERNION':
-                rotations: Dict[int, mathutils.Vector] = {f: mathutils.Quaternion() for f in getFramesToCalc(rotCurves, frame_End)}
+                rotations: Dict[int, mathutils.Vector] = {f: mathutils.Quaternion() for f in frames}
                 curves = [None] * 4
                 identityRot = (0,0,0,1)
             else:
-                rotations: Dict[int, mathutils.Vector] = {f: mathutils.Euler() for f in getFramesToCalc(rotCurves, frame_End)}
+                rotations: Dict[int, mathutils.Vector] = {f: mathutils.Euler() for f in frames}
                 curves = [None] * 3
                 identityRot = (0,0,0)
 
@@ -374,11 +377,9 @@ def write(filepath: str, shortRot: bool, bezierInterpolation: bool, cT: bool, ob
             jsonRot = model["Rotation"]
             for k, v in rotations.items():
                 # please dont kill me mathematicians owo'
-                print("in:", v)
                 matrix = v.to_matrix().to_4x4()
                 rot = matrix.to_euler('XZY')
                 rot = global_matrix @ mathutils.Vector((rot.x, rot.y, rot.z))
-                print("out:", rot)
 
                 x = hex(RadToBAMS(rot.x, not shortRot))[2:]
                 y = hex(RadToBAMS(rot.y, not shortRot))[2:]
@@ -389,7 +390,8 @@ def write(filepath: str, shortRot: bool, bezierInterpolation: bool, cT: bool, ob
         # and lastly the scale curves
         if len(scaleCurves) > 0:
 
-            scales: Dict[int, mathutils.Vector] = {f: mathutils.Vector() for f in getFramesToCalc(scaleCurves, frame_End)}
+            frames = allFrames if bakeAll else getFramesToCalc(scaleCurves, frame_End)
+            scales: Dict[int, mathutils.Vector] = {f: mathutils.Vector() for f in frames}
 
             curves = [None] * 3
 

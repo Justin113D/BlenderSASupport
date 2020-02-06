@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1,0,2),
+    "version": (1,0,3),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -530,6 +530,12 @@ class ExportAnim(bpy.types.Operator, ExportHelper):
 
     filename_ext = ".json"
 
+    bakeAll: BoolProperty(
+        name = "Bake all keyframes",
+        description="Bakes all keyframes of the exported curves, instead of calculating only the necessary ones",
+        default=False
+        )
+
     shortRot: BoolProperty(
         name = "Short Rotation",
         description="Save rotation values in a short, not an int. Required for chao anmimations",
@@ -562,7 +568,7 @@ class ExportAnim(bpy.types.Operator, ExportHelper):
     def execute(self, context):
         #return exportFile(self, 'ANIM', context, self.as_keywords())
         from . import file_SAANIM
-        file_SAANIM.write(self.filepath, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
+        file_SAANIM.write(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
         return {'FINISHED'}
 
 # import operators
@@ -851,6 +857,33 @@ class ArmatureFromObjects(bpy.types.Operator):
     bl_label = "Armature from objects"
     bl_description = "Generate an armature from object. Select the parent of all objects, which will represent the root"
 
+    rotMode: EnumProperty(
+        name="Rotation Mode",
+        description="The rotation mode of each bone in the generated armature",
+        items=( ('QUATERNION', "Quaternion (WXYZ)", "No Gimbal Lock."),
+                ('XYZ', "XYZ Euler", "XYZ Rotation Order - prone to Gimbal Lock (default)."),
+                ('XZY', "XZY Euler", "XZY Rotation Order - prone to Gimbal Lock."),
+                ('YXZ', "YXZ Euler", "YXZ Rotation Order - prone to Gimbal Lock."),
+                ('YZX', "YZX Euler", "YZX Rotation Order - prone to Gimbal Lock."),
+                ('ZXY', "ZXY Euler", "ZXY Rotation Order - prone to Gimbal Lock."),
+                ('ZYX', "ZYX Euler", "ZYX Rotation Order - prone to Gimbal Lock.") ),
+        default='QUATERNION'
+        )
+
+    mergeModel: BoolProperty(
+        name="Merge Meshes",
+        description="Generates a single mesh object instead of keeping the single objects",
+        default=False
+        )
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+
+    @classmethod
+    def poll(self, context):
+        return len(context.selected_objects) > 0
+
     @classmethod
     def addChildren(cls, parent, result, resultMeshes):
         if parent.type == 'MESH':
@@ -919,6 +952,12 @@ class ArmatureFromObjects(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='OBJECT')
         meshCount = 0
 
+        print("making meshes")
+
+        bpy.ops.object.select_all(action='DESELECT')
+
+        meshOBJs = list()
+
         for i in meshes:
             boneObject = objects[i]
 
@@ -946,9 +985,24 @@ class ArmatureFromObjects(bpy.types.Operator):
             meshCount += 1
             meshObj.select_set(False, view_layer=context.view_layer)
 
+            meshOBJs.append(meshObj)
+
+        if self.mergeModel:
+            for o in meshOBJs:
+                o.select_set(True)
+            context.view_layer.objects.active = meshOBJs[0]
+            bpy.ops.object.join()
+
+        bpy.ops.object.select_all(action='DESELECT')
+
+        print("made meshes")
+
+        armatureObj.rotation_mode = self.rotMode
         for b in armatureObj.pose.bones:
+            b.rotation_mode = self.rotMode
             if b.name in scales:
                 b.scale = scales[b.name]
+
 
         return {'FINISHED'}
 
