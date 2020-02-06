@@ -321,7 +321,7 @@ def write(filepath: str, shortRot: bool, bezierInterpolation: bool, cT: bool, ob
                 posCurves.append(c)
             elif rotType == 'QUATERNION' and name.endswith(endKey + "rotation_quaternion") or rotType != 'QUATERNION' and name.endswith(endKey + "rotation_euler"):
                 rotCurves.append(c)
-            elif name.endswith(endkey + "scale"):
+            elif name.endswith(endKey + "scale"):
                 scaleCurves.append(c)
 
         model = jsonEmptyModel()
