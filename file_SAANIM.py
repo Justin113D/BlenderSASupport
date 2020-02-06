@@ -48,16 +48,20 @@ def read(filepath: str, nameConv, obj):
                 basePath = ""
                 mtx = obj.matrix_local
                 group = action.groups.new("Root")
+                rotMode = obj.rotation_mode
             else:
-                bone = armature.bones[int(m) - 1] # the root is a bone too, but doesnt count as one
+                bone = obj.pose.bones[int(m) - 1] # the root is a bone too, but doesnt count as one, hence -1
                 basePath = "pose.bones[\"{}\"].".format(bone.name)
 
-                if bone.parent is None:
-                    mtx = obj.matrix_local.inverted() @ bone.matrix_local
+                if bone.bone.parent is None:
+                    mtx = obj.matrix_local.inverted() @ bone.bone.matrix_local
                 else:
-                    mtx = (obj.matrix_local.inverted() @ bone.parent.matrix_local).inverted() @ bone.matrix_local
+                    mtx = (obj.matrix_local.inverted() @ bone.bone.parent.matrix_local).inverted() @ bone.bone.matrix_local
 
                 group = action.groups.new(bone.name)
+                rotMode = bone.rotation_mode
+
+            isQuat = rotMode == 'QUATERNION'
 
             mdl = anim["Models"][m]
 
@@ -67,8 +71,9 @@ def read(filepath: str, nameConv, obj):
 
             if len(mdl["Position"]) > 0:
                 posCurves = list()
+                dataPath = basePath + "location"
                 for pos in range(3):
-                    pos_comp = action.fcurves.new(data_path=basePath + "location", index = pos)
+                    pos_comp = action.fcurves.new(data_path=dataPath, index = pos)
                     pos_comp.keyframe_points.add(len(mdl["Position"]))
                     pos_comp.auto_smoothing = "NONE"
                     pos_comp.group = group
@@ -76,8 +81,9 @@ def read(filepath: str, nameConv, obj):
 
             if len(mdl["Rotation"]) > 0:
                 rotCurves = list()
-                for rot in range(4):
-                    quat_comp = action.fcurves.new(data_path=basePath + "rotation_quaternion", index = rot)
+                dataPath = basePath + ("rotation_quaternion" if isQuat else "rotation_euler")
+                for rot in range(4 if isQuat else 3):
+                    quat_comp = action.fcurves.new(data_path=dataPath, index = rot)
                     quat_comp.keyframe_points.add(len(mdl["Rotation"]))
                     quat_comp.auto_smoothing = "NONE"
                     quat_comp.group = group
@@ -85,8 +91,9 @@ def read(filepath: str, nameConv, obj):
 
             if len(mdl["Scale"]) > 0:
                 scaleCurves = list()
+                dataPath = basePath + "scale"
                 for scale in range(3):
-                    scale_comp = action.fcurves.new(data_path=basePath + "scale", index = scale)
+                    scale_comp = action.fcurves.new(data_path=dataPath, index = scale)
                     scale_comp.keyframe_points.add(len(mdl["Scale"]))
                     scale_comp.group = group
                     scaleCurves.append(scale_comp)
@@ -117,9 +124,12 @@ def read(filepath: str, nameConv, obj):
                     rotVec = (  BAMSToRad(int(rotVec[0], 16)),
                                 -BAMSToRad(int(rotVec[2], 16)),
                                 BAMSToRad(int(rotVec[1], 16)) )
-                    rotMtx = mathutils.Euler(rotVec, 'XZY').to_matrix().to_4x4() #.to_quaternion()
+                    rotMtx = mathutils.Euler(rotVec, 'XZY').to_matrix().to_4x4()
 
-                    rotVec = (mtx.inverted() @ rotMtx).to_quaternion()
+                    if isQuat:
+                        rotVec = (mtx.inverted() @ rotMtx).to_quaternion()
+                    else:
+                        rotVec = (mtx.inverted() @ rotMtx).to_euler(rotMode)
 
                     for i, k in enumerate(rotCurves):
                         keyframe = k.keyframe_points[rotFrameID]
@@ -128,7 +138,7 @@ def read(filepath: str, nameConv, obj):
 
                     rotFrameID += 1
 
-                if posCurves is not None and frameStr in mdl["Scale"]:
+                if scaleCurves is not None and frameStr in mdl["Scale"]:
                     scaleVec = mdl["Scale"][frameStr]
                     scaleVec = scaleVec.split(", ")
                     scaleVec = (float(scaleVec[0]), float(scaleVec[2]), float(scaleVec[1]))
