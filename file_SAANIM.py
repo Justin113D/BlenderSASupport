@@ -135,21 +135,21 @@ def read(filepath: str, nameConv, obj):
                     else:
                         rotVec = (mtx.inverted() @ rotMtx).to_euler(rotMode)
 
-                    #print(rotVec)
-                    #print(hex(int(rotVec.x)), hex(int(rotVec.y)), hex(int(rotVec.z)))
+                    if False: # imma keep this just in case
 
-                    # checking...
-                    from .common import RadToBAMS
+                        from .common import RadToBAMS
+                        tmpMtx = rotVec.to_matrix().to_4x4()
+                        tmpMtx = mtx @ tmpMtx
+                        trot = tmpMtx.to_euler('XZY')
 
-                    tmpMtx = rotVec.to_matrix().to_4x4()
-                    trot = tmpMtx.to_euler('XZY')
+                        from bpy_extras.io_utils import axis_conversion
+                        trot = axis_conversion(to_forward='-Z', to_up='Y',).to_4x4() @ mathutils.Vector((trot.x, trot.y, trot.z))
 
-                    tx = hex(RadToBAMS(trot.x, True))[2:]
-                    ty = hex(RadToBAMS(trot.z, True))[2:]
-                    tz = hex(RadToBAMS(-trot.y, True))[2:]
+                        tx = hex(RadToBAMS(trot.x, True))[2:]
+                        ty = hex(RadToBAMS(trot.y, True))[2:]
+                        tz = hex(RadToBAMS(trot.z, True))[2:]
 
-                    print("int: ({0}) \nout: ({1}, {2}, {3})\n".format(mdl["Rotation"][frameStr], tx, ty, tz))
-                    #checking done
+                        print("int: ({0}) \nout: ({1}, {2}, {3})\n".format(mdl["Rotation"][frameStr], tx, ty, tz))
 
                     for i, k in enumerate(rotCurves):
                         keyframe = k.keyframe_points[rotFrameID]
@@ -404,7 +404,8 @@ def write(filepath: str, bakeAll: bool, shortRot: bool, bezierInterpolation: boo
             jsonRot = model["Rotation"]
             for k, v in rotations.items():
                 # please dont kill me mathematicians owo'
-                matrix = v.to_matrix().to_4x4()
+                matrix = mtx @ v.to_matrix().to_4x4()
+
                 rot = matrix.to_euler('XZY')
 
                 x = hex(RadToBAMS(rot.x, True))[2:]
