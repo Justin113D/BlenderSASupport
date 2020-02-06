@@ -19,6 +19,8 @@ def hex4(number: int) -> str:
     return '{:08x}'.format(number)
 
 def RadToBAMS(v: float, asInt = False) -> int:
+    if round(v, 4) == 0:
+        return 0
     val = round((math.degrees(v) / 360.0) * 0x10000)
     if not asInt:
         while val > 0xFFFF:
@@ -32,8 +34,12 @@ def RadToBAMS(v: float, asInt = False) -> int:
             val += 0x100000000
     return val
 
-def BAMSToRad(v: int) -> float:
-    return math.radians( v / (0xFFFF / 360.0))
+def BAMSToRad(v: int, shortRot = False) -> float:
+    if not shortRot and v & 0x80000000:
+        v -= 0x100000000
+    elif shortRot :
+        v &= 0xFFFF
+    return math.radians( v / (0x10000 / 360.0))
 
 def getDistinctwID(items: list):
 

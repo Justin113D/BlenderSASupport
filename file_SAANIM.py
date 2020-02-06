@@ -39,6 +39,8 @@ def read(filepath: str, nameConv, obj):
         action = bpy.data.actions.new(name)
         action.use_fake_user = True
         frame_count = anim["Frames"]
+        shortRot = anim["ShortRot"]
+        shortRot = False
 
         armature = obj.data
 
@@ -119,17 +121,35 @@ def read(filepath: str, nameConv, obj):
                     posFrameID += 1
 
                 if rotCurves is not None and frameStr in mdl["Rotation"]:
+
                     rotVec = mdl["Rotation"][frameStr]
                     rotVec = rotVec.split(", ")
-                    rotVec = (  BAMSToRad(int(rotVec[0], 16)),
-                                -BAMSToRad(int(rotVec[2], 16)),
-                                BAMSToRad(int(rotVec[1], 16)) )
+                    rotVec = (  BAMSToRad(int(rotVec[0], 16), shortRot),
+                                -BAMSToRad(int(rotVec[2], 16), shortRot),
+                                BAMSToRad(int(rotVec[1], 16), shortRot) )
+
                     rotMtx = mathutils.Euler(rotVec, 'XZY').to_matrix().to_4x4()
 
                     if isQuat:
                         rotVec = (mtx.inverted() @ rotMtx).to_quaternion()
                     else:
                         rotVec = (mtx.inverted() @ rotMtx).to_euler(rotMode)
+
+                    #print(rotVec)
+                    #print(hex(int(rotVec.x)), hex(int(rotVec.y)), hex(int(rotVec.z)))
+
+                    # checking...
+                    from .common import RadToBAMS
+
+                    tmpMtx = rotVec.to_matrix().to_4x4()
+                    trot = tmpMtx.to_euler('XZY')
+
+                    tx = hex(RadToBAMS(trot.x, True))[2:]
+                    ty = hex(RadToBAMS(trot.z, True))[2:]
+                    tz = hex(RadToBAMS(-trot.y, True))[2:]
+
+                    print("int: ({0}) \nout: ({1}, {2}, {3})\n".format(mdl["Rotation"][frameStr], tx, ty, tz))
+                    #checking done
 
                     for i, k in enumerate(rotCurves):
                         keyframe = k.keyframe_points[rotFrameID]
@@ -248,9 +268,6 @@ def write(filepath: str, bakeAll: bool, shortRot: bool, bezierInterpolation: boo
     action: bpy.types.Action = obj.animation_data.action
     armature = obj.data
 
-    from bpy_extras.io_utils import axis_conversion
-    global_matrix = axis_conversion(to_forward='-Z', to_up='Y',).to_4x4()
-
     # mapping the curves to the bones
     curveMap: Dict[str, List[bpy.types.FCurve]] = dict()
     frame_End = 0
@@ -358,8 +375,8 @@ def write(filepath: str, bakeAll: bool, shortRot: bool, bezierInterpolation: boo
 
             jsonPos = model["Position"]
             for k, v in positions.items():
-                pos = global_matrix @ (mtx @ v)
-                jsonPos[str(k)] = "{0}, {1}, {2}".format(round(pos.x, 6), round(pos.y, 6), round(pos.z, 6))
+                pos = mtx @ v
+                jsonPos[str(k)] = "{0}, {1}, {2}".format(round(pos.x, 6), round(pos.z, 6), round(-pos.y, 6))
 
         # next the rotations
         if len(rotCurves) > 0:
@@ -389,11 +406,10 @@ def write(filepath: str, bakeAll: bool, shortRot: bool, bezierInterpolation: boo
                 # please dont kill me mathematicians owo'
                 matrix = v.to_matrix().to_4x4()
                 rot = matrix.to_euler('XZY')
-                rot = global_matrix @ mathutils.Vector((rot.x, rot.y, rot.z))
 
-                x = hex(RadToBAMS(rot.x, not shortRot))[2:]
-                y = hex(RadToBAMS(rot.y, not shortRot))[2:]
-                z = hex(RadToBAMS(rot.z, not shortRot))[2:]
+                x = hex(RadToBAMS(rot.x, True))[2:]
+                y = hex(RadToBAMS(rot.z, True))[2:]
+                z = hex(RadToBAMS(-rot.y, True))[2:]
 
                 jsonRot[str(k)] = "{0}, {1}, {2}".format(x,y,z)
 
