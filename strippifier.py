@@ -4,7 +4,7 @@
 #base classes, which can be used in any strippifier algorithm
 
 from collections import Counter
-from typing import List
+from typing import List, Tuple
 
 raiseTopoErrorG = True
 
@@ -13,81 +13,99 @@ class TopologyError(Exception):
     def __init__(self, message):
         super().__init__(message)
 
-class Mesh:
-    """contains all vertices, faces and edges from a tri list"""
-    triangles = list() #triangles of the mesh
-    edges = list() #edges of the mesh
-    vertices = list() #vertices of the mesh
+class Vertex:
+    """A single point in the Mesh."""
+    index: int # The local index of the vertex
+    edges: List # The adjacencies which it is part of
+    triangles: List # The triangles which it is part of
 
-    def __init__(self, triList):
-        self.triangles = [None] * (int(len(triList) / 3))
+    def __init__(self, index: int):
+        self.index = index
         self.edges = list()
+        self.triangles = list()
 
-        vertCount = max(triList) + 1
+    def availableTris(self) -> int:
+        """Returns the amount of tris that arent written into a strip yet"""
+        result = 0
+        for t in self.triangles:
+            if not t.used:
+                result += 1
+        return result
 
-        self.vertices = [None] * vertCount
-        for v in range(vertCount):
-            self.vertices[v] = Vertex(v)
+    def isConnectedWith(self, otherVert):
+        """If a vertex is connected to another vertex, this method will return that adjacency
 
-        for i in range(0, len(triList), 3):
-            tri = Triangle( int(i / 3),
-                            self.vertices[triList[i]],
-                            self.vertices[triList[i+1]],
-                            self.vertices[triList[i+2]],
-                            self.edges)
-            self.triangles[int(i / 3)] = tri
-
-        # checking for tripple edges
-        triEdgeCount = 0
+        otherwise it will return None"""
         for e in self.edges:
-            if len(e.triangles) > 2:
-                triEdgeCount += 1
+            if otherVert in e.vertices:
+                return e
+        return None
 
-        if triEdgeCount > 0:
-            print("There are", triEdgeCount, "edges with more than two faces")
+    def connect(self, otherVert):
+        """Creates and returns a new Adjacency (updated other vertex too)"""
+        edge = Edge(self, otherVert)
+        self.edges.append(edge)
+        otherVert.edges.append(edge)
+        return edge
+
+    def __str__(self):
+        return str(self.index)
+
+class Edge:
+    """An Edge/Adjacency in between two vertices"""
+    vertices: Tuple[Vertex, Vertex] # The two vertices that this adjacency consists of
+    triangles: List # The triangles that consist of this adjacency (min. 1, max. 2)
+
+    def __init__(self, vertex1: Vertex, vertex2: Vertex):
+        self.vertices = (vertex1, vertex2)
+        self.triangles = list()
+
+    def addTriangle(self, tri):
+        for t in self.triangles:
+            t.neighbours.append(tri)
+            tri.neighbours.append(t)
+
+        self.triangles.append(tri)
+        tri.edges.append(self)
+
+    def __str__(self):
+        return "(" + str(self.vertices[0]) + ", " + str(self.vertices[1]) + ")"
 
 class Triangle:
 
-    index = 0
-    neighbours = list() # The triangles that this triangle is connected through its adjacencies (max. 3)
-    edges = [None] * 3 # The three adjacencies that this triangle consists of
-    vertices = [None] * 3 # The three vertices that this triangle consists of
-    used = False # Whether the triangle is in any strip
-    inList = False # Whether the triangle is already in the priority list
+    index: int
+    neighbours: List[Edge] # The triangles that this triangle is connected through its adjacencies (max. 3)
+    edges: List[Edge] # The three adjacencies that this triangle consists of
+    vertices: List[Vertex] # The three vertices that this triangle consists of
+    used: bool # Whether the triangle is in any strip
+    inList: bool # Whether the triangle is already in the priority list
 
-    def __init__(self, index, v1, v2, v3, edges):
+    def __init__(self, index, verts, edges):
         #setting vertices
         self.index = index
 
-        self.vertices = [v1, v2, v3]
-
-        v1.triangles.append(self)
-        v2.triangles.append(self)
-        v3.triangles.append(self)
-
+        self.vertices = verts
+        self.edges = list()
         self.neighbours = list()
+        for i in range(-1, 2):
+            self.vertices[i].triangles.append(self)
+            self.addEdge(self.vertices[i], self.vertices[i + 1], edges)
 
-        #getting or creating the edges
-        e1 = self.addEdge(v1, v2, edges)
-        e2 = self.addEdge(v1, v3, edges)
-        e3 = self.addEdge(v2, v3, edges)
-
-        self.edges = [e1, e2, e3]
-        if None in self.edges:
-            self.edges = None
+        self.used = False
+        self.inList = False
 
     def addEdge(self, v1, v2, edges):
         e = v1.isConnectedWith(v2)
+
         if e is None:
             e = v1.connect(v2)
-            e.triangles.append(self)
-            self.edges.append(e)
             edges.append(e)
-        else: # if edge existed before, then it has to have a triangle attached to it
-            if raiseTopoErrorG and len(e.triangles) > 1:
-                raise TopologyError("Some Edge has more than 2 faces! cant strippify!")
-            else:
-                e.addTriangle(self)
+
+        # if edge existed before, then it has to have a triangle attached to it
+        elif raiseTopoErrorG and len(e.triangles) > 1:
+            raise TopologyError("Some Edge has more than 2 faces! cant strippify!")
+
+        e.addTriangle(self)
 
         return e
 
@@ -95,12 +113,15 @@ class Triangle:
         """Checks whether the vertex is part of the tri"""
         return v in self.vertices
 
-    def getThirdVertex(self, v1, v2):
+    def getThirdVertex(self, v1, v2) -> Vertex:
         """both v1 and v2 should be part of the triangle. returns the third vertex of the triangle"""
+        if not (v1 in self.vertices and v2 in self.vertices):
+            return None
         for v in self.vertices:
             if v is v1 or v is v2:
                 continue
             return v
+        print("Vertex not in triangle")
         return None
 
     def getCommonAdjacency(self, otherTri):
@@ -178,8 +199,10 @@ class Triangle:
         return trisToUse[index]
 
     def getNextStripTriSeq(self, prevVert, curvVert):
-        e = curvVert.isConnectedWith(prevVert)
-        #print(e is None)
+        e = prevVert.isConnectedWith(curvVert)
+        #if e is None:
+        #    return None
+
         #getting the other triangle
         t = None
         for tri in e.triangles:
@@ -192,65 +215,31 @@ class Triangle:
     def __str__(self):
         return str(self.index) + ": " + str(self.used) + ", " + "(" + str(self.vertices[0]) + ", " + str(self.vertices[1]) + ", " + str(self.vertices[2]) +")"
 
-class Edge:
-    """An Edge/Adjacency in between two vertices"""
-    vertices = [None] * 2 # The two vertices that this adjacency consists of
-    triangles = list() # The triangles that consist of this adjacency (min. 1, max. 2)
+class Mesh:
+    """contains all vertices, faces and edges from a tri list"""
+    triangles = list() #triangles of the mesh
+    edges = list() #edges of the mesh
+    vertices = list() #vertices of the mesh
 
-    def __init__(self, vertex1, vertex2):
-        self.vertices = [vertex1, vertex2]
-        self.triangles = list()
+    def __init__(self, triList):
+        vertCount = max(triList) + 1
 
-    def addTriangle(self, triangle: Triangle):
-        if triangle not in self.triangles:
-            for t in self.triangles:
-                t.neighbours.append(triangle)
-                triangle.neighbours.append(t)
-            self.triangles.append(triangle)
-        else:
-            print("Triangle already in edge")
+        self.vertices = [Vertex(v) for v in range(vertCount)]
 
-
-    def __str__(self):
-        return str(self.vertices[0]) + ", " + str(self.vertices[1])
-
-class Vertex:
-    """A single point in the Mesh."""
-    index = 0 # The local index of the vertex
-    edges = list() # The adjacencies which it is part of
-    triangles = list() # The triangles which it is part of
-
-    def __init__(self, index):
-        self.index = index
         self.edges = list()
-        self.triangles = list()
+        self.triangles = [  Triangle( int(i / 3),
+                            [self.vertices[triList[i + t]] for t in range(3)],
+                            self.edges)
+                            for i in range(0, len(triList), 3)]
 
-    def availableTris(self):
-        """Returns the amount of tris that arent written into a strip yet"""
-        result = 0
-        for t in self.triangles:
-            if not t.used:
-                result += 1
-        return result
-
-    def isConnectedWith(self, otherVert):
-        """If a vertex is connected to another vertex, this method will return that adjacency
-
-        otherwise it will return None"""
+        # checking for tripple edges
+        triEdgeCount = 0
         for e in self.edges:
-            if e.vertices[0] is otherVert or e.vertices[1] is otherVert:
-                return e
-        return None
+            if len(e.triangles) > 2:
+                triEdgeCount += 1
 
-    def connect(self, otherVert):
-        """Creates and returns a new Adjacency (updated other vertex too)"""
-        edge = Edge(self, otherVert)
-        self.edges.append(edge)
-        otherVert.edges.append(edge)
-        return edge
-
-    def __str__(self):
-        return str(self.index)
+        if triEdgeCount > 0:
+            print("There are", triEdgeCount, "edges with more than two faces")
 
 
 class Strippifier:
@@ -337,15 +326,14 @@ class Strippifier:
         global raiseTopoErrorG
         raiseTopoErrorG = raiseTopoError
 
-        self.strips = list()
-
         # reading the index data into a mesh
         self.mesh = Mesh(indexList)
         # amount of written triangles
         self.written = 0
-
         # index to know where to append triangles with 2 neighbours (1 is start, 3 is end)
         self.indexC2 = 0
+
+        self.strips = list()
 
         # getting rid of lone triangles first
         for t in self.mesh.triangles:
@@ -361,10 +349,12 @@ class Strippifier:
         triCount = len(self.mesh.triangles)
 
         while self.written != triCount:
+            print("starting new strip")
 
             # getting the starting tris
             firstTri = self.priorityTris[0]
-            revCheckTri = firstTri
+            revCheckTri = firstTri # setting the reverse check tri
+
             currentTri = firstTri
             currentTri.used = True
 
@@ -379,15 +369,12 @@ class Strippifier:
 
             # get the vertex which wouldnt be connected to the tri afterwards, to prevent swapping
 
-            if secNewTri is None:
+            if secNewTri is None or not secNewTri.hasVertex(commonEdge.vertices[0]):
                 currentVert = commonEdge.vertices[0]
                 thirdVert = commonEdge.vertices[1]
-            elif secNewTri.hasVertex(commonEdge.vertices[0]):
+            else:
                 currentVert = commonEdge.vertices[1]
                 thirdVert = commonEdge.vertices[0]
-            else:
-                currentVert = commonEdge.vertices[0]
-                thirdVert = commonEdge.vertices[1]
 
             # initializing strip base
             self.strip = list([prevVert.index, currentVert.index, thirdVert.index])
@@ -402,8 +389,6 @@ class Strippifier:
             currentTri = newTri
             newTri = secNewTri
 
-
-
             # creating a strip
             reachedEnd = False
             reversedList = False
@@ -415,7 +400,9 @@ class Strippifier:
 
                 # ending the loop when the current tri is None (end of the strip)
                 if newTri is None:
+
                     if len(firstTri.availableNeighbours()) > 0 and not reversedList:
+                        print("reversing list")
                         reversedList = True
                         prevVert = self.mesh.vertices[self.strip[1]]
                         currentVert = self.mesh.vertices[self.strip[0]]
@@ -447,6 +434,10 @@ class Strippifier:
                 # getting the new vertex to write
                 thirdVert = newTri.getThirdVertex(prevVert, currentVert)
 
+                if thirdVert is None:
+                    reachedEnd = True
+                    continue
+
                 prevVert = currentVert
                 currentVert = thirdVert
 
@@ -457,6 +448,7 @@ class Strippifier:
                     newTri = secNewTri
                 else:
                     newTri = currentTri.getNextStripTriSeq(prevVert, currentVert)
+                    print(currentTri, "\n", newTri, "\n")
 
             #checking if the triangle is reversed
             t = 0

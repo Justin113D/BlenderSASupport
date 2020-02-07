@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1,1,3),
+    "version": (1,1,4),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -800,6 +800,8 @@ class StrippifyTest(bpy.types.Operator):
         return wm.invoke_props_dialog(self)
 
     def execute(self, context):
+        import os
+        os.system("cls")
         obj = context.active_object
         if obj is None or not isinstance(obj.data, bpy.types.Mesh):
             print("active object not a mesh")
