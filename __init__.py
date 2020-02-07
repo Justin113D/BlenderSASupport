@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1,1,1),
+    "version": (1,1,2),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -83,6 +83,8 @@ def removeFile() -> None:
         __init__.exportedFile = None
 
 def exportFile(op, outType, context, **keywords):
+
+    __init__.exportedFile = None
 
     profile_output = keywords["profile_output"]
     del keywords["profile_output"]
@@ -179,6 +181,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
     def execute(self, context):
         from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
+        keywords["write_Specular"] = True
         keywords["export_format"] = 'SA1'
         return exportFile(self, 'MDL', context, **keywords)
 
@@ -307,6 +310,7 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
     def execute(self, context):
         from . import file_MDL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
+        keywords["write_Specular"] = False
         keywords["export_format"] = 'SA2B'
         return exportFile(self, 'MDL', context, **keywords)
 
@@ -367,6 +371,7 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
     def execute(self, context):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
+        keywords["write_Specular"] = True
         keywords["export_format"] = 'SA1'
         return exportFile(self, 'LVL', context, **keywords)
 
@@ -496,6 +501,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
         from . import file_LVL
         keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
 
+        keywords["write_Specular"] = False
         keywords["export_format"] = 'SA2B'
         return exportFile(self, 'LVL', context, **keywords)
 
