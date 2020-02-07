@@ -357,7 +357,6 @@ class Strippifier:
             currentTri.used = True
 
             newTri = currentTri.getNextStripTri()
-            newTri.used = True
 
             secNewTri = newTri.getNextStripTri()
 
@@ -378,74 +377,112 @@ class Strippifier:
             self.strip = list([prevVert.index, currentVert.index, thirdVert.index])
             self.written += 1
 
-            # shift verts one forward
-            prevVert = thirdVert
-            currentVert = newTri.getThirdVertex(currentVert, thirdVert)
+            # checking if the culling between the two even works
+            # finding a shared vertex
+            t = 0
+            tt = 0
+            for v in newTri.vertices:
+                if v in firstTri.vertices:
+                    t = firstTri.vertices.index(v)
+                    tt = newTri.vertices.index(v)
+                    if firstTri.vertices[t-1] is newTri.vertices[tt-1]:
+                        t -= 1
+                        tt -= 1
+                    break
 
-            # shift triangles one forward
-            secOldTri = currentTri
-            currentTri = newTri
-            newTri = secNewTri
+            if not firstTri.vertices[t - 2] is newTri.vertices[tt - 2]:
+                newTri.used = True
 
-            # creating a strip
-            reachedEnd = False
-            reversedList = False
-            while not reachedEnd:
+                # shift verts one forward
+                prevVert = thirdVert
+                currentVert = newTri.getThirdVertex(currentVert, thirdVert)
 
-                #writing the next index
-                self.strip.append(currentVert.index)
-                self.written += 1
+                # shift triangles one forward
+                secOldTri = currentTri
+                currentTri = newTri
+                newTri = secNewTri
 
-                # ending the loop when the current tri is None (end of the strip)
-                if newTri is None:
+                # creating a strip
+                reachedEnd = False
+                reversedList = False
+                while not reachedEnd:
 
-                    if len(firstTri.availableNeighbours()) > 0 and not reversedList:
-                        reversedList = True
-                        prevVert = self.mesh.vertices[self.strip[1]]
-                        currentVert = self.mesh.vertices[self.strip[0]]
-                        if doSwaps:
-                            newTri = firstTri.getNextStripTri(prevVert, currentVert)
+                    #writing the next index
+                    self.strip.append(currentVert.index)
+                    self.written += 1
+
+
+                    # checking if the culling between the two even works
+                    # finding a shared vertex
+                    t = 0
+                    tt = 0
+                    for v in currentTri.vertices:
+                        if v in secOldTri.vertices:
+                            t = secOldTri.vertices.index(v)
+                            tt = currentTri.vertices.index(v)
+                            if secOldTri.vertices[t-1] is currentTri.vertices[tt-1]:
+                                t -= 1
+                                tt -= 1
+                            break
+
+                    sameCulling = secOldTri.vertices[t - 2] is currentTri.vertices[tt - 2]
+                    if sameCulling:
+                        newTri = None
+
+                    # ending the loop when the current tri is None (end of the strip)
+                    if newTri is None:
+
+                        if len(firstTri.availableNeighbours()) > 0 and not reversedList:
+                            reversedList = True
+                            prevVert = self.mesh.vertices[self.strip[1]]
+                            currentVert = self.mesh.vertices[self.strip[0]]
+                            if doSwaps:
+                                newTri = firstTri.getNextStripTri(prevVert, currentVert)
+                            else:
+                                newTri = firstTri.getNextStripTriSeq(prevVert, currentVert)
+                                if newTri is None:
+                                    reachedEnd = True
+                                    continue
+                            self.strip.reverse()
+
+                            tTri = revCheckTri
+                            revCheckTri = currentTri
+                            currentTri = tTri
+
                         else:
-                            newTri = firstTri.getNextStripTriSeq(prevVert, currentVert)
-                            if newTri is None:
-                                reachedEnd = True
-                                continue
-                        self.strip.reverse()
-                        revCheckTri = currentTri
+                            reachedEnd = True
+                            continue
 
-                    else:
+                    #swapping if necessary
+                    if doSwaps:
+                        secNewTri = newTri.getNextStripTri(prevVert, currentVert)
+                        if secNewTri is not None and not secNewTri.hasVertex(currentVert):
+                            self.strip.append(prevVert.index)
+
+                            #swapping the vertices
+                            t = prevVert
+                            prevVert = currentVert
+                            currentVert = t
+
+                    # getting the new vertex to write
+                    thirdVert = newTri.getThirdVertex(prevVert, currentVert)
+
+                    if thirdVert is None:
+                        newTri.used = True
                         reachedEnd = True
                         continue
 
-                #swapping if necessary
-                if doSwaps:
-                    secNewTri = newTri.getNextStripTri(prevVert, currentVert)
-                    if secNewTri is not None and not secNewTri.hasVertex(currentVert):
-                        self.strip.append(prevVert.index)
+                    prevVert = currentVert
+                    currentVert = thirdVert
 
-                        #swapping the vertices
-                        t = prevVert
-                        prevVert = currentVert
-                        currentVert = t
+                    secOldTri = currentTri
+                    currentTri = newTri
+                    currentTri.used = True
 
-                # getting the new vertex to write
-                thirdVert = newTri.getThirdVertex(prevVert, currentVert)
-
-                if thirdVert is None:
-                    newTri.used = True
-                    reachedEnd = True
-                    continue
-
-                prevVert = currentVert
-                currentVert = thirdVert
-
-                currentTri = newTri
-                currentTri.used = True
-
-                if doSwaps:
-                    newTri = secNewTri
-                else:
-                    newTri = currentTri.getNextStripTriSeq(prevVert, currentVert)
+                    if doSwaps:
+                        newTri = secNewTri
+                    else:
+                        newTri = currentTri.getNextStripTriSeq(prevVert, currentVert)
 
             #checking if the triangle is reversed
 
@@ -454,8 +491,8 @@ class Strippifier:
                 if self.strip[i] == revCheckTri.vertices[0].index:
                     t = i
                     break
-            tNext = 0 if t == 2 else t + 1
-            rev = revCheckTri.vertices[1].index == self.strip[tNext]
+            nextT = 0 if t == 2 else t + 1
+            rev = revCheckTri.vertices[1].index == self.strip[nextT]
             if rev:
                 firstIndex = self.strip[0]
                 self.strip.insert(0, firstIndex)
