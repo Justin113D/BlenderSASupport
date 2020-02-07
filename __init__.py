@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1,1,7),
+    "version": (1,1,8),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -745,7 +745,7 @@ class LoadAnimFile(bpy.types.Operator, ImportHelper):
         items=(('FILE', "File", "Names the animation after the file"),
                ('CONTENT', "Content", "Names the animation after the contents name"),
                ('COMB', "File_Content", "Combines both names types to name the animation")),
-        default='FILE'
+        default='CONTENT'
         )
 
     @classmethod
