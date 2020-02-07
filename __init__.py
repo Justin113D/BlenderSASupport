@@ -838,12 +838,16 @@ class StrippifyTest(bpy.types.Operator):
                 verts[p] = me.vertices[p].co
 
             indexList = list()
-            rev = True
-            for j in range(0, len(s)-2):
+            firstTri = [s[i] for i in range(3)]
+
+            rev = len(set(firstTri)) == 3
+            for j in range(0 if rev else 1, len(s)-2):
                 if rev:
                     p = [s[j+1], s[j], s[j+2]]
                 else:
                     p = [s[j], s[j+1], s[j+2]]
+                if len(set(p)) < 3:
+                    print("something wrong...")
                 indexList.append(p)
                 rev = not rev
 

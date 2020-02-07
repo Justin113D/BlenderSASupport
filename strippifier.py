@@ -349,8 +349,6 @@ class Strippifier:
         triCount = len(self.mesh.triangles)
 
         while self.written != triCount:
-            print("starting new strip")
-
             # getting the starting tris
             firstTri = self.priorityTris[0]
             revCheckTri = firstTri # setting the reverse check tri
@@ -402,7 +400,6 @@ class Strippifier:
                 if newTri is None:
 
                     if len(firstTri.availableNeighbours()) > 0 and not reversedList:
-                        print("reversing list")
                         reversedList = True
                         prevVert = self.mesh.vertices[self.strip[1]]
                         currentVert = self.mesh.vertices[self.strip[0]]
@@ -435,6 +432,7 @@ class Strippifier:
                 thirdVert = newTri.getThirdVertex(prevVert, currentVert)
 
                 if thirdVert is None:
+                    newTri.used = True
                     reachedEnd = True
                     continue
 
@@ -448,9 +446,9 @@ class Strippifier:
                     newTri = secNewTri
                 else:
                     newTri = currentTri.getNextStripTriSeq(prevVert, currentVert)
-                    print(currentTri, "\n", newTri, "\n")
 
             #checking if the triangle is reversed
+
             t = 0
             for i in range(3):
                 if self.strip[i] == revCheckTri.vertices[0].index:
@@ -480,5 +478,6 @@ class Strippifier:
             result = [result]
         else: # or we just return as is
             result = self.strips
+
 
         return result
