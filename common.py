@@ -959,7 +959,7 @@ def sortChildren(cObject: bpy.types.Object,
         if lvl and fmt != 'SA1' and cObject.saSettings.isCollision and cObject.saSettings.isVisible:
             model = ModelData(cObject, parent, hierarchyDepth, "vsl_" + cObject.name, export_matrix, False, True)
             # collision
-            lastSibling = ModelData(cObject, model, hierarchyDepth, "cls_" + cObject.name, export_matrix, True, False)
+            lastSibling = ModelData(cObject, parent, hierarchyDepth, "cls_" + cObject.name, export_matrix, True, False)
             result.append(lastSibling)
         else:
             visible = True if not cObject.saSettings.isCollision else cObject.saSettings.isVisible

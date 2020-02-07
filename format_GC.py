@@ -823,11 +823,12 @@ class Attach:
             if s is None:
                 continue
             mat = None
-            matName = mesh.materials[i].name
-            if matName in materials:
-                mat = materials[matName]
-            else:
-                print(" Material", matName, "not found")
+            if len(mesh.materials) > 0:
+                matName = mesh.materials[i].name
+                if matName in materials:
+                    mat = materials[matName]
+                else:
+                    print(" Material", matName, "not found")
 
             # generating parameters
             parameters = list()
