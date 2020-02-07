@@ -25,13 +25,11 @@ def read(filepath: str, nameConv, obj):
         modelParts = anim["ModelParts"]
 
         if len(obj.pose.bones) + 1 != modelParts:
-            raise ArmatureInvalidException("  Bone count doesnt match!\n    " + obj.name + " bonecount: " + str(len(obj.pose.bones) + 1) + "\n    File bonecount: " + str(modelParts))
-
-        os.path.basename(filepath)
+            raise ArmatureInvalidException("Couldnt load Anim " + os.path.basename(filepath)[:len(filepath) - 5] + ":\n Bone count doesnt match!\n    " + obj.name + " bonecount: " + str(len(obj.pose.bones) + 1) + "\n    File bonecount: " + str(modelParts))
 
         name = ""
         if nameConv != "CONTENT":
-            name = os.path.basename(filepath)[:len(name) - 5]
+            name = os.path.basename(filepath)[:-5]
             try:
                 name = int(name)
                 name = str(name).zfill(3)

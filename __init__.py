@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1,1,6),
+    "version": (1,1,7),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
@@ -766,8 +766,8 @@ class LoadAnimFile(bpy.types.Operator, ImportHelper):
             try:
                 file_SAANIM.read(path + "\\" + f.name, self.naming, context.active_object)
             except file_SAANIM.ArmatureInvalidException as e:
-                self.report({'WARNING'}, "Couldnt load anim file!\n" + str(e))
-                return {'CANCELLED'}
+                self.report({'WARNING'}, str(e))
+                continue
         return {'FINISHED'}
 # operators
 
