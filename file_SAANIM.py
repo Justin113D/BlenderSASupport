@@ -21,6 +21,12 @@ def read(filepath: str, nameConv, obj):
         anim = json.load(f)
         f.close()
 
+        armature = obj.data
+        modelParts = anim["ModelParts"]
+
+        if len(obj.pose.bones) + 1 != modelParts:
+            raise ArmatureInvalidException("  Bone count doesnt match!\n    " + obj.name + " bonecount: " + str(len(obj.pose.bones) + 1) + "\n    File bonecount: " + str(modelParts))
+
         os.path.basename(filepath)
 
         name = ""
@@ -42,7 +48,7 @@ def read(filepath: str, nameConv, obj):
         shortRot = anim["ShortRot"]
         shortRot = False
 
-        armature = obj.data
+
 
         # creating the fcurves for later usage
         for m in anim["Models"]:
