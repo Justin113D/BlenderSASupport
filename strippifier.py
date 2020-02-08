@@ -16,12 +16,12 @@ class TopologyError(Exception):
 class Vertex:
     """A single point in the Mesh."""
     index: int # The local index of the vertex
-    edges: List # The adjacencies which it is part of
-    triangles: List # The triangles which it is part of
+    edges: dict # The adjacencies which it is part of
+    triangles: list # The triangles which it is part of
 
     def __init__(self, index: int):
         self.index = index
-        self.edges = list()
+        self.edges = dict()
         self.triangles = list()
 
     def availableTris(self) -> int:
@@ -36,16 +36,15 @@ class Vertex:
         """If a vertex is connected to another vertex, this method will return that adjacency
 
         otherwise it will return None"""
-        for e in self.edges:
-            if otherVert in e.vertices:
-                return e
+        if otherVert in self.edges:
+            return self.edges[otherVert]
         return None
 
     def connect(self, otherVert):
         """Creates and returns a new Adjacency (updated other vertex too)"""
         edge = Edge(self, otherVert)
-        self.edges.append(edge)
-        otherVert.edges.append(edge)
+        self.edges[otherVert] = edge
+        otherVert.edges[self] = edge
         return edge
 
     def __str__(self):
@@ -74,11 +73,10 @@ class Edge:
 class Triangle:
 
     index: int
-    neighbours: List[Edge] # The triangles that this triangle is connected through its adjacencies (max. 3)
+    neighbours: List # The triangles that this triangle is connected through its adjacencies (max. 3)
     edges: List[Edge] # The three adjacencies that this triangle consists of
     vertices: List[Vertex] # The three vertices that this triangle consists of
     used: bool # Whether the triangle is in any strip
-    inList: bool # Whether the triangle is already in the priority list
 
     def __init__(self, index, verts, edges):
         #setting vertices
@@ -92,7 +90,6 @@ class Triangle:
             self.addEdge(self.vertices[i], self.vertices[i + 1], edges)
 
         self.used = False
-        self.inList = False
 
     def addEdge(self, v1, v2, edges):
         e = v1.isConnectedWith(v2)
@@ -124,10 +121,7 @@ class Triangle:
         print("Vertex not in triangle")
         return None
 
-    def getCommonAdjacency(self, otherTri):
-        if otherTri not in self.neighbours:
-            print("tris no neighbours")
-            return None
+    def getSharedEdge(self, otherTri):
         for e in self.edges:
             if e in otherTri.edges:
                 return e
@@ -144,18 +138,19 @@ class Triangle:
         """ """
         # checking how many tris can be used at all
         trisToUse = self.availableNeighbours()
-        hasBase = prevVert is not None and curVert is not None
 
         # if no tri can be used, return null, ending the strip
         if len(trisToUse) == 0:
             return None
-        elif len(trisToUse) == 1: # if there is only one, use it
+        if len(trisToUse) == 1: # if there is only one, use it
             return trisToUse[0]
 
         # if there are more than one, get the usable one
         weights = [0] * len(trisToUse)
         vConnection = [0] * len(trisToUse)
         biggestConnection = 0
+
+        hasBase = prevVert is not None and curVert is not None
 
         # base weights and getting triangle connectivity
         for i, t in enumerate(trisToUse):
@@ -173,8 +168,8 @@ class Triangle:
                     weights[i] += 1
                     vConnection[i] = curVert.availableTris()
             else:
-                e = t.getCommonAdjacency(self)
-                vConnection[i] = e.vertices[0].availableTris() + e.vertices[1].availableTris() - 2
+                eVerts = t.getSharedEdge(self).vertices
+                vConnection[i] = eVerts[0].availableTris() + eVerts[1].availableTris() - 2
 
             if vConnection[i] > biggestConnection:
                 biggestConnection = vConnection[i]
@@ -189,11 +184,8 @@ class Triangle:
         # getting the triangle with the lowest weight
         index = 0
         for i in range(1, len(trisToUse)):
-            if weights[i] < weights[index]:
+            if weights[i] < weights[index] or hasBase and weights[i] == weights[index] and trisToUse[i].hasVertex(curVert):
                 index = i
-            elif hasBase and weights[i] == weights[index]:
-                if trisToUse[i].hasVertex(curVert):
-                    index = i
 
         return trisToUse[index]
 
@@ -222,10 +214,11 @@ class Mesh:
         self.vertices = [Vertex(v) for v in range(vertCount)]
 
         self.edges = list()
-        self.triangles = [  Triangle( int(i / 3),
-                            [self.vertices[triList[i + t]] for t in range(3)],
+        import math
+        self.triangles = [  Triangle( int(i),
+                            [self.vertices[triList[i * 3 + t]] for t in range(3)],
                             self.edges)
-                            for i in range(0, len(triList), 3)]
+                            for i in range(0, math.floor(len(triList) / 3))]
 
         # checking for tripple edges
         triEdgeCount = 0
@@ -267,9 +260,6 @@ class Strippifier:
                     curNCount = tnCount
                     resultTri = t
 
-        if resultTri is None:
-            print()
-
         return resultTri
 
     @classmethod
@@ -278,9 +268,6 @@ class Strippifier:
             if v in triB.vertices:
                 t = triB.vertices.index(v)
                 tt = triA.vertices.index(v)
-                if triB.vertices[t-1] is triA.vertices[tt-1]:
-                    t -= 1
-                    tt -= 1
                 return triB.vertices[t - 2] is triA.vertices[tt - 2]
         return None
 
@@ -290,9 +277,6 @@ class Strippifier:
         If concat is True, all strips will be combined into one.
 
         If its False, it will return an array of strips"""
-
-        import time
-        now = time.time()
 
         global raiseTopoErrorG
         raiseTopoErrorG = raiseTopoError
@@ -327,7 +311,7 @@ class Strippifier:
             newTri.used = True # confirmed that we are using it now
 
             # get the starting vert (the one which is not connected with the new tri)
-            sharedVerts = currentTri.getCommonAdjacency(newTri).vertices
+            sharedVerts = currentTri.getSharedEdge(newTri).vertices
             prevVert = currentTri.getThirdVertex(sharedVerts[0], sharedVerts[1])
 
             # get the vertex which wouldnt be connected to the tri afterwards, to prevent swapping
@@ -340,9 +324,9 @@ class Strippifier:
             # also has only one neighbour. Only two triangles in the strip! boom!
             if secNewTri is None:
                 currentVert = sharedVerts[1]
-                thirdVert = sharedVerts[0]
+                nextVert = sharedVerts[0]
 
-                self.strips.append([prevVert.index, currentVert.index, thirdVert.index, newTri.getThirdVertex(currentVert, thirdVert).index])
+                self.strips.append([prevVert.index, currentVert.index, nextVert.index, newTri.getThirdVertex(currentVert, nextVert).index])
                 self.written += 2
 
                 firstTri = self.getFirstTri() # since we are wrapping back around, we have to set the first tri too
@@ -350,26 +334,23 @@ class Strippifier:
 
             elif secNewTri.hasVertex(sharedVerts[0]):
                 currentVert = sharedVerts[1]
-                thirdVert = sharedVerts[0]
+                nextVert = sharedVerts[0]
             else:
                 currentVert = sharedVerts[0]
-                thirdVert = sharedVerts[1]
+                nextVert = sharedVerts[1]
 
             # initializing strip base
-            self.strip = [prevVert.index, currentVert.index, thirdVert.index]
+            self.strip = [prevVert.index, currentVert.index, nextVert.index]
             self.written += 1
 
             # shift verts two forward
-            prevVert = thirdVert
-            currentVert = newTri.getThirdVertex(currentVert, thirdVert)
+            prevVert = nextVert
+            currentVert = newTri.getThirdVertex(currentVert, nextVert)
 
             # shift triangles one forward
             oldTri = currentTri
             currentTri = newTri
-            newTri = secNewTri
-
-            if Strippifier.brokenCullFlow(currentTri, newTri):
-                newTri = None
+            newTri = None if Strippifier.brokenCullFlow(currentTri, newTri) else secNewTri
 
             # creating a strip
             reachedEnd = False
@@ -404,7 +385,7 @@ class Strippifier:
                         reachedEnd = True
                         continue
 
-                #swapping if necessary
+                #swapping if necessary (broken)
                 if doSwaps:
                     secNewTri = newTri.getNextStripTri(prevVert, currentVert)
                     if secNewTri is not None and not secNewTri.hasVertex(currentVert):
@@ -416,15 +397,14 @@ class Strippifier:
                         currentVert = t
 
                 # getting the new vertex to write
-                thirdVert = newTri.getThirdVertex(prevVert, currentVert)
+                nextVert = newTri.getThirdVertex(prevVert, currentVert)
 
-                if thirdVert is None:
+                if nextVert is None:
                     reachedEnd = True
-                    print("third vert not found... weird")
                     continue
 
                 prevVert = currentVert
-                currentVert = thirdVert
+                currentVert = nextVert
 
                 oldTri = currentTri
                 currentTri = newTri
@@ -464,8 +444,5 @@ class Strippifier:
             result = [result]
         else: # or we just return as is
             result = self.strips
-
-        now = time.time() - now
-        print(now)
 
         return result
