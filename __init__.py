@@ -2,12 +2,12 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1,1,8),
+    "version": (1,2,0),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
-    "description": "Import/Exporter for the SA Models Formats. For any questions, contact me via Discord: Justin113D#1927",
+    "description": "Import/Exporter for the SA Models Formats.\n Bugs should be reported to the github repository.",
     "warning": "",
-    "wiki_url": "",
+    "wiki_url": "https://github.com/Justin113D/BlenderSASupport/wiki",
     "support": 'COMMUNITY',
     "category": "Import-Export"}
 

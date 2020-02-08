@@ -129,9 +129,8 @@ class Triangle:
             print("tris no neighbours")
             return None
         for e in self.edges:
-            for oe in otherTri.edges:
-                if e is oe:
-                    return e
+            if e in otherTri.edges:
+                return e
         return None
 
     def availableNeighbours(self):
@@ -200,17 +199,13 @@ class Triangle:
 
     def getNextStripTriSeq(self, prevVert, curvVert):
         e = prevVert.isConnectedWith(curvVert)
-        #if e is None:
-        #    return None
 
         #getting the other triangle
-        t = None
         for tri in e.triangles:
             if tri is not self and not tri.used:
-                t = tri
-                break
+                return tri
 
-        return t
+        return None
 
     def __str__(self):
         return str(self.index) + ": " + str(self.used) + ", " + "(" + str(self.vertices[0]) + ", " + str(self.vertices[1]) + ", " + str(self.vertices[2]) +")"
@@ -252,70 +247,42 @@ class Strippifier:
     def addZTriangle(self, tri: Triangle):
         """creates a strip from a triangle with no (free) neighbours"""
         v = tri.vertices
-        self.strips.append([v[0].index, v[0].index, v[1].index, v[2].index])
+        self.strips.append([v[0].index, v[2].index, v[1].index])
         self.written += 1
         tri.used = True
 
-    def priorityFill(self):
-        """Fills the priority list, which is used to get the starting triangle"""
-        if len(self.priorityTris) > 0:
-            for t in self.priorityTris:
-                t.inList = False
+    def getFirstTri(self):
+        resultTri = None
+        curNCount = 0xFFFF
 
-        self.priorityTris = list()
-
-        # gets an initial starting point
-        startIndex = 1
         for i, t in enumerate(self.mesh.triangles):
-            if not t.used: # and not t.inList:
-                if len(t.availableNeighbours()) == 0:
+            if not t.used:
+                tnCount = len(t.availableNeighbours())
+                if tnCount == 0:
                     self.addZTriangle(t)
                     continue
-                self.priorityTris.append(t)
-                t.inList = True
-                startIndex = i + 1
-                break
+                if tnCount < curNCount:
+                    if tnCount == 1:
+                        return t
+                    curNCount = tnCount
+                    resultTri = t
 
-        # if there are no more tris that can be added to a strip, we are done
-        if len(self.priorityTris) == 0:
-            return
+        if resultTri is None:
+            print()
 
-        # opponent neighbours
-        oN = len(self.priorityTris[0].availableNeighbours())
+        return resultTri
 
-        # when a triangle with only one available neighbour was found,
-        # then its not worth looking for more triangles
-        if oN == 1:
-            self.indexC2 = 0
-            return
-
-        self.indexC2 = 1
-
-        # fills the priority list
-        for i in range(startIndex, len(self.mesh.triangles)):
-            t = self.mesh.triangles[i]
-            if t.used:
-                continue
-
-            n = len(t.availableNeighbours())
-
-            # this case can only take place if oN is bigger than 1, so there is no need to increase indexC2
-            if n == oN:
-                self.priorityTris.append(t)
-                t.inList = True
-            elif n < oN and n != 0:
-                for lt in self.priorityTris:
-                    lt.inList = False
-                self.priorityTris = list([t])
-                t.inList = True
-
-                # updating opponent neighbours
-                oN = len(t.availableNeighbours())
-
-                if oN == 1:
-                    self.indexC2 = 1
-                    return
-                self.indexC2 = 0
+    @classmethod
+    def brokenCullFlow(cls, triA: Triangle, triB: Triangle) -> bool:
+        for v in triA.vertices:
+            if v in triB.vertices:
+                t = triB.vertices.index(v)
+                tt = triA.vertices.index(v)
+                if triB.vertices[t-1] is triA.vertices[tt-1]:
+                    t -= 1
+                    tt -= 1
+                return triB.vertices[t - 2] is triA.vertices[tt - 2]
+        return None
 
     def Strippify(self, indexList, doSwaps = False, concat = False, raiseTopoError = False):
         """creates a triangle strip from a triangle list.
@@ -323,183 +290,165 @@ class Strippifier:
         If concat is True, all strips will be combined into one.
 
         If its False, it will return an array of strips"""
+
+        import time
+        now = time.time()
+
         global raiseTopoErrorG
         raiseTopoErrorG = raiseTopoError
 
-        # reading the index data into a mesh
-        self.mesh = Mesh(indexList)
-        # amount of written triangles
-        self.written = 0
-        # index to know where to append triangles with 2 neighbours (1 is start, 3 is end)
-        self.indexC2 = 0
-
-        self.strips = list()
-
-        # getting rid of lone triangles first
-        for t in self.mesh.triangles:
-            if len(t.availableNeighbours()) == 0:
-                self.addZTriangle(t)
-
-        # priority list of potential starting tris
-        self.priorityTris: List[Triangle] = list()
-
-        self.priorityFill()
+        self.mesh = Mesh(indexList)     # reading the index data into a mesh
+        self.written = 0                # amount of written triangles
+        self.strips = list()            # the result list
 
         # as long as some triangles remain to be written, keep the loop running
         triCount = len(self.mesh.triangles)
 
-        while self.written != triCount:
-            # getting the starting tris
-            firstTri = self.priorityTris[0]
-            revCheckTri = firstTri # setting the reverse check tri
+        firstTri = self.getFirstTri()
 
+        while self.written != triCount:
+            # when looking for the first triangle, we also filter out some single triangles,
+            # which means that it will alter the written count
+            # thats why we have to call it before the loop starts and before the end of the loop, instead of once at the start
+
+            # the first thing we gotta do is determine the first (max) 3 triangles to write
             currentTri = firstTri
             currentTri.used = True
 
             newTri = currentTri.getNextStripTri()
 
-            secNewTri = newTri.getNextStripTri()
+            # If the two triangles have a broken cull flow, then dont continue the strip
+            # (well ok, there is a chance it could continue on another tri, but its not worth looking for such a triangle)
+            if Strippifier.brokenCullFlow(currentTri, newTri):
+                self.addZTriangle(currentTri)
+                firstTri = self.getFirstTri() # since we are wrapping back around, we have to set the first tri too
+                continue
+
+            newTri.used = True # confirmed that we are using it now
 
             # get the starting vert (the one which is not connected with the new tri)
-            commonEdge = currentTri.getCommonAdjacency(newTri)
-            prevVert = currentTri.getThirdVertex(commonEdge.vertices[0], commonEdge.vertices[1])
+            sharedVerts = currentTri.getCommonAdjacency(newTri).vertices
+            prevVert = currentTri.getThirdVertex(sharedVerts[0], sharedVerts[1])
 
             # get the vertex which wouldnt be connected to the tri afterwards, to prevent swapping
+            secNewTri = newTri.getNextStripTri()
 
-            if secNewTri is None or not secNewTri.hasVertex(commonEdge.vertices[0]):
-                currentVert = commonEdge.vertices[0]
-                thirdVert = commonEdge.vertices[1]
+            # if the third tri isnt valid, just end the strip
+            # now you might be thinking "but justin, what if the strip can be reversed?"
+            # good point, but! if the third triangle already doesnt exist, then that would mean
+            # that the second tri has only one neighbour, which can only occur if the first tri
+            # also has only one neighbour. Only two triangles in the strip! boom!
+            if secNewTri is None:
+                currentVert = sharedVerts[1]
+                thirdVert = sharedVerts[0]
+
+                self.strips.append([prevVert.index, currentVert.index, thirdVert.index, newTri.getThirdVertex(currentVert, thirdVert).index])
+                self.written += 2
+
+                firstTri = self.getFirstTri() # since we are wrapping back around, we have to set the first tri too
+                continue
+
+            elif secNewTri.hasVertex(sharedVerts[0]):
+                currentVert = sharedVerts[1]
+                thirdVert = sharedVerts[0]
             else:
-                currentVert = commonEdge.vertices[1]
-                thirdVert = commonEdge.vertices[0]
+                currentVert = sharedVerts[0]
+                thirdVert = sharedVerts[1]
 
             # initializing strip base
-            self.strip = list([prevVert.index, currentVert.index, thirdVert.index])
+            self.strip = [prevVert.index, currentVert.index, thirdVert.index]
             self.written += 1
 
-            # checking if the culling between the two even works
-            # finding a shared vertex
-            t = 0
-            tt = 0
-            for v in newTri.vertices:
-                if v in firstTri.vertices:
-                    t = firstTri.vertices.index(v)
-                    tt = newTri.vertices.index(v)
-                    if firstTri.vertices[t-1] is newTri.vertices[tt-1]:
-                        t -= 1
-                        tt -= 1
-                    break
+            # shift verts two forward
+            prevVert = thirdVert
+            currentVert = newTri.getThirdVertex(currentVert, thirdVert)
 
-            if not firstTri.vertices[t - 2] is newTri.vertices[tt - 2]:
-                newTri.used = True
+            # shift triangles one forward
+            oldTri = currentTri
+            currentTri = newTri
+            newTri = secNewTri
 
-                # shift verts one forward
-                prevVert = thirdVert
-                currentVert = newTri.getThirdVertex(currentVert, thirdVert)
+            if Strippifier.brokenCullFlow(currentTri, newTri):
+                newTri = None
 
-                # shift triangles one forward
-                secOldTri = currentTri
-                currentTri = newTri
-                newTri = secNewTri
+            # creating a strip
+            reachedEnd = False
+            reversedList = False
+            while not reachedEnd:
 
-                # creating a strip
-                reachedEnd = False
-                reversedList = False
-                while not reachedEnd:
+                #writing the next index
+                self.strip.append(currentVert.index)
+                self.written += 1
 
-                    #writing the next index
-                    self.strip.append(currentVert.index)
-                    self.written += 1
+                # ending or reversing the loop when the current tri is None (end of the strip)
+                if newTri is None:
 
-
-                    # checking if the culling between the two even works
-                    # finding a shared vertex
-                    t = 0
-                    tt = 0
-                    for v in currentTri.vertices:
-                        if v in secOldTri.vertices:
-                            t = secOldTri.vertices.index(v)
-                            tt = currentTri.vertices.index(v)
-                            if secOldTri.vertices[t-1] is currentTri.vertices[tt-1]:
-                                t -= 1
-                                tt -= 1
-                            break
-
-                    sameCulling = secOldTri.vertices[t - 2] is currentTri.vertices[tt - 2]
-                    if sameCulling:
-                        newTri = None
-
-                    # ending the loop when the current tri is None (end of the strip)
-                    if newTri is None:
-
-                        if len(firstTri.availableNeighbours()) > 0 and not reversedList:
-                            reversedList = True
-                            prevVert = self.mesh.vertices[self.strip[1]]
-                            currentVert = self.mesh.vertices[self.strip[0]]
-                            if doSwaps:
-                                newTri = firstTri.getNextStripTri(prevVert, currentVert)
-                            else:
-                                newTri = firstTri.getNextStripTriSeq(prevVert, currentVert)
-                                if newTri is None:
-                                    reachedEnd = True
-                                    continue
-                            self.strip.reverse()
-
-                            tTri = revCheckTri
-                            revCheckTri = currentTri
-                            currentTri = tTri
-
+                    if not reversedList and len(firstTri.availableNeighbours()) > 0:
+                        reversedList = True
+                        prevVert = self.mesh.vertices[self.strip[1]]
+                        currentVert = self.mesh.vertices[self.strip[0]]
+                        if doSwaps:
+                            newTri = firstTri.getNextStripTri(prevVert, currentVert)
                         else:
-                            reachedEnd = True
-                            continue
+                            newTri = firstTri.getNextStripTriSeq(prevVert, currentVert)
+                            if newTri is None:
+                                reachedEnd = True
+                                continue
+                        self.strip.reverse()
 
-                    #swapping if necessary
-                    if doSwaps:
-                        secNewTri = newTri.getNextStripTri(prevVert, currentVert)
-                        if secNewTri is not None and not secNewTri.hasVertex(currentVert):
-                            self.strip.append(prevVert.index)
+                        tTri = firstTri
+                        firstTri = currentTri
+                        currentTri = tTri
 
-                            #swapping the vertices
-                            t = prevVert
-                            prevVert = currentVert
-                            currentVert = t
-
-                    # getting the new vertex to write
-                    thirdVert = newTri.getThirdVertex(prevVert, currentVert)
-
-                    if thirdVert is None:
-                        newTri.used = True
+                    else:
                         reachedEnd = True
                         continue
 
-                    prevVert = currentVert
-                    currentVert = thirdVert
+                #swapping if necessary
+                if doSwaps:
+                    secNewTri = newTri.getNextStripTri(prevVert, currentVert)
+                    if secNewTri is not None and not secNewTri.hasVertex(currentVert):
+                        self.strip.append(prevVert.index)
 
-                    secOldTri = currentTri
-                    currentTri = newTri
-                    currentTri.used = True
+                        #swapping the vertices
+                        t = prevVert
+                        prevVert = currentVert
+                        currentVert = t
 
-                    if doSwaps:
-                        newTri = secNewTri
-                    else:
-                        newTri = currentTri.getNextStripTriSeq(prevVert, currentVert)
+                # getting the new vertex to write
+                thirdVert = newTri.getThirdVertex(prevVert, currentVert)
+
+                if thirdVert is None:
+                    reachedEnd = True
+                    print("third vert not found... weird")
+                    continue
+
+                prevVert = currentVert
+                currentVert = thirdVert
+
+                oldTri = currentTri
+                currentTri = newTri
+                currentTri.used = True
+
+                if Strippifier.brokenCullFlow(oldTri, currentTri):
+                    newTri = None
+                elif doSwaps:
+                    newTri = secNewTri
+                else:
+                    newTri = currentTri.getNextStripTriSeq(prevVert, currentVert)
 
             #checking if the triangle is reversed
 
-            t = 0
             for i in range(3):
-                if self.strip[i] == revCheckTri.vertices[0].index:
-                    t = i
+                if self.strip[i] == firstTri.vertices[0].index:
+                    if firstTri.vertices[1].index == self.strip[0 if i == 2 else i + 1]:
+                        self.strip.insert(0, self.strip[0])
                     break
-            nextT = 0 if t == 2 else t + 1
-            rev = revCheckTri.vertices[1].index == self.strip[nextT]
-            if rev:
-                firstIndex = self.strip[0]
-                self.strip.insert(0, firstIndex)
 
             self.strips.append(self.strip)
 
-            self.priorityFill()
+            # getting the first tri
+            firstTri = self.getFirstTri()
 
         # now that we got all strips, we need to concat them (if we want that)
         if concat:
@@ -516,5 +465,7 @@ class Strippifier:
         else: # or we just return as is
             result = self.strips
 
+        now = time.time() - now
+        print(now)
 
         return result
