@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1,2,0),
+    "version": (1,2,1),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats.\n Bugs should be reported to the github repository.",
@@ -3091,7 +3091,15 @@ def register():
     bpy.types.TOPBAR_MT_file_export.append(menu_func_exportsa)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_importsa)
 
+    #import pathlib
+    #path = str(pathlib.Path(__file__).parent.absolute()) + "\\Strippifier.dll"
+
+    #import ctypes
+    #common.DLL = ctypes.cdll.LoadLibrary(path)
+
 def unregister():
+    #del common.DLL
+
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportsa)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_importsa)
 

@@ -268,7 +268,7 @@ class Strippifier:
             if v in triB.vertices:
                 t = triB.vertices.index(v)
                 tt = triA.vertices.index(v)
-                return triB.vertices[t - 2] is triA.vertices[tt - 2]
+                return triB.vertices[t - 1] is triA.vertices[tt - 1]
         return None
 
     def Strippify(self, indexList, doSwaps = False, concat = False, raiseTopoError = False):
@@ -430,17 +430,15 @@ class Strippifier:
             # getting the first tri
             firstTri = self.getFirstTri()
 
-        # now that we got all strips, we need to concat them (if we want that)
+        # now that we got all strips, we need to concat them (broken)
         if concat:
             # stitching the strips together
             result = self.strips[0]
             if len(self.strips) > 1:
-                result.append(result[-1])
                 for i in range(1, len(self.strips)):
+                    result.append(self.strips[i-1][-1])
                     result.append(self.strips[i][0])
                     result.extend(self.strips[i])
-                    result.append(result[-1])
-                del result[-1]
             result = [result]
         else: # or we just return as is
             result = self.strips
