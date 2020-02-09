@@ -482,12 +482,15 @@ def Strippify(indexList: List[int], doSwaps = False, concat = False, raiseTopoEr
 
     # all left to do is convert the array into a 2d array
     output = [list()]
+    tOut = list()
     for i in arrayBuffer:
-        if i == -1:
-            output.append(list())
+        tOut.append(i)
+        if i < 0:
+            if i == -1:
+                output.append(list())
+            elif i == -2:
+                break
         else:
             output[-1].append(i)
-    del output[-1]
-
     return output
 
