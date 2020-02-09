@@ -5,8 +5,11 @@
 
 from collections import Counter
 from typing import List, Tuple
+from ctypes import *
 
 raiseTopoErrorG = True
+
+arrayBuffer = (c_int * 1)()
 
 class TopologyError(Exception):
 
@@ -271,7 +274,7 @@ class Strippifier:
                 return triB.vertices[t - 1] is triA.vertices[tt - 1]
         return None
 
-    def Strippify(self, indexList, doSwaps = False, concat = False, raiseTopoError = False):
+    def Strippify(self, indexList: List[int], doSwaps = False, concat = False, raiseTopoError = False):
         """creates a triangle strip from a triangle list.
 
         If concat is True, all strips will be combined into one.
@@ -350,7 +353,9 @@ class Strippifier:
             # shift triangles one forward
             oldTri = currentTri
             currentTri = newTri
-            newTri = None if Strippifier.brokenCullFlow(currentTri, newTri) else secNewTri
+            newTri = None if Strippifier.brokenCullFlow(currentTri, secNewTri) else secNewTri
+
+            #print(newTri == None)
 
             # creating a strip
             reachedEnd = False
@@ -444,3 +449,45 @@ class Strippifier:
             result = self.strips
 
         return result
+
+def Strippify(indexList: List[int], doSwaps = False, concat = False, raiseTopoError = False):
+
+    from . import common
+    dll = common.DLL
+
+    # int pointer type
+    IntPtr = POINTER(c_int)
+
+    # convertin the variables to be passed to the dll
+    size = len(indexList)
+    arr = (c_int * size)(*indexList)
+    arrPtr = IntPtr(arr)
+    arrLength = c_int(size)
+
+    doSwaps = c_bool(doSwaps)
+    concat = c_bool(concat)
+    raiseTopoError = c_bool(raiseTopoError)
+
+    # the dll calculates the entire strip, stores the result temporarily in a static variable and returns the length of the ouput.
+    # we can then allocate the necessary space and pass the pointer over to the dll, so that the array can get copied in there
+    stripLength = dll.StripT(arrPtr, arrLength, doSwaps, concat, raiseTopoError)
+
+    # if the arraybuffer isnt big enough already, make it bigger (that way we can reuse it throughout the process)
+    global arrayBuffer
+    if stripLength > len(arrayBuffer):
+        arrayBuffer = (c_int * stripLength)()
+
+    # allocate the data
+    dll.AllocateStrip(IntPtr(arrayBuffer))
+
+    # all left to do is convert the array into a 2d array
+    output = [list()]
+    for i in arrayBuffer:
+        if i == -1:
+            output.append(list())
+        else:
+            output[-1].append(i)
+    del output[-1]
+
+    return output
+

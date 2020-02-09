@@ -791,7 +791,6 @@ class Attach:
         #strippifying the poly data
 
         strips: List[List[List[PolyVert]]] = list() # material specific -> strip -> polygon
-        Stripf = strippifier.Strippifier()
 
         for l in tris:
             if len(l) == 0:
@@ -803,7 +802,7 @@ class Attach:
 
             distinct, IDs = common.getDistinctwID(l)
 
-            stripIndices = Stripf.Strippify(IDs, doSwaps=False, concat=False)
+            stripIndices = strippifier.Strippify(IDs, doSwaps=False, concat=False)
 
             polyStrips = [None] * len(stripIndices)
 

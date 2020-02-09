@@ -555,14 +555,13 @@ class Attach:
         # converting triangle lists to strips
         strips: List[List[List[PolyVert]]] = list() # material specific -> strip -> polygon
         stripRev: List[List[bool]] = list()
-        Stripf = strippifier.Strippifier()
 
         for l in polygons:
             if len(l) == 0:
                 strips.append(None)
                 stripRev.append(None)
                 continue
-            stripIndices = Stripf.Strippify(l, doSwaps=False, concat=False)
+            stripIndices = strippifier.Strippify(l, doSwaps=False, concat=False)
 
             polyStrips = [None] * len(stripIndices)
             polyStripsRev = [True] * len(stripIndices)

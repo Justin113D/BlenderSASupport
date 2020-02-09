@@ -146,7 +146,7 @@ class Material:
 
         if len(materials) == 0:
             bMat = Material()
-            bMat.write(fileW)
+            bMat.write(fileW, labels)
             mats.append(bMat)
         else:
             for m in materials.values():
@@ -449,7 +449,6 @@ class Attach:
                 # it will always place them in list no. 0
 
         # strippifying
-        stripf = strippifier.Strippifier()
         stripPolys = list()
         stripReverse: List[List[bool]] = list()
 
@@ -464,7 +463,7 @@ class Attach:
 
             distinct, IDs = common.getDistinctwID(l)
 
-            stripIndices = stripf.Strippify(IDs, doSwaps=False, concat=False)
+            stripIndices = strippifier.Strippify(IDs, doSwaps=False, concat=False)
 
             # if the strips are longer than a
             stripLength = 0

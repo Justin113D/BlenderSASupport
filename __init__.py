@@ -2,7 +2,7 @@
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1,2,1),
+    "version": (1,3,0),
     "blender": (2, 80, 0),
     "location": "File > Import/Export",
     "description": "Import/Exporter for the SA Models Formats.\n Bugs should be reported to the github repository.",
@@ -820,9 +820,8 @@ class StrippifyTest(bpy.types.Operator):
 
         # strippifying it
         from . import strippifier
-        stripf = strippifier.Strippifier()
         try:
-            indexStrips = stripf.Strippify(indexList, doSwaps = self.doSwaps, concat = self.doConcat, raiseTopoError=self.raiseTopoError)
+            indexStrips = strippifier.Strippify(indexList, doSwaps = self.doSwaps, concat = self.doConcat, raiseTopoError=self.raiseTopoError)
         except strippifier.TopologyError as e:
             self.report({'WARNING'}, "Topology error!\n" + str(e))
             return {'CANCELLED'}
@@ -3091,14 +3090,15 @@ def register():
     bpy.types.TOPBAR_MT_file_export.append(menu_func_exportsa)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_importsa)
 
-    #import pathlib
-    #path = str(pathlib.Path(__file__).parent.absolute()) + "\\Strippifier.dll"
+    import pathlib
+    path = str(pathlib.Path(__file__).parent.absolute()) + "\\IOSA2.dll"
 
-    #import ctypes
-    #common.DLL = ctypes.cdll.LoadLibrary(path)
+    import ctypes
+    common.DLL = ctypes.cdll.LoadLibrary(path)
+
 
 def unregister():
-    #del common.DLL
+    del common.DLL
 
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportsa)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_importsa)
