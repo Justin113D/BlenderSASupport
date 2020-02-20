@@ -590,7 +590,7 @@ class Vertices:
     def read(cls, fileR: fileHelper.FileReader, address: int):
 
         vType = enums.VertexAttribute(fileR.rByte(address))
-        fracBitCount = enums.VertexAttribute(fileR.rByte(address + 1))
+        fracBitCount = fileR.rByte(address + 1)
         vCount = fileR.rUShort(address +2)
 
         dataComp = fileR.rByte(address+4)
