@@ -115,6 +115,8 @@ def read(context: bpy.types.Context, filepath: str, noDoubleVerts: bool, console
 
 	# get landtable data
 	tmpAddr = fileR.rUInt(8)
+	if tmpAddr in labels:
+		context.scene.saSettings.landtableName = labels[tmpAddr]
 
 	if file_format == 'SA1':
 		colCount = fileR.rUShort(tmpAddr)
