@@ -383,14 +383,13 @@ def write(context,
 			o.writeCOL(fileW, labels, True)
 
 	#write texture filename
-	texFileNameAddr = fileW.tell()
 	if context.scene.saSettings.texFileName == "":
-		texFileName =  os.path.splitext(os.path.basename(filepath))[0]
+		texFileNameAddr = 0
 	else:
-		texFileName = context.scene.saSettings.texFileName
+		texFileNameAddr = fileW.tell()
+		fileW.wString(context.scene.saSettings.texFileName)
 
 	texListPointer = int("0x" + context.scene.saSettings.texListPointer, 0)
-	fileW.wString(texFileName)
 
 	fileW.align(4)
 
