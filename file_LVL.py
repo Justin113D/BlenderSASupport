@@ -125,7 +125,11 @@ def read(context: bpy.types.Context, filepath: str, noDoubleVerts: bool, console
 		context.scene.saSettings.drawDistance = fileR.rFloat(tmpAddr + 8)
 		colPtr = fileR.rUInt(tmpAddr + 12)
 		animPtr = fileR.rUInt(tmpAddr + 16)
-		context.scene.saSettings.texFileName = fileR.rString(fileR.rUInt(tmpAddr + 20))
+		texNameAddr = fileR.rUInt(tmpAddr + 20)
+		if texNameAddr != 0:
+			context.scene.saSettings.texFileName = fileR.rString(texNameAddr)
+		else:
+			context.scene.saSettings.texFileName = ""
 		context.scene.saSettings.texListPointer = hex8(fileR.rUInt(tmpAddr + 24))
 		unknown2 = fileR.rUInt(tmpAddr + 28)
 		unknown3 = fileR.rUInt(tmpAddr + 32)
@@ -148,7 +152,11 @@ def read(context: bpy.types.Context, filepath: str, noDoubleVerts: bool, console
 		context.scene.saSettings.drawDistance = fileR.rFloat(tmpAddr + 12)
 		colPtr = fileR.rUInt(tmpAddr + 16)
 		animPtr = fileR.rUInt(tmpAddr + 20)
-		context.scene.saSettings.texFileName = fileR.rString(fileR.rUInt(tmpAddr + 24))
+		texNameAddr = fileR.rUInt(tmpAddr + 24)
+		if texNameAddr != 0:
+			context.scene.saSettings.texFileName = fileR.rString(texNameAddr)
+		else:
+			context.scene.saSettings.texFileName = ""
 		context.scene.saSettings.texListPointer = hex8(fileR.rUInt(tmpAddr + 28))
 
 		if DO:
