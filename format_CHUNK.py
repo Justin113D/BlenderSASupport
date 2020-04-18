@@ -762,7 +762,7 @@ class Attach:
 			for p in mesh.polygons:
 				for l in p.loop_indices:
 					loop = mesh.loops[l]
-					uv = UV(mesh.uv_layers[0].data[l.index].uv) if writeUVs else UV()
+					uv = UV(mesh.uv_layers[0].data[l].uv) if writeUVs else UV()
 					polyVert = PolyVert(loop.vertex_index + extraOffset, uv)
 					polyVerts.append(polyVert)
 
