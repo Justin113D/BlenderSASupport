@@ -766,8 +766,8 @@ class Attach:
 					polyVert = PolyVert(loop.vertex_index + extraOffset, uv)
 					polyVerts.append(polyVert)
 
-		if DO:
-			print("degTris: " + degTris)
+		#if DO:
+		#	print("degTris: " + degTris)
 
 		# creating the vertex chunk
 		chunkType = enums.ChunkType.Vertex_VertexDiffuse8 if vertexType == 'VC' else enums.ChunkType.Vertex_VertexNormal
