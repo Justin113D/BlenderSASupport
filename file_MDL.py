@@ -193,6 +193,8 @@ def read(context: bpy.types.Context, filepath: str, noDoubleVerts: bool, console
 	context.scene.collection.children.link(collection)
 
 	if isArmature:
+		from bpy_extras.io_utils import axis_conversion
+		corrective = axis_conversion(to_forward='X', to_up='Z',).to_4x4()
 
 		root = objects[0]
 		armature = bpy.data.armatures.new(root.name)
@@ -221,7 +223,7 @@ def read(context: bpy.types.Context, filepath: str, noDoubleVerts: bool, console
 			bone.head = (0,0,0)
 			bone.tail = (1,0,0)
 
-			bone.matrix = armatureMatrix.inverted() @ b.matrix_world
+			bone.matrix = armatureMatrix.inverted() @ (b.matrix_world)# @ corrective)
 
 			if b.parent.bone is not None:
 				bone.parent = b.parent.bone
@@ -232,6 +234,22 @@ def read(context: bpy.types.Context, filepath: str, noDoubleVerts: bool, console
 				if o.vertex_groups.find(bone.name) >= 0:
 					bone.use_deform = True
 					break
+
+		# correcting the lengths
+		for b in edit_bones:
+			childCount = len(b.children)
+			distance = 1
+			if childCount > 0:
+				distance = (b.head - b.children[0].head).magnitude
+				if childCount > 1:
+					for c in b.children:
+						newDist = (b.head - c.head).magnitude
+						if newDist < distance:
+							distance = newDist
+			if distance < 0.5:
+				distance = 0.5
+			b.length = distance
+
 
 		bpy.ops.object.mode_set(mode='OBJECT')
 

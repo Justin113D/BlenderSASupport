@@ -301,8 +301,20 @@ def write(filepath: str, bakeAll: bool, shortRot: bool, bezierInterpolation: boo
 		if end > frame_End:
 			frame_End = end
 
+	# get correct bone order
+	boneOrder = dict()
+	for i, b in enumerate(armature.bones):
+		boneOrder[b.name] = i
+
+	newCurveMap = dict()
+	for i in sorted(curveMap.items(), key=lambda x: boneOrder[x[0]]):
+		newCurveMap[i[0]] = i[1]
+	curveMap = newCurveMap
+
 	models = dict()
 	allFrames = range(0, int(frame_End + 1))
+
+
 
 	for k, v in curveMap.items():
 		if k != None:

@@ -1254,6 +1254,30 @@ def matrixFromScale(scale: mathutils.Vector) -> mathutils.Matrix:
 	mtx[2][2] = scale[2]
 	return mtx
 
+def polyToTris(p: list) -> list:
+	cP = 0
+	cN = len(p) - 1
+	rev = False
+	triCount = len(p) - 2
+	out = list()
+
+
+	for i in range(triCount):
+		if not rev:
+			print(cP, cP + 1, cN)
+			out.append((p[cP], p[cP + 1], p[cN]))
+		else:
+			print(cP, cN - 1, cN)
+			out.append((p[cP], p[cN - 1], p[cN]))
+
+		rev = not rev
+		if rev:
+			cP += 1
+		else:
+			cN -= 1
+
+	return out
+
 # for reading only
 class Model:
 

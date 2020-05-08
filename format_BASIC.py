@@ -349,6 +349,8 @@ class MeshSet:
 				polyPtr += 2
 			elif polyType == enums.PolyType.Quads:
 				vCount = 4
+			else:
+				print("uhm")
 
 			polyVerts = list()
 			for v in range(vCount):
@@ -731,7 +733,7 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach], colli
 
 			polySet: List[List[PolyVert]] = list()
 
-			if m.polytype == enums.PolyType.Strips:
+			if m.polytype in [enums.PolyType.Strips, enums.PolyType.NPoly]:
 				for s, r in zip(m.polys, m.reverse):
 					for p in range(len(s) - 2):
 						if r:
@@ -743,6 +745,10 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach], colli
 							polySet.append(poly)
 
 						r = not r
+			elif m.polytype == enums.PolyType.Quads:
+				for p in m.polys:
+					polySet.append((p[0], p[1], p[2]))
+					polySet.append((p[2], p[1], p[3]))
 			else:
 				polySet = m.polys
 
