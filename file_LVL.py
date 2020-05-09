@@ -393,9 +393,11 @@ def write(context,
 	#write texture filename
 	if context.scene.saSettings.texFileName == "":
 		texFileNameAddr = 0
+		texFileName = None
 	else:
 		texFileNameAddr = fileW.tell()
 		fileW.wString(context.scene.saSettings.texFileName)
+		texFileName = context.scene.saSettings.texFileName
 
 	texListPointer = int("0x" + context.scene.saSettings.texListPointer, 0)
 
