@@ -1112,7 +1112,7 @@ class Attach:
 		attachPtr = fileW.tell()
 		labels[attachPtr] = "gc_" + self.name
 		if meshDict is not None:
-			meshDict[self.name] = attachPtr
+			meshDict[self.name] = (attachPtr, self.bounds)
 		fileW.wUInt(vertPtr)
 		fileW.wUInt(0) # gap
 		fileW.wUInt(opaquePtr)

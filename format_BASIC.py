@@ -549,7 +549,7 @@ class Attach:
 		attachPtr = fileW.tell()
 		labels[attachPtr] = "bsc_" + self.name
 		if meshDict is not None:
-			meshDict[self.name] = attachPtr
+			meshDict[self.name] = (attachPtr, self.bounds)
 		fileW.wUInt(posPtr)
 		fileW.wUInt(nrmPtr)
 		fileW.wUInt(len(self.positions))

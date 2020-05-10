@@ -301,9 +301,9 @@ class ModelData:
 		else:
 			self.partOfArmature = False
 		if bObject is not None and bObject.type == 'MESH':
-			self.bounds = BoundingBox(bObject.data.vertices)
-			self.bounds.boundCenter = Vector3(global_matrix @ (self.bounds.boundCenter + bObject.location))
-			self.bounds.radius *= global_matrix.to_scale()[0]
+			self.bounds = BoundingBox(None)
+			#self.bounds.boundCenter = Vector3(global_matrix @ (self.bounds.boundCenter + bObject.location))
+			#self.bounds.radius *= global_matrix.to_scale()[0]
 
 			self.saProps = bObject.saSettings.toDictionary()
 			self.saProps["isCollision"] = collision
@@ -340,6 +340,8 @@ class ModelData:
 		self.unknown2 = 0
 		self.unknown3 = 0
 
+		self.meshPtr = None
+
 	@classmethod
 	def updateMeshes(cls, objList: list, meshList: list):
 
@@ -349,6 +351,7 @@ class ModelData:
 				for m in meshList:
 					if m.name == o.origObject.data.name:
 						o.processedMesh = m
+						break
 
 	@classmethod
 	def updateMeshPointer(cls, objList: list, meshDict: dict, cMeshDict: list = None):
@@ -356,11 +359,22 @@ class ModelData:
 		for o in objList:
 			if o.processedMesh is not None:
 				if cMeshDict is not None and o.saProps["isCollision"]:
-					o.meshPtr = cMeshDict[o.processedMesh.name]
+					o.meshPtr, bounds = cMeshDict[o.processedMesh.name]
 				else:
-					o.meshPtr = meshDict[o.processedMesh.name]
+					o.meshPtr, bounds = meshDict[o.processedMesh.name]
 			else:
 				o.meshPtr = 0
+			if o.meshPtr is not None:
+				o.bounds = copy.copy(bounds)
+				o.bounds.boundCenter += o.position
+				# getting the biggest scale
+				s = o.scale[0]
+				if o.scale[1] > s:
+					s = o.scale[1]
+				if o.scale[2] > s:
+					s = o.scale[2]
+				o.bounds.radius *= s
+
 
 	def getObjectFlags(self, lvl) -> enums.ObjectFlags:
 		"""Calculates the Objectflags"""

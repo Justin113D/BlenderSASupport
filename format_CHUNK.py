@@ -813,7 +813,7 @@ class Attach:
 
 		attachPtr = fileW.tell()
 		if meshDict is not None:
-			meshDict[self.name] = attachPtr
+			meshDict[self.name] = (attachPtr, self.bounds)
 		labels[attachPtr] = "cnk_" + self.name
 
 		fileW.wUInt(vertexChunkPtr)
