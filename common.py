@@ -364,6 +364,7 @@ class ModelData:
 					o.meshPtr, bounds = meshDict[o.processedMesh.name]
 			else:
 				o.meshPtr = 0
+				continue
 			if o.meshPtr is not None:
 				o.bounds = copy.copy(bounds)
 				o.bounds.boundCenter += o.position
