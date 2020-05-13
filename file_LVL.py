@@ -380,15 +380,32 @@ def write(context,
 	COLPtr = fileW.tell()
 
 	if export_format == 'SA1':
-		COLcount = len(mObjects)
+		COLcount = 0
+		tmpPtr = COLPtr
 		for o in mObjects:
 			o.writeCOL(fileW, labels, False)
+			if fileW.tell() != tmpPtr:
+				COLcount += 1
+				tmpPtr = fileW.tell()
 	else:
-		COLcount = len(vObjects) + len(cObjects)
+		COLcount = 0 #len(vObjects) + len(cObjects)
+		vColCount = 0
+		tmpPtr = fileW.tell()
+
 		for o in vObjects:
 			o.writeCOL(fileW, labels, True)
+			if fileW.tell() != tmpPtr:
+				COLcount += 1
+				vColCount += 1
+				tmpPtr = fileW.tell()
+
+		tmpPtr = fileW.tell()
+
 		for o in cObjects:
 			o.writeCOL(fileW, labels, True)
+			if fileW.tell() != tmpPtr:
+				COLcount += 1
+				tmpPtr = fileW.tell()
 
 	#write texture filename
 	if context.scene.saSettings.texFileName == "":
@@ -430,7 +447,7 @@ def write(context,
 		unknown3 = 0
 		fileW.wFloat(unknown3)
 	else:
-		fileW.wUShort(len(vObjects)) # visual col count
+		fileW.wUShort(vColCount) # visual col count
 		ltFlags = 0
 		fileW.wULong(ltFlags)
 		fileW.wFloat(drawDist) # Draw Distance
