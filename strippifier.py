@@ -333,6 +333,7 @@ class Strippifier:
 				self.written += 2
 
 				firstTri = self.getFirstTri() # since we are wrapping back around, we have to set the first tri too
+				print("only two triangles")
 				continue
 
 			elif secNewTri.hasVertex(sharedVerts[0]):

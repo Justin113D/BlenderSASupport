@@ -420,7 +420,7 @@ class Attach:
 
 		for i, v in enumerate(mesh.vertices):
 			positions[i] = Vector3(export_matrix @ v.co)
-			normals[i] = Vector3(export_matrix @ normals[i])
+			normals[i] = Vector3((0,1,0)) if isCollision else Vector3(export_matrix @ normals[i])
 
 		# calculating bounds
 		bounds = BoundingBox(mesh.vertices)
