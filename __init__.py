@@ -2,7 +2,7 @@
 bl_info = {
 	"name": "SA Model Formats support",
 	"author": "Justin113D",
-	"version": (1,4,0),
+	"version": (1,4,1),
 	"blender": (2, 80, 0),
 	"location": "File > Import/Export",
 	"description": "Import/Exporter for the SA Models Formats.\n Bugs should be reported to the github repository.",
@@ -561,7 +561,7 @@ class ExportAnim(bpy.types.Operator, ExportHelper):
 		)
 
 	@classmethod
-	def poll(self, context):
+	def poll(cls, context):
 		active = context.active_object
 		if active is None:
 			return False
@@ -749,7 +749,7 @@ class LoadAnimFile(bpy.types.Operator, ImportHelper):
 		)
 
 	@classmethod
-	def poll(self, context):
+	def poll(cls, context):
 		active = context.active_object
 		if active is None:
 			return False
@@ -892,7 +892,7 @@ class ArmatureFromObjects(bpy.types.Operator):
 		return wm.invoke_props_dialog(self)
 
 	@classmethod
-	def poll(self, context):
+	def poll(cls, context):
 		return len(context.selected_objects) > 0
 
 	@classmethod
@@ -1131,7 +1131,8 @@ class UpdateMaterials(bpy.types.Operator):
 	bl_label="Update Materials"
 	bl_info="Sets material nodetrees and variables of all selected objects to imitate how they would look in sadx/sa2"
 
-	def addDriver(inputSocket, scene, path, entry = -1):
+	@classmethod
+	def addDriver(cls, inputSocket, scene, path, entry = -1):
 		#curve = inputSocket.driver_add("default_value")
 		#driver = curve.driver
 		#driver.type = 'AVERAGE'
@@ -1317,7 +1318,8 @@ def qeUpdate(context, newValue):
 
 				a = getattr(matQProps, p)
 				if type(a) is bool:
-					setattr(matProps, p, newValue)
+					if a:
+						setattr(matProps, p, newValue)
 
 			if qEditSettings.b_apply_diffuse and newValue:
 				matProps.b_Diffuse = matQProps.b_Diffuse
