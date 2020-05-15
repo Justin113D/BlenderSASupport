@@ -313,12 +313,13 @@ def write(context,
 			file.close()
 			return {'FINISHED'}
 
-		bscMaterials = format_BASIC.Material.writeMaterials(fileW, materials, labels)
+		#bscMaterials = format_BASIC.Material.writeMaterials(fileW, materials, labels)
 
 		# then writing mesh data
 		if DO:
 			print(" == Writing BASIC attaches == \n")
 		for m in meshes:
+			bscMaterials = format_BASIC.Material.writeMaterials(fileW, m.materials, labels)
 			mesh = format_BASIC.Attach.fromMesh(m, global_matrix, bscMaterials)
 			if mesh is not None:
 				mesh.write(fileW, labels, vMeshDict)

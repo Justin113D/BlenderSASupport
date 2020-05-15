@@ -420,7 +420,7 @@ class Attach:
 
 		for i, v in enumerate(mesh.vertices):
 			positions[i] = Vector3(export_matrix @ v.co)
-			normals[i] = Vector3((0,1,0)) if isCollision else Vector3(export_matrix @ normals[i])
+			normals[i] = None if isCollision else Vector3(export_matrix @ normals[i])
 
 		# calculating bounds
 		bounds = BoundingBox(mesh.vertices)
@@ -434,7 +434,7 @@ class Attach:
 		# we take minimum number between the mesh materials and global materials first, just to be sure.
 		# then we make it a minimum of 1 (so that there is at least one poly list)
 		# if we are writing collisions, then it can directly just be 1 array
-		polyLists = 1 if isCollision else max(1, min(len(mesh.materials), len(materials)))
+		polyLists = max(1, min(len(mesh.materials), len(materials)))
 		polyListMin = polyLists - 1
 		polys: List[list[PolyVert]] = [[] for i in range(polyLists)] # one poly list for each material
 
@@ -497,7 +497,7 @@ class Attach:
 		# creating the meshsets
 		meshsets: List[meshsets] = list()
 
-		if isCollision or len(materials) == 0:
+		if len(materials) == 0:
 			if stripPolys[0] is not None:
 				meshsets.append(MeshSet(mesh.name, 0, 0, stripPolys[0][0], stripPolys[0][1], usePolyNormals, useColor, useUV, reverse=stripReverse[0]))
 		else:
@@ -522,7 +522,7 @@ class Attach:
 		if len(meshsets) == 0:
 			print(" Mesh not valid (?); no meshsets could be created")
 			return None
-		return Attach(mesh.name, positions, normals, meshsets, materials, bounds)
+		return Attach(mesh.name, positions, None if isCollision else normals, meshsets, materials, bounds)
 
 	def write(self, fileW: fileHelper.FileWriter, labels: dict, meshDict: dict = None):
 		global DO
@@ -532,10 +532,13 @@ class Attach:
 		for p in self.positions:
 			p.write(fileW)
 
-		nrmPtr = fileW.tell()
-		labels[nrmPtr] = "bsc_" + self.name + "_nrm"
-		for n in self.normals:
-			n.write(fileW)
+		if self.normals is not None:
+			nrmPtr = fileW.tell()
+			labels[nrmPtr] = "bsc_" + self.name + "_nrm"
+			for n in self.normals:
+				n.write(fileW)
+		else:
+			nrmPtr = 0
 
 		for m in self.meshSets:
 			m.writePolys(fileW)

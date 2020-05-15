@@ -1354,11 +1354,15 @@ def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int,
 	yRot = BAMSToRad(fileR.rInt(address + 24))
 	zRot = BAMSToRad(fileR.rInt(address + 28))
 
-	posMtx = mathutils.Matrix.Translation((fileR.rFloat(address + 8), -fileR.rFloat(address + 16), fileR.rFloat(address + 12)))
+	pos = (fileR.rFloat(address + 8), -fileR.rFloat(address + 16), fileR.rFloat(address + 12))
+
+	posMtx = mathutils.Matrix.Translation(pos)
 	rotMtx = mathutils.Euler((xRot, -zRot, yRot), 'XZY').to_matrix().to_4x4()
 	scaleMtx = matrixFromScale((fileR.rFloat(address + 32), fileR.rFloat(address + 40), fileR.rFloat(address + 36)))
 
 	matrix_local = posMtx @ rotMtx @ scaleMtx
+
+	newPos, newRot, newScale = matrix_local.decompose()
 
 
 	if parent is not None:
