@@ -366,7 +366,7 @@ class ModelData:
 				o.meshPtr = 0
 				continue
 			if o.meshPtr is not None:
-				o.bounds = copy.copy(bounds)
+				o.bounds = copy.deepcopy(bounds)
 				o.bounds.boundCenter += o.position
 				# getting the biggest scale
 				s = o.scale[0]
