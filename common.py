@@ -21,17 +21,21 @@ def hex4(number: int) -> str:
 def RadToBAMS(v: float, asInt = False) -> int:
 	if round(v, 4) == 0:
 		return 0
-	val = round((math.degrees(v) / 360.0) * 0x10000)
+	val = int(round((math.degrees(v) / 360.0) * 0x10000))
 	if not asInt:
-		while val > 0xFFFF:
-			val -= 0x10000
+		if val > 0xFFFF:
+			val &= 0xFFFF
+
 		while val < 0:
 			val += 0x10000
+
 	else:
-		while val > 0xFFFFFFFF:
-			val -= 0x100000000
+		if val > 0xFFFFFFFF:
+			val &= 0xFFFFFFFF
+
 		while val < 0:
 			val += 0x100000000
+
 	return val
 
 def BAMSToRad(v: int, shortRot = False) -> float:
@@ -173,19 +177,27 @@ class Vector3(mathutils.Vector):
 	def __str__(self):
 		return "(" + str(round(self.x, 3)) + ", " + str(round(self.y, 3)) + ", " + str(round(self.z, 3)) + ")"
 
-class BAMSRotation(mathutils.Vector):
+class BAMSRotation:
 	"""XYZ Rotation used for the adventure games"""
 
-	def __init__(self, val):
-		self.x = RadToBAMS(self.x)
-		self.y = RadToBAMS(self.y)
-		self.z = RadToBAMS(self.z)
+	x: int
+	y: int
+	z: int
 
-	def write(self, fileW):
+	def __init__(self, val, asInt=False):
+		self.x = RadToBAMS(val[0], asInt=asInt)
+		self.y = RadToBAMS(val[1], asInt=asInt)
+		self.z = RadToBAMS(val[2], asInt=asInt)
+
+	def toQuaternion(self) -> mathutils.Quaternion:
+		return mathutils.Euler((BAMSToRad(self.x), BAMSToRad(self.y), BAMSToRad(self.z))).to_quaternion()
+
+
+	def write(self, fileW: fileHelper.FileWriter):
 		"""Writes data to file"""
-		fileW.wInt(round(self.x))
-		fileW.wInt(round(self.y))
-		fileW.wInt(round(self.z))
+		fileW.wUInt(self.x)
+		fileW.wUInt(self.y)
+		fileW.wUInt(self.z)
 
 	def __str__(self):
 		return "(" + str(round(BAMSToRad(self.x), 3)) + ", " + str(round(BAMSToRad(self.y), 3)) + ", " + str(round(BAMSToRad(self.z), 3)) + ")"
@@ -300,10 +312,11 @@ class ModelData:
 			self.partOfArmature = isinstance(parent, Armature) or parent.partOfArmature
 		else:
 			self.partOfArmature = False
+
 		if bObject is not None and bObject.type == 'MESH':
 			self.bounds = BoundingBox(None)
-			#self.bounds.boundCenter = Vector3(global_matrix @ (self.bounds.boundCenter + bObject.location))
-			#self.bounds.radius *= global_matrix.to_scale()[0]
+			# get the blender bounds
+
 
 			self.saProps = bObject.saSettings.toDictionary()
 			self.saProps["isCollision"] = collision
@@ -332,7 +345,7 @@ class ModelData:
 		rot = global_matrix @ mathutils.Vector((rot.x, rot.y, rot.z))
 
 		self.position = Vector3(obj_mat.to_translation())
-		self.rotation = BAMSRotation(rot)
+		self.rotation = BAMSRotation(rot, asInt=True)
 		self.scale = Vector3((scale.x, scale.z, scale.y))
 
 		# settings the unknowns
@@ -366,15 +379,24 @@ class ModelData:
 				o.meshPtr = 0
 				continue
 			if o.meshPtr is not None:
-				o.bounds = copy.deepcopy(bounds)
+
+				# now its time to rotate the point around the center of the object
+				# get matrix from rotation
+				rotMtx = o.rotation.toQuaternion().to_matrix().to_4x4()
+
+				o.bounds.boundCenter = rotMtx @ bounds.boundCenter
 				o.bounds.boundCenter += o.position
+				#o.bounds.boundCenter += o.position
+
 				# getting the biggest scale
+
 				s = o.scale[0]
 				if o.scale[1] > s:
 					s = o.scale[1]
 				if o.scale[2] > s:
 					s = o.scale[2]
-				o.bounds.radius *= s
+				o.bounds.radius = s * bounds.radius
+
 
 
 	def getObjectFlags(self, lvl) -> enums.ObjectFlags:
@@ -1361,9 +1383,6 @@ def readObjects(fileR: fileHelper.FileReader, address: int, hierarchyDepth: int,
 	scaleMtx = matrixFromScale((fileR.rFloat(address + 32), fileR.rFloat(address + 40), fileR.rFloat(address + 36)))
 
 	matrix_local = posMtx @ rotMtx @ scaleMtx
-
-	newPos, newRot, newScale = matrix_local.decompose()
-
 
 	if parent is not None:
 		matrix_world = parent.matrix_world @ matrix_local
