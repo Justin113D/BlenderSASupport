@@ -395,9 +395,7 @@ class ModelData:
 					s = o.scale[1]
 				if o.scale[2] > s:
 					s = o.scale[2]
-				o.bounds.radius = s * bounds.radius
-
-
+				o.bounds.radius = s * bounds.radius * 1.01
 
 	def getObjectFlags(self, lvl) -> enums.ObjectFlags:
 		"""Calculates the Objectflags"""

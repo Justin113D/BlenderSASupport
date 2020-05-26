@@ -280,7 +280,6 @@ def write(context,
 			write_Specular,
 			use_selection,
 			apply_modifs,
-			global_scale,
 			console_debug_output
 			):
 
@@ -327,7 +326,7 @@ def write(context,
 
 	from bpy_extras.io_utils import axis_conversion
 
-	global_matrix = (mathutils.Matrix.Scale(global_scale, 4) @ axis_conversion(to_forward='-Z', to_up='Y',).to_4x4())
+	global_matrix = axis_conversion(to_forward='-Z', to_up='Y',).to_4x4()
 
 	# creating and getting variables to use in the export process
 	objects, meshes, materials, mObjects = common.convertObjectData(context, use_selection, apply_modifs, global_matrix, export_format, False)

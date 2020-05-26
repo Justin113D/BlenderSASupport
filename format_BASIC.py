@@ -589,9 +589,13 @@ class Attach:
 
 		for v in range(vCount):
 			positions.append(Vector3((fileR.rFloat(pos), fileR.rFloat(pos + 4), fileR.rFloat(pos + 8))))
-			normals.append(Vector3((fileR.rFloat(nrm), fileR.rFloat(nrm + 4), fileR.rFloat(nrm + 8))))
 			pos += 12
-			nrm += 12
+
+			if nrm > 0:
+				normals.append(Vector3((fileR.rFloat(nrm), fileR.rFloat(nrm + 4), fileR.rFloat(nrm + 8))))
+				nrm += 12
+			else:
+				normals.append(Vector3((0,1,0)))
 
 		tempAddr = fileR.rUInt(address + 12)
 		meshSetCount = fileR.rUShort(address + 20)

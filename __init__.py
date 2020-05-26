@@ -2,7 +2,7 @@
 bl_info = {
 	"name": "SA Model Formats support",
 	"author": "Justin113D",
-	"version": (1,5,0),
+	"version": (1,5,1),
 	"blender": (2, 80, 0),
 	"location": "File > Import/Export",
 	"description": "Import/Exporter for the SA Models Formats.\n Bugs should be reported to the github repository.",
@@ -148,12 +148,6 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
 		options={'HIDDEN'},
 		)
 
-	global_scale: FloatProperty(
-		name="Scale",
-		min=0.01, max=1000.0,
-		default=1.0,
-		)
-
 	use_selection: BoolProperty(
 		name="Selection Only",
 		description="Export selected objects only",
@@ -207,12 +201,6 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
 	filter_glob: StringProperty(
 		default="*.sa2mdl;",
 		options={'HIDDEN'},
-		)
-
-	global_scale: FloatProperty(
-		name="Scale",
-		min=0.01, max=1000.0,
-		default=1.0,
 		)
 
 	write_Specular: BoolProperty(
@@ -277,12 +265,6 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
 		options={'HIDDEN'},
 		)
 
-	global_scale: FloatProperty(
-		name="Scale",
-		min=0.01, max=1000.0,
-		default=1.0,
-		)
-
 	use_selection: BoolProperty(
 		name="Selection Only",
 		description="Export selected objects only",
@@ -338,12 +320,6 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
 		options={'HIDDEN'},
 		)
 
-	global_scale: FloatProperty(
-		name="Scale",
-		min=0.01, max=1000.0,
-		default=1.0,
-		)
-
 	use_selection: BoolProperty(
 		name="Selection Only",
 		description="Export selected objects only",
@@ -397,12 +373,6 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
 	filter_glob: StringProperty(
 		default="*.sa2lvl;",
 		options={'HIDDEN'},
-		)
-
-	global_scale: FloatProperty(
-		name="Scale",
-		min=0.01, max=1000.0,
-		default=1.0,
 		)
 
 	write_Specular: BoolProperty(
@@ -465,12 +435,6 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
 	filter_glob: StringProperty(
 		default="*.sa2blvl;",
 		options={'HIDDEN'},
-		)
-
-	global_scale: FloatProperty(
-		name="Scale",
-		min=0.01, max=1000.0,
-		default=1.0,
 		)
 
 	use_selection: BoolProperty(
@@ -1544,7 +1508,7 @@ class SASettings(bpy.types.PropertyGroup):
 	doubleSidedCollision: BoolProperty(
 		name="Double sided collision",
 		description="Enables double sided collision detection. This is supposed to be used as a failsafe for people unexperienced with how normals work",
-		default=True
+		default=False
 		)
 
 	active_texture_index: IntProperty(
