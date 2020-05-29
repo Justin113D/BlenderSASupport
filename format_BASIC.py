@@ -164,8 +164,8 @@ class Material:
 
 	def write(self, fileW, labels):
 		labels[fileW.tell()] = "mat_" + self.name
-		self.diffuse.writeRGBA(fileW)
-		self.specular.writeRGBA(fileW)
+		self.diffuse.writeARGB(fileW)
+		self.specular.writeARGB(fileW)
 		fileW.wFloat(self.exponent)
 		fileW.wInt(self.textureID)
 		fileW.wUInt(self.mFlags.value)
