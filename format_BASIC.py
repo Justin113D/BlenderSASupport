@@ -2,7 +2,7 @@ import bpy
 import mathutils
 
 import math
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from . import enums, fileHelper, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox
@@ -140,9 +140,10 @@ class Material:
 		print("    Flags:", self.mFlags, "\n")
 
 	@classmethod
-	def writeMaterials(cls, fileW: fileHelper.FileWriter, materials: List[bpy.types.Material], labels: dict):
+	def writeMaterials(cls, fileW: fileHelper.FileWriter, materials: List[bpy.types.Material], labels: dict) -> Tuple[int, list]:
 		"""writes materials as BASIC materal data"""
 		mats = list()
+		addr = fileW.tell()
 
 		if len(materials) == 0:
 			bMat = Material()
@@ -160,7 +161,7 @@ class Material:
 			for m in mats:
 				m.debug()
 
-		return mats
+		return [addr, mats]
 
 	def write(self, fileW, labels):
 		labels[fileW.tell()] = "mat_" + self.name
@@ -389,6 +390,7 @@ class Attach:
 	meshSets: List[MeshSet]
 
 	materials: List[Material]
+	matPtr: int
 	bounds: BoundingBox
 
 	def __init__(self,
@@ -396,6 +398,7 @@ class Attach:
 				 positions: List[Vector3],
 				 normals: List[Vector3],
 				 meshSets: List[MeshSet],
+				 matPtr: int,
 				 materials: List[Material],
 				 bounds: BoundingBox):
 
@@ -403,12 +406,14 @@ class Attach:
 		self.positions = positions
 		self.normals = normals
 		self.meshSets = meshSets
+		self.matPtr = matPtr
 		self.materials = materials
 		self.bounds = bounds
 
 	@classmethod
 	def fromMesh(cls, mesh: bpy.types.Mesh,
 				 export_matrix: mathutils.Matrix,
+				 matPtr: int,
 				 materials: List[Material],
 				 isCollision: bool = False):
 		"""Creates a BASIC mesh from a Blender mesh"""
@@ -522,7 +527,7 @@ class Attach:
 		if len(meshsets) == 0:
 			print(" Mesh not valid (?); no meshsets could be created")
 			return None
-		return Attach(mesh.name, positions, None if isCollision else normals, meshsets, materials, bounds)
+		return Attach(mesh.name, positions, None if isCollision else normals, meshsets, matPtr, materials, bounds)
 
 	def write(self, fileW: fileHelper.FileWriter, labels: dict, meshDict: dict = None):
 		global DO
@@ -557,7 +562,7 @@ class Attach:
 		fileW.wUInt(nrmPtr)
 		fileW.wUInt(len(self.positions))
 		fileW.wUInt(setPtr)
-		fileW.wUInt(0x10) # material list is always at 0x00000010 in my exporter
+		fileW.wUInt(self.matPtr)
 		fileW.wUShort(len(self.meshSets))
 		fileW.wUShort(max(1, len(self.materials)))
 		self.bounds.write(fileW)
@@ -613,7 +618,7 @@ class Attach:
 			materials.append(Material.read(fileR, tempAddr, m))
 			tempAddr += 20
 
-		return Attach(name, positions, normals, meshSets, materials, None)
+		return Attach(name, positions, normals, meshSets, None, materials, None)
 
 def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach], collision = False):
 
@@ -832,3 +837,5 @@ def process_BASIC(models: List[common.Model], attaches: Dict[int, Attach], colli
 
 		o.meshes.append(mesh)
 		meshes[o.meshPtr] = mesh
+
+	pass

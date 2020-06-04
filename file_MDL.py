@@ -337,10 +337,11 @@ def write(context,
 	isArmature = False
 	if export_format == 'SA1':
 		# writing material data first
-		bscMaterials = format_BASIC.Material.writeMaterials(fileW, materials, labels)
+		#bscMaterials = format_BASIC.Material.writeMaterials(fileW, materials, labels)
 		# then writing mesh data
 		for m in meshes:
-			mesh = format_BASIC.Attach.fromMesh(m, global_matrix, bscMaterials)
+			matPtr, bscMaterials = format_BASIC.Material.writeMaterials(fileW, m.materials, labels)
+			mesh = format_BASIC.Attach.fromMesh(m, global_matrix, matPtr, bscMaterials)
 			if mesh is not None:
 					mesh.write(fileW, labels, meshDict)
 

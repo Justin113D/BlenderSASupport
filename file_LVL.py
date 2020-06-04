@@ -318,8 +318,8 @@ def write(context,
 		if DO:
 			print(" == Writing BASIC attaches == \n")
 		for m in meshes:
-			bscMaterials = format_BASIC.Material.writeMaterials(fileW, m.materials, labels)
-			mesh = format_BASIC.Attach.fromMesh(m, global_matrix, bscMaterials)
+			matPtr, bscMaterials = format_BASIC.Material.writeMaterials(fileW, m.materials, labels)
+			mesh = format_BASIC.Attach.fromMesh(m, global_matrix, matPtr, bscMaterials)
 			if mesh is not None:
 				mesh.write(fileW, labels, vMeshDict)
 		if DO:

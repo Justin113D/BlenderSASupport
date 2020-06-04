@@ -2,7 +2,7 @@
 bl_info = {
 	"name": "SA Model Formats support",
 	"author": "Justin113D",
-	"version": (1,5,2),
+	"version": (1,5,3),
 	"blender": (2, 80, 0),
 	"location": "File > Import/Export",
 	"description": "Import/Exporter for the SA Models Formats.\n Bugs should be reported to the github repository.",
