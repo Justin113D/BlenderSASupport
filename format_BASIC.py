@@ -350,8 +350,6 @@ class MeshSet:
 				polyPtr += 2
 			elif polyType == enums.PolyType.Quads:
 				vCount = 4
-			else:
-				print("uhm")
 
 			polyVerts = list()
 			for v in range(vCount):
