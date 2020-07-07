@@ -2,7 +2,7 @@
 bl_info = {
 	"name": "SA Model Formats support",
 	"author": "Justin113D",
-	"version": (1,5,4),
+	"version": (1,5,5),
 	"blender": (2, 83, 0),
 	"location": "File > Import/Export",
 	"description": "Import/Exporter for the SA Models Formats.\n Bugs should be reported to the github repository.",
@@ -644,7 +644,7 @@ class ImportTexFile(bpy.types.Operator, ImportHelper):
 			# validating index file
 			for c in content:
 				c = c.strip().split(',')
-				if len(c) != 2:
+				if len(c) < 2:
 					return self.stop()
 				try:
 					gIndex = int(c[0])
