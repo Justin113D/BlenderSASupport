@@ -2,8 +2,8 @@
 bl_info = {
 	"name": "SA Model Formats support",
 	"author": "Justin113D",
-	"version": (1,5,5),
-	"blender": (2, 83, 0),
+	"version": (1,5,6),
+	"blender": (2, 91, 0),
 	"location": "File > Import/Export",
 	"description": "Import/Exporter for the SA Models Formats.\n Bugs should be reported to the github repository.",
 	"warning": "",
@@ -11,8 +11,29 @@ bl_info = {
 	"support": 'COMMUNITY',
 	"category": "Import-Export"}
 
+#modules = [
+#	"file_MDL",
+#	"file_LVL",
+#	"format_BASIC",
+#	"format_GC",
+#	"format_CHUNK",
+#	"setReader",
+#	"file_SAANIM",
+#	"strippifier",
+#	"fileHel#per",
+#	"enums",
+#	"common"
+#	]
+
+# Reload previously loaded modules
+#if "bpy" in locals():
+#    from importlib import reload
+#    _modules_loaded[:] = [reload(module) for module in _modules_loaded]
+#    del reload
+
 if "bpy" in locals():
-	import importlib
+	from importlib import reload
+
 	if "file_MDL" in locals():
 		importlib.reload(file_MDL)
 	if "file_LVL" in locals():
@@ -183,7 +204,6 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
 		layout: bpy.types.UILayout = self.layout
 		layout.alignment = 'RIGHT'
 
-		layout.prop(self, "global_scale")
 		layout.prop(self, "use_selection")
 		layout.prop(self, "apply_modifs")
 		layout.separator()
@@ -243,8 +263,6 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
 		layout: bpy.types.UILayout = self.layout
 		layout.alignment = 'RIGHT'
 
-		layout.prop(self, "global_scale")
-		layout.separator()
 		layout.prop(self, "write_Specular")
 		layout.prop(self, "use_selection")
 		layout.prop(self, "apply_modifs")
@@ -300,7 +318,6 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
 		layout: bpy.types.UILayout = self.layout
 		layout.alignment = 'RIGHT'
 
-		layout.prop(self, "global_scale")
 		layout.prop(self, "use_selection")
 		layout.prop(self, "apply_modifs")
 		layout.separator()
@@ -355,7 +372,6 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
 		layout: bpy.types.UILayout = self.layout
 		layout.alignment = 'RIGHT'
 
-		layout.prop(self, "global_scale")
 		layout.prop(self, "use_selection")
 		layout.prop(self, "apply_modifs")
 		layout.separator()
@@ -415,8 +431,6 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
 		layout: bpy.types.UILayout = self.layout
 		layout.alignment = 'RIGHT'
 
-		layout.prop(self, "global_scale")
-		layout.separator()
 		layout.prop(self, "write_Specular")
 		layout.prop(self, "use_selection")
 		layout.prop(self, "apply_modifs")
@@ -473,7 +487,6 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
 		layout: bpy.types.UILayout = self.layout
 		layout.alignment = 'RIGHT'
 
-		layout.prop(self, "global_scale")
 		layout.prop(self, "use_selection")
 		layout.prop(self, "apply_modifs")
 		layout.separator()
