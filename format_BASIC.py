@@ -157,12 +157,12 @@ class Material:
 
         if len(materials) == 0:
             bMat = Material()
-            bMat.write(fileW, labels)
+            bMat.write(fileW)
             mats.append(bMat)
         else:
             for m in materials.values():
                 bMat = Material.fromBlenderMat(m)
-                bMat.write(fileW, labels)
+                bMat.write(fileW)
                 mats.append(bMat)
 
         global DO
@@ -173,7 +173,7 @@ class Material:
 
         return [addr, mats]
 
-    def write(self, fileW, labels):
+    def write(self, fileW):
         # labels[fileW.tell()] = "mat_" + self.name
         self.diffuse.writeARGB(fileW)
         self.specular.writeARGB(fileW)

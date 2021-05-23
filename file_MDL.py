@@ -367,6 +367,7 @@ def write(context,
             matPtr, bscMaterials \
                 = format_BASIC.Material.writeMaterials(fileW,
                                                        m.materials,
+                                                       m.name,
                                                        labels)
             mesh = format_BASIC.Attach.fromMesh(m,
                                                 global_matrix,
