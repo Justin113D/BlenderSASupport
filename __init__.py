@@ -17,7 +17,7 @@ from typing import List, Dict, Union, Tuple
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1, 6, 0),
+    "version": (1, 6, 1),
     "blender": (2, 91, 0),
     "location": "File > Import/Export",
     "description": ("Import/Exporter for the SA Models Formats.\n"

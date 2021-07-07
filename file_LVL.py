@@ -373,7 +373,7 @@ def write(context,
                 materialFlags=enums.MaterialFlags.FLAG_DOUBLE_SIDE)
         else:
             colMat = format_BASIC.Material()
-        colMat.write(fileW, labels)
+        colMat.write(fileW)
 
         objects, cMeshes, vMeshes, materials, cObjects, vObjects \
             = common.convertObjectData(context,
