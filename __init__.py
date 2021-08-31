@@ -1,5 +1,6 @@
 import bpy
 import os
+import shutil
 from . import common, setReader
 from bpy.props import (
     BoolProperty,
@@ -17,7 +18,7 @@ from typing import List, Dict, Union, Tuple
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1, 6, 1),
+    "version": (1, 6, 2),
     "blender": (2, 91, 0),
     "location": "File > Import/Export",
     "description": ("Import/Exporter for the SA Models Formats.\n"
@@ -121,7 +122,7 @@ def exportFile(op, outType, context, **keywords):
 
     if(os.path.isfile(filepath)):
         os.remove(filepath)
-    os.rename(fileW.filepath, filepath)
+    shutil.move(fileW.filepath, filepath)
 
     return {'FINISHED'}
 
