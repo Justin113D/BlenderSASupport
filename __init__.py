@@ -1035,7 +1035,7 @@ class RemoveTextureSlot(bpy.types.Operator):
 class MoveTextureSlot(bpy.types.Operator):
     bl_idname = "scene.samovetexturesslot"
     bl_label="Move texture"
-    bl_info="Moves texture slot in list"
+    bl_description="Moves texture slot in list"
 
     direction: EnumProperty(
         name="Direction",
@@ -1064,7 +1064,7 @@ class MoveTextureSlot(bpy.types.Operator):
 class ClearTextureList(bpy.types.Operator):
     bl_idname = "scene.sacleartexturelist"
     bl_label="Clear list"
-    bl_info="Removes all entries from the list"
+    bl_description="Removes all entries from the list"
 
     def execute(self, context):
         settings = context.scene.saSettings
@@ -1082,7 +1082,7 @@ class ClearTextureList(bpy.types.Operator):
 class AutoNameTextures(bpy.types.Operator):
     bl_idname = "scene.saautonametexlist"
     bl_label="Autoname entries"
-    bl_info="Renames all entries to the assigned texture"
+    bl_description="Renames all entries to the assigned texture"
 
     def execute(self, context):
         texList = context.scene.saSettings.textureList
@@ -1095,10 +1095,36 @@ class AutoNameTextures(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class ToPrincipledBsdf(bpy.types.Operator):
+    bl_idname = "scene.convmaterials"
+    bl_label = "Convert to Principled BSDF"
+    bl_description = "Converts materials to a Principled BSDF for exporting purposes."
+    
+    def execute(self, context):
+        for m in bpy.data.materials:
+            tree: bpy.types.NodeTree = m.node_tree
+            nodes = tree.nodes
+            out = nodes.get('Material Output')
+            saShader = nodes.get('Group', None)
+            texture = nodes.get('Image Texture', None)
+            bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+            bsdf.inputs[5].default_value = 0
+    
+            if saShader is not None:
+                nodes.remove(saShader)
+        
+            if texture is not None:
+                tree.links.new(texture.outputs[0], bsdf.inputs[0]) # Assign texture
+                tree.links.new(texture.outputs[1], bsdf.inputs[20]) # Assign alpha
+        
+            tree.links.new(bsdf.outputs[0], out.inputs[0])
+        return {'FINISHED'}
+
+
 class UpdateMaterials(bpy.types.Operator):
     bl_idname = "scene.saupdatemats"
     bl_label="Update Materials"
-    bl_info="Sets material nodetrees and variables of all selected objects to imitate how they would look in sadx/sa2"
+    bl_description="Sets material nodetrees and variables of all selected objects to imitate how they would look in sadx/sa2"
 
     @classmethod
     def addDriver(cls, inputSocket, scene, path, entry = -1):
@@ -2919,6 +2945,7 @@ class SAScenePanel(bpy.types.Panel):
                 box.prop(settings, "viewportAlphaCutoff")
 
         layout.operator(LoadSetFile.bl_idname)
+        layout.operator(ToPrincipledBsdf.bl_idname)
         split = layout.split()
         split.operator(LoadAnimFile.bl_idname)
         split.operator(ExportAnim.bl_idname)
@@ -3038,6 +3065,7 @@ classes = (
     MoveTextureSlot,
     ClearTextureList,
     AutoNameTextures,
+    ToPrincipledBsdf,
     UpdateMaterials,
 
     qeReset,

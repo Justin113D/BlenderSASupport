@@ -327,7 +327,7 @@ class MeshSet:
         fileW.wUInt(self.UVPtr)
 
         # setting the labels
-        name = "bsc_" + self.name + "_"
+        name = self.name + "_"
         if self.polyPtr > 0:
             labels[self.polyPtr] = name + "p" + str(self.meshSetID)
         if self.polyNormalPtr > 0:
@@ -601,13 +601,13 @@ class Attach:
         global DO
 
         posPtr = fileW.tell()
-        labels[posPtr] = "bsc_" + self.name + "_pos"
+        labels[posPtr] = self.name + "_pos"
         for p in self.positions:
             p.write(fileW)
 
         if self.normals is not None:
             nrmPtr = fileW.tell()
-            labels[nrmPtr] = "bsc_" + self.name + "_nrm"
+            labels[nrmPtr] = self.name + "_nrm"
             for n in self.normals:
                 n.write(fileW)
         else:
@@ -617,13 +617,13 @@ class Attach:
             m.writePolys(fileW)
 
         setPtr = fileW.tell()
-        labels[setPtr] = "bsc_" + self.name + "_set"
+        labels[setPtr] = self.name + "_set"
         for m in self.meshSets:
             m.writeSet(fileW, labels)
 
         # writing attach info
         attachPtr = fileW.tell()
-        labels[attachPtr] = "bsc_" + self.name
+        labels[attachPtr] = self.name
         if meshDict is not None:
             meshDict[self.name] = (attachPtr, self.bounds)
         fileW.wUInt(posPtr)
@@ -652,8 +652,6 @@ class Attach:
 
         if address in labels:
             name: str = labels[address]
-            if name.startswith("bsc_"):
-                name = name[4:]
         else:
             name = "Attach_" + str(meshID)
 
