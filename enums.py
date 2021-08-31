@@ -260,10 +260,10 @@ class AlphaInstruction(Enum):
 class TileMode(Flag):
     """Tiling of Meshes' UVs"""
     null = 0x00
-    WrapU = 0x01
-    MirrorU = 0x02
-    WrapV = 0x04
-    MirrorV = 0x08
+    WrapV = 0x01
+    MirrorV = 0x02
+    WrapU = 0x04
+    MirrorU = 0x08
     unknown = 0x10
 
 # to understand the next enums:
