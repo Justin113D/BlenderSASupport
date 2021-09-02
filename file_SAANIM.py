@@ -447,14 +447,16 @@ def write(
         # next the rotations
         if len(rotCurves) > 0:
 
-            frames = allFrames if bakeAll \
-                else getFramesToCalc(rotCurves, frame_End)
             if rotType == 'QUATERNION':
+                frames = allFrames
                 rotations: Dict[int, mathutils.Vector] \
                     = {f: mathutils.Quaternion() for f in frames}
                 curves = [None] * 4
                 identityRot = (0, 0, 0, 1)
             else:
+                frames = allFrames if bakeAll \
+                    else getFramesToCalc(rotCurves, frame_End)
+
                 rotations: Dict[int, mathutils.Vector] \
                     = {f: mathutils.Euler() for f in frames}
                 curves = [None] * 3

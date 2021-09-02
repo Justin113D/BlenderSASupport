@@ -18,7 +18,7 @@ from typing import List, Dict, Union, Tuple
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1, 6, 2),
+    "version": (1, 6, 3),
     "blender": (2, 91, 0),
     "location": "File > Import/Export",
     "description": ("Import/Exporter for the SA Models Formats.\n"
@@ -1100,7 +1100,7 @@ class ToPrincipledBsdf(bpy.types.Operator):
     bl_idname = "scene.convmaterials"
     bl_label = "Convert to Principled BSDF"
     bl_description = "Converts materials to a Principled BSDF for exporting purposes."
-    
+
     def execute(self, context):
         for m in bpy.data.materials:
             tree: bpy.types.NodeTree = m.node_tree
@@ -1110,14 +1110,14 @@ class ToPrincipledBsdf(bpy.types.Operator):
             texture = nodes.get('Image Texture', None)
             bsdf = nodes.new('ShaderNodeBsdfPrincipled')
             bsdf.inputs[5].default_value = 0
-    
+
             if saShader is not None:
                 nodes.remove(saShader)
-        
+
             if texture is not None:
                 tree.links.new(texture.outputs[0], bsdf.inputs[0]) # Assign texture
                 tree.links.new(texture.outputs[1], bsdf.inputs[20]) # Assign alpha
-        
+
             tree.links.new(bsdf.outputs[0], out.inputs[0])
         return {'FINISHED'}
 
