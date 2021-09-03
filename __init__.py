@@ -18,7 +18,7 @@ from typing import List, Dict, Union, Tuple
 bl_info = {
     "name": "SA Model Formats support",
     "author": "Justin113D",
-    "version": (1, 6, 3),
+    "version": (1, 6, 4),
     "blender": (2, 91, 0),
     "location": "File > Import/Export",
     "description": ("Import/Exporter for the SA Models Formats.\n"
@@ -1374,6 +1374,9 @@ def qeUpdate(context, newValue):
             if qEditSettings.obj_apply_userFlags and newValue:
                 objProps.userFlags = qEditSettings.objQProps.userFlags
 
+            if qEditSettings.obj_apply_blockbit and newValue:
+                objProps.blockbit = qEditSettings.objQProps.blockbit
+
     # If the user specified to change meshes...
     if context.scene.saSettings.useMeshEdit:
 
@@ -1449,6 +1452,7 @@ class qeReset(bpy.types.Operator):
                     setattr(objProps, k, False)
 
             menuProps.obj_apply_userFlags = False
+            menuProps.obj_apply_blockBit = False
 
         if menuProps.useMeshEdit:
             menuProps.me_apply_addVO = False
@@ -1492,6 +1496,7 @@ class qeInvert(bpy.types.Operator):
                     setattr(objProps, k, not getattr(objProps, k))
 
             menuProps.obj_apply_userFlags = not menuProps.obj_apply_userFlags
+            menuProps.obj_apply_blockbit = not menuProps.obj_apply_blockbit
 
         if menuProps.useMeshEdit:
             menuProps.me_apply_addVO = not menuProps.me_apply_addVO
@@ -1728,6 +1733,12 @@ class SASettings(bpy.types.PropertyGroup):
         default=False
         )
 
+    obj_apply_blockbit: BoolProperty(
+        name = "Apply Blockbit",
+        description="Sets the Blockbit of all selected objects when pressing 'Set'",
+        default=False
+        )
+
     me_apply_ExportType: BoolProperty(
         name = "Apply Export Type",
         description="Sets the export type of all selected objects when pressing 'Set'",
@@ -1863,6 +1874,12 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         default=False
         )
 
+    blockbit: StringProperty(
+        name="Blockbit (hex)",
+        description="Bitflags of an SA2 Landentry",
+        default="0"
+    )
+
     # sa1 only
 
     noFriction: BoolProperty(
@@ -1936,6 +1953,8 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         d["increasedAcceleration"] = self.increasedAcceleration
         d["footprints"] = self.footprints
 
+        d["blockbit"] = self.blockbit
+
         return d
 
     def fromDictionary(self, d: dict):
@@ -1961,6 +1980,8 @@ class SAObjectSettings(bpy.types.PropertyGroup):
         self.noFriction = d["noFriction"]
         self.noAcceleration = d["noAcceleration"]
         self.increasedAcceleration = d["increasedAcceleration"]
+
+        self.blockbit = d["blockbit"]
 
 
 class SAMaterialSettings(bpy.types.PropertyGroup):
@@ -2765,6 +2786,8 @@ def drawObjectPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = False)
         box.prop(objProps, "unknown30")
 
     propAdv(layout, "Custom (hex):  0x", objProps, "userFlags", sProps, "obj_apply_userFlags", qe = qe)
+
+    propAdv(layout, "Blockbit (hex):  0x", objProps, "blockbit", sProps, "obj_apply_blockbit", qe = qe)
 
 
 def drawMeshPanel(layout: bpy.types.UILayout, meshProps, qe = False):

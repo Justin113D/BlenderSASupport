@@ -310,7 +310,6 @@ class ModelData:
 
     unknown1: int  # sa1 COL
     unknown2: int  # both COL
-    unknown3: int  # both COL
 
     meshPtr: int  # set after writing meshes
     objectPtr: int  # set after writing model address
@@ -375,7 +374,6 @@ class ModelData:
         # settings the unknowns
         self.unknown1 = 0
         self.unknown2 = 0
-        self.unknown3 = 0
 
         self.meshPtr = None
 
@@ -574,7 +572,7 @@ class ModelData:
             self.bounds.write(fileW)
             fileW.wUInt(self.objectPtr)
             fileW.wUInt(self.unknown2)
-            fileW.wUInt(self.unknown3)
+            fileW.wUInt(int("0x" + self.saProps["blockbit"], 0))
             fileW.wUInt(self.getSA2SurfaceFlags().value
                         | int("0x" + self.saProps["userFlags"], 0))
         else:
@@ -582,7 +580,7 @@ class ModelData:
             fileW.wUInt(self.unknown1)
             fileW.wUInt(self.unknown2)
             fileW.wUInt(self.objectPtr)
-            fileW.wUInt(self.unknown3)
+            fileW.wUInt(int("0x" + self.saProps["blockbit"], 0))
             fileW.wUInt(self.getSA1SurfaceFlags().value
                         | int("0x" + self.saProps["userFlags"], 0))
 
@@ -1613,19 +1611,16 @@ class Col:
 
     unknown1: int  # sa1 COL
     unknown2: int  # both COL
-    unknown3: int  # both COL
 
     model: Model
 
     def __init__(self,
                  unknown1: int,
                  unknown2: int,
-                 unknown3: int,
                  saProps: dict,
                  model: Model):
         self.unknown1 = unknown1
         self.unknown2 = unknown2
-        self.unknown3 = unknown3
         self.saProps = saProps
         self.model = model
 
@@ -1645,7 +1640,7 @@ class Col:
             objectPtr = fileR.rUInt(address)
             unknown1 = 0
             unknown2 = fileR.rInt(address + 4)
-            unknown3 = fileR.rInt(address + 8)
+            blockbit = fileR.rInt(address + 8)
             f = fileR.rUInt(address+12)
 
             from .enums import SA2SurfaceFlags
@@ -1674,6 +1669,8 @@ class Col:
             saProps["userFlags"] \
                 = hex4((f & ~SA2SurfaceFlags.known.value) & 0xFFFFFFFF)
 
+            saProps["blockbit"] = hex4(blockbit)
+
             try:
                 flagTest = SA2SurfaceFlags(f)
             except Exception:
@@ -1684,7 +1681,7 @@ class Col:
             objectPtr = fileR.rUInt(address + 8)
             unknown1 = fileR.rInt(address)
             unknown2 = fileR.rInt(address + 4)
-            unknown3 = fileR.rInt(address + 12)
+            blockbit = fileR.rInt(address + 12)
             f = fileR.rUInt(address+16)
             from .enums import SA1SurfaceFlags
 
@@ -1709,6 +1706,8 @@ class Col:
             saProps["userFlags"] \
                 = hex4((f & ~SA1SurfaceFlags.known.value) & 0xFFFFFFFF)
 
+            saProps["blockbit"] = hex4(blockbit)
+
             try:
                 flagTest = SA1SurfaceFlags(f)
             except Exception:
@@ -1717,7 +1716,7 @@ class Col:
 
         model = readObjects(fileR, objectPtr, 0, None, labels, None)
 
-        return Col(unknown1, unknown2, unknown3, saProps, model)
+        return Col(unknown1, unknown2, saProps, model)
 
     def toBlenderObject(self) -> bpy.types.Object:
 
