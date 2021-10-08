@@ -617,7 +617,7 @@ class ImportTexFile(bpy.types.Operator, ImportHelper):
     bl_label = "Import SA tex file"
 
     filter_glob: StringProperty(
-        default="*.pak;*.gvm;*.pvm;*.pvmx;*.txt",
+        default="*.pak;*.gvm;*.pvm;*.pvmx;*.txt;*.tls",
         options={'HIDDEN'},
         )
 
@@ -665,7 +665,35 @@ class ImportTexFile(bpy.types.Operator, ImportHelper):
                 tex.globalID = i
                 tex.name = os.path.splitext(os.path.basename(t))[0]
                 tex.image = img
+        elif extension == '.tls':
+            content: List[str] = None
+            with open(self.filepath) as f:
+                content = f.readlines()
+            folder = os.path.dirname(self.filepath)
+            textures: List[Tuple[int, str]] = list()
 
+            for c in content:
+                c = c.strip().split('.')
+                texturePath = folder + "\\" + c[0] + ".png"
+                if not (os.path.isfile(texturePath)):
+                    return self.stop()
+                textures.append((0, texturePath))
+
+            bpy.ops.scene.sacleartexturelist()
+            texList = context.scene.saSettings.textureList
+            for i, t in textures:
+                img = None 
+                for image in bpy.data.images:
+                    if image.filepath == t:
+                        img = image
+                        break
+                if img is None:
+                    img = bpy.data.images.load(t)
+                img.use_fake_user = True
+                tex = texList.add()
+                tex.globalID = i
+                tex.name = os.path.splitext(os.path.basename(t))[0]
+                tex.image = img
         return {'FINISHED'}
 
 
