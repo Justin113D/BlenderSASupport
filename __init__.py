@@ -1144,7 +1144,7 @@ class ToPrincipledBsdf(bpy.types.Operator):
 
             if texture is not None:
                 tree.links.new(texture.outputs[0], bsdf.inputs[0]) # Assign texture
-                tree.links.new(texture.outputs[1], bsdf.inputs[20]) # Assign alpha
+                tree.links.new(texture.outputs[1], bsdf.inputs[19]) # Assign alpha
 
             tree.links.new(bsdf.outputs[0], out.inputs[0])
         return {'FINISHED'}
