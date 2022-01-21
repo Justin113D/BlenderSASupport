@@ -42,9 +42,9 @@ class ObjEntry:
 	#    return str(self.index) + " : " + str(self.clippingLvl) + ", " + str(self.rotation) + ", " + str(self.pos) + ", " + str(self.var) + ";"
 
 
-def ReadFile(path: str, context):
+def ReadFile(path: str, context, bigEndian: bool):
 	fileR = fileHelper.FileReader(path)
-	fileR.setBigEndian(True)
+	fileR.setBigEndian(bigEndian)
 
 	objCount = fileR.rUInt(0)
 	print("objects:", objCount)
@@ -74,7 +74,7 @@ def ReadFile(path: str, context):
 	for i, o in enumerate(objs):
 		#print(str(o))
 
-		obj = bpy.data.objects.new("SET_" + str(i) + "_" + str(o.index), None)
+		obj = bpy.data.objects.new("SET_" + str(o.index) + "_" + str(i), None)
 		obj.matrix_world = o.worldMtx
 
 		col.objects.link(obj)

@@ -707,8 +707,14 @@ class LoadSetFile(bpy.types.Operator, ImportHelper):
         options={'HIDDEN'},
         )
 
+    bigEndian: BoolProperty(
+        name="Big Endian",
+        description="Sets Big Endian for loading Set files (DC Games/SADXPC Disable, GC Games/SA2BPC Enable)",
+        default=True,
+        )
+
     def execute(self, context):
-        setReader.ReadFile(self.filepath, context)
+        setReader.ReadFile(self.filepath, context, self.bigEndian)
         return {'FINISHED'}
 
 
