@@ -1130,6 +1130,99 @@ class AutoNameTextures(bpy.types.Operator):
         return {'FINISHED'}
 
 
+def autotexUpdate(context, newValue, mmdCheck):
+		
+	objects = context.visible_objects
+	# If the user specified to change materials...
+
+	matQProps = context.scene.saSettings.matQProps
+	mats = []
+	texList = context.scene.saSettings.textureList
+	index = -1
+	copyTex = []
+
+	for t in texList:
+		if t.image is not None:
+			t.name = os.path.splitext(t.image.name)[0]
+			copyTex.append(t.name)
+
+
+	for o in objects:
+		if o.type == 'MESH':
+			for m in o.data.materials:
+				if m not in mats:
+					mats.append(m)
+
+		for m in mats:
+			matProps : SAMaterialSettings = m.saSettings
+
+			for p in dir(matQProps):
+				if not p.startswith("b_") and not p.startswith("gc_"):
+					continue
+
+				
+				a = getattr(matQProps, p)
+				if type(a) is bool:
+					if a:
+						setattr(matProps, p, newValue)
+
+		if mmdCheck:
+			for mat_slot in o.material_slots:
+				if mat_slot.material:
+					for x in mat_slot.material.node_tree.nodes:
+						for t in texList:
+							if t.image is not None:
+								t.name = os.path.splitext(t.image.name)[0]
+								if x.type=='TEX_IMAGE':
+									if str(x.image.name)==t.name:
+										index = copyTex.index(t.name)
+										if index > -1:
+											matProps.b_TextureID = index
+											matProps.gc_texCoordID = matQProps.gc_texCoordID
+											print(" assigned texture ID from MMD: " + str(index))
+										else:
+											print("error index negative.")
+		#try to get tex with material:
+		else:
+			for mat_slot in o.material_slots:
+				if mat_slot.material:
+					if mat_slot.material.node_tree:
+						for t in texList:
+							if t.image is not None:
+								t.name = os.path.splitext(t.image.name)[0]
+								if mat_slot.material.node_tree:
+									if str(mat_slot.material.name)==t.name:
+										index = copyTex.index(t.name)
+										if index > -1:
+											matProps.b_TextureID = index
+											matProps.gc_texCoordID = matQProps.gc_texCoordID
+											print(" assigned texture ID from Material Name: " + str(index))
+										else:
+											print("error index negative.")
+
+
+
+
+
+class AutoAssignTextures(bpy.types.Operator):
+	bl_idname = "scene.saautoassign"
+	bl_label = "Auto Assign Textures (From Material)"
+	bl_info = "Uses the texlist and material name to auto assign the IDs."
+
+	def execute(self, context):
+		autotexUpdate(context, True, False)
+		return {'FINISHED'}
+
+class AutoAssignTexturesMMD(bpy.types.Operator):
+	bl_idname = "scene.saautoassignmmd"
+	bl_label = "Auto Assign Textures (MMD experimental)"
+	bl_info = "Uses the texlist and MMD texture name to auto assign the IDs."
+
+	def execute(self, context):
+		autotexUpdate(context, True, True)
+		return {'FINISHED'}
+
+
 class ToPrincipledBsdf(bpy.types.Operator):
     bl_idname = "scene.convmaterials"
     bl_label = "Convert to Principled BSDF"
@@ -3082,11 +3175,15 @@ class SA3DPanel(bpy.types.Panel):
                 box.separator()
                 drawMeshPanel(box, settings.meshQProps, qe=True)
                 box.separator()
-
+                
         layout.operator(UpdateMaterials.bl_idname)
         layout.separator()
         layout.operator(ArmatureFromObjects.bl_idname)
         layout.operator(StrippifyTest.bl_idname)
+        layout.separator()
+        layout.operator(AutoAssignTextures.bl_idname)
+        layout.separator()
+        layout.operator(AutoAssignTexturesMMD.bl_idname)
 
 
 def menu_func_exportsa(self, context):
@@ -3125,6 +3222,8 @@ classes = (
     AutoNameTextures,
     ToPrincipledBsdf,
     UpdateMaterials,
+    AutoAssignTextures,
+	AutoAssignTexturesMMD,
 
     qeReset,
     qeInvert,
