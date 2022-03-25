@@ -1,21 +1,17 @@
 from enum import Enum, Flag
 
 # General File Enums and Flags
-
-
 class MDLFormatIndicator(Enum):
     """Format indicators for the model file"""
     SA1MDL = 0x00004C444D314153
     SA2MDL = 0x00004C444D324153
     SA2BMDL = 0x004C444D42324153
 
-
 class LVLFormatIndicator(Enum):
     """Format indicators for the level file"""
     SA1LVL = 0x00004C564C314153
     SA2LVL = 0x00004C564C324153
     SA2BLVL = 0x004C564C42324153
-
 
 class Chunktypes(Enum):
     """Meta Data type"""
@@ -34,7 +30,6 @@ class Chunktypes(Enum):
         print("invalid chunk type:", '{:04x}'.format(value))
         return Chunktypes.null
 
-
 class ObjectFlags(Flag):
     """Object flags used in models"""
     null = 0x00
@@ -46,7 +41,6 @@ class ObjectFlags(Flag):
     RotateZYX = 0x20
     NoAnimate = 0x40
     NoMorph = 0x80
-
 
 class SA1SurfaceFlags(Flag):
     """Surface interaction Flags for SA1 landtable COL"""
@@ -85,7 +79,6 @@ class SA1SurfaceFlags(Flag):
              | Hurt
              | Footprints
              | Visible)
-
 
 class SA2SurfaceFlags(Flag):
     """Surface interaction Flags for SA2 landtable COL"""
@@ -134,8 +127,6 @@ class SA2SurfaceFlags(Flag):
              | Visible)
 
 # GC format Enums and Flags
-
-
 class VertexAttribute(Enum):
     """Type of Vertex Attribute"""
     PositionMatrixID = 0
@@ -152,7 +143,6 @@ class VertexAttribute(Enum):
     Tex6 = 11
     Tex7 = 12
     Null = 255
-
 
 class DataType(Enum):
     """Type in which the attibute data gets saved"""
@@ -183,7 +173,6 @@ class DataType(Enum):
             return 3
         return 4
 
-
 class ComponentCount(Enum):
     """The amount and arranged of values in an attribute entry"""
     Position_XY = 0
@@ -210,7 +199,6 @@ class ComponentCount(Enum):
             return 3
         return 4
 
-
 class ParameterType(Enum):
     """Type of Mesh Parameter"""
     VtxAttrFmt = 0
@@ -221,7 +209,6 @@ class ParameterType(Enum):
     Texture = 8
     Unknown_9 = 9
     TexCoordGen = 10
-
 
 class IndexAttributeFlags(Flag):
     """Flags for Index arrays in the mesh"""
@@ -243,7 +230,6 @@ class IndexAttributeFlags(Flag):
     Bit14 = 0x4000  # unused
     Bit15 = 0x8000  # unused
 
-
 class AlphaInstruction(Enum):
     """The way in which the alpha of a
     texture should be handled when rendering"""
@@ -256,7 +242,6 @@ class AlphaInstruction(Enum):
     DstAlpha = 6
     InverseDstAlpha = 7
 
-
 class TileMode(Flag):
     """Tiling of Meshes' UVs"""
     null = 0x00
@@ -268,8 +253,6 @@ class TileMode(Flag):
 
 # to understand the next enums:
 # http://tp.docs.aecx.cc/Dolphin+OS+Manual/gfx/gx/Geometry/GXSetTexCoordGen2.html
-
-
 class TexCoordID(Enum):
     """Indicates which uv map of the mesh to use"""
     TexCoord0 = 0
@@ -282,7 +265,6 @@ class TexCoordID(Enum):
     TexCoord7 = 7
     TexCoordMax = 8  # last uv map?
     TexCoordNull = 9
-
 
 class TexGenType(Enum):
     """Function used to generate a texture coordinate"""
@@ -300,7 +282,6 @@ class TexGenType(Enum):
     Bump7 = 9
     # Red/Green channels from texture as uv
     SRTG = 10
-
 
 class TexGenSrc(Enum):
     """Which values of the mesh should be
@@ -327,7 +308,6 @@ class TexGenSrc(Enum):
     Color0 = 19
     Color1 = 20
 
-
 class TexGenMtx(Enum):
     """Which matrix to use for generated texture coordinates"""
     Matrix0 = 0
@@ -342,7 +322,6 @@ class TexGenMtx(Enum):
     Matrix9 = 9
     Identity = 10
 
-
 class PrimitiveType(Enum):
     """Determines the arrangement of poly indices"""
     Triangles = 144
@@ -353,8 +332,6 @@ class PrimitiveType(Enum):
     Points = 184
 
 # BASIC format Enums and Flags
-
-
 class MaterialFlags(Flag):
     """BASIC format material flags"""
     # unused or unknown
@@ -408,7 +385,6 @@ class MaterialFlags(Flag):
     SA_DST = SA_OTHER | SA_SRC
     SA_INV_DST = SA_ONE | SA_OTHER | SA_SRC
 
-
 class PolyType(Enum):
     """Determines the arrangement of poly indices"""
     Triangles = 0
@@ -417,8 +393,6 @@ class PolyType(Enum):
     Strips = 3
 
 # CHUNK format enums and flags:
-
-
 class ChunkType(Enum):
     """Chunk format types"""
     Null = 0
@@ -488,12 +462,10 @@ class ChunkType(Enum):
     # End
     End = 255
 
-
 class WeightStatus(Enum):
     Start = 0
     Middle = 1
     End = 2
-
 
 class SA2AlphaInstructions(Flag):
     null = 0x0
@@ -514,14 +486,12 @@ class SA2AlphaInstructions(Flag):
     SA_DST = SA_OTHER | SA_SRC
     SA_INV_DST = SA_ONE | SA_OTHER | SA_SRC
 
-
 class MipMapDistanceAdjust(Flag):
     null = 0x0
     D_025 = 0x1
     D_050 = 0x2
     D_100 = 0x4
     D_200 = 0x8
-
 
 class TextureIDFlags(Flag):
     null = 0x0
@@ -534,13 +504,11 @@ class TextureIDFlags(Flag):
     FLIP_V = 0x40
     FLIP_U = 0x80
 
-
 class TextureFiltering(Enum):
     Point = 0
     Bilinear = 1
     Trilinear = 2
     Blend = 3
-
 
 class StripFlags(Flag):
     null = 0x0

@@ -11,10 +11,8 @@ DO = False  # Debug out
 def hex8(number: int):
     return '{:08x}'.format(number)
 
-
 def hex16(number: int):
     return '{:016x}'.format(number)
-
 
 def read(context: bpy.types.Context,
          filepath: str,
@@ -272,7 +270,6 @@ def read(context: bpy.types.Context,
         common.fixMaterialNames(allobjects)
 
     return {'FINISHED'}
-
 
 def write(context,
           filepath, *,

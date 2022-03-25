@@ -11,7 +11,6 @@ DO = False  # Debug out
 def hex8(number: int):
     return '{:08x}'.format(number)
 
-
 def read(context: bpy.types.Context,
          filepath: str, noDoubleVerts: bool, console_debug_output: bool):
 
@@ -291,7 +290,6 @@ def read(context: bpy.types.Context,
             o.debug()
 
     return {'FINISHED'}
-
 
 def write(context,
           filepath, *,

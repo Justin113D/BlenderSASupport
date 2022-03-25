@@ -11,7 +11,6 @@ from .common import Vector3, ColorARGB, UV, BoundingBox
 
 DO = False  # debug out
 
-
 class Material:
     """Material of a mesh"""
 
@@ -195,7 +194,6 @@ class Material:
                         textureID,
                         flags)
 
-
 class PolyVert:
     """Face loops of a mesh
 
@@ -224,7 +222,6 @@ class PolyVert:
         eUV = self.uv == other.uv
 
         return eID and ePNRM and eVC and eUV
-
 
 class MeshSet:
     """A single mesh set in the model"""
@@ -413,7 +410,6 @@ class MeshSet:
                        uvPtr > 0,
                        polyAttribs,
                        reverse)
-
 
 class Attach:
     """Attach for the BASIC format"""
@@ -703,7 +699,6 @@ class Attach:
                       None,
                       materials,
                       None)
-
 
 def process_BASIC(models: List[common.Model],
                   attaches: Dict[int, Attach],

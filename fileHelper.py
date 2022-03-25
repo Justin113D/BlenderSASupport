@@ -115,7 +115,6 @@ class FileWriter:
         self.w(string.encode('utf-8'))
         self.wByte(0x00)
 
-
 class FileReader:
 
     def __init__(self, filepath: str):

@@ -8,15 +8,12 @@ from . import fileHelper, enums
 
 DO = False  # Debug Out
 
-
 def center(p1: float, p2: float) -> float:
     """Returns the mid point between two numbers"""
     return (p1 + p2) / 2.0
 
-
 def hex4(number: int) -> str:
     return '{:08x}'.format(number)
-
 
 def RadToBAMS(v: float, asInt=False) -> int:
     if round(v, 4) == 0:
@@ -38,14 +35,12 @@ def RadToBAMS(v: float, asInt=False) -> int:
 
     return val
 
-
 def BAMSToRad(v: int, shortRot=False) -> float:
     if not shortRot and v & 0x80000000:
         v -= 0x100000000
     elif shortRot:
         v &= 0xFFFF
     return math.radians(v / (0x10000 / 360.0))
-
 
 def getDistinctwID(items: list):
 
@@ -66,12 +61,10 @@ def getDistinctwID(items: list):
 
     return distinct, IDs
 
-
 class ExportError(Exception):
 
     def __init__(self, message):
         super().__init__(message)
-
 
 class ColorARGB:
     """4 Channel Color (ARGB)
@@ -147,7 +140,6 @@ class ColorARGB:
     def __str__(self):
         return f"({self.a},{self.r},{self.g},{self.b})"
 
-
 class UV:
     """A single texture coordinate
 
@@ -171,7 +163,6 @@ class UV:
         fileW.wShort(self.x)
         fileW.wShort(self.y)
 
-
 class Vector3(mathutils.Vector):
     """Point in 3D Space"""
 
@@ -187,7 +178,6 @@ class Vector3(mathutils.Vector):
 
     def __str__(self):
         return f"({round(self.x, 3)},{round(self.y, 3)},{round(self.z, 3)})"
-
 
 class BAMSRotation:
     """XYZ Rotation used for the adventure games"""
@@ -218,7 +208,6 @@ class BAMSRotation:
         return (f"({round(BAMSToRad(self.x), 3)},"
                 f"{round(BAMSToRad(self.y), 3)},"
                 f"{round(BAMSToRad(self.z), 3)})")
-
 
 class BoundingBox:
     """Used to calculate the bounding sphere which the game uses"""
@@ -280,7 +269,6 @@ class BoundingBox:
 
     def __str__(self):
         return str(self.boundCenter) + " - " + str(self.radius)
-
 
 class ModelData:
     """A class that holds all necessary data to export an Object/COL"""
@@ -584,7 +572,6 @@ class ModelData:
             fileW.wUInt(self.getSA1SurfaceFlags().value
                         | int("0x" + self.saProps["userFlags"], 0))
 
-
 class ArmatureMesh:
     model: ModelData
     indexBufferOffset: int
@@ -600,7 +587,6 @@ class ArmatureMesh:
         self.model = model
         self.indexBufferOffset = indexBufferOffset
         self.weightMap = weightMap
-
 
 class Bone:
 
@@ -718,7 +704,6 @@ class Bone:
         self.scale.write(fileW)
         fileW.wUInt(0 if self.child is None else self.child.objectPtr)
         fileW.wUInt(0 if self.sibling is None else self.sibling.objectPtr)
-
 
 class Armature(ModelData):
 
@@ -923,7 +908,6 @@ class Armature(ModelData):
 
         return bones[0].objectPtr
 
-
 def convertObjectData(context: bpy.types.Context,
                       use_selection: bool,
                       apply_modifs: bool,
@@ -1093,7 +1077,6 @@ def convertObjectData(context: bpy.types.Context,
 
         return objects, cMeshes, vMeshes, materials, cObjects, vObjects
 
-
 def sortChildren(cObject: bpy.types.Object,
                  objects: List[bpy.types.Object],
                  parent: ModelData,
@@ -1178,7 +1161,6 @@ def sortChildren(cObject: bpy.types.Object,
 
     return model
 
-
 def evaluateMeshModifiers(objects: List[ModelData], apply_modifs: bool):
     tMeshes = list()
     for o in objects:
@@ -1226,7 +1208,6 @@ def evaluateMeshModifiers(objects: List[ModelData], apply_modifs: bool):
 
     return mObjects, meshesToConvert, addESplit, modifierStates
 
-
 def getMeshes(meshesToConvert: List[ModelData],
               mObjects: List[ModelData],
               apply_modifs: bool,
@@ -1268,7 +1249,6 @@ def getMeshes(meshesToConvert: List[ModelData],
         outMeshes.append(me)
 
     return outMeshes, materials
-
 
 def trianglulateMesh(mesh: bpy.types.Mesh):
     """Transforms a mesh into a mesh only consisting
@@ -1347,7 +1327,6 @@ def trianglulateMesh(mesh: bpy.types.Mesh):
         else:
             mesh.normals_split_custom_set(splitNormals)
 
-
 def getNormalData(mesh: bpy.types.Mesh) -> list():
     normals = list()
     if mesh.use_auto_smooth:
@@ -1369,7 +1348,6 @@ def getNormalData(mesh: bpy.types.Mesh) -> list():
         for v in mesh.vertices:
             normals.append(v.normal)
     return normals
-
 
 def writeMethaData(fileW: fileHelper.FileWriter,
                    labels: dict,
@@ -1455,14 +1433,12 @@ def writeMethaData(fileW: fileHelper.FileWriter,
     fileW.wUInt(enums.Chunktypes.End.value)
     fileW.wUInt(0)
 
-
 def matrixFromScale(scale: mathutils.Vector) -> mathutils.Matrix:
     mtx = mathutils.Matrix()
     mtx[0][0] = scale[0]
     mtx[1][1] = scale[1]
     mtx[2][2] = scale[2]
     return mtx
-
 
 def polyToTris(p: list) -> list:
     cP = 0
@@ -1486,7 +1462,6 @@ def polyToTris(p: list) -> list:
             cN -= 1
 
     return out
-
 
 # for reading only
 class Model:
@@ -1531,7 +1506,6 @@ class Model:
         rot = self.matrix_local.to_euler()
         print(f"    rotation: ({rot.x},{rot.y},{rot.z})")
         print(f"    scale: {Vector3(self.matrix_local.to_scale())}")
-
 
 def readObjects(fileR:
                 fileHelper.FileReader,
@@ -1604,7 +1578,6 @@ def readObjects(fileR:
         model.sibling = sibling
 
     return model
-
 
 class Col:
     saProps: dict
@@ -1726,7 +1699,6 @@ class Col:
         obj.saSettings.fromDictionary(self.saProps)
 
         return obj
-
 
 def fixMaterialNames(objects: List[bpy.types.Object]):
 
