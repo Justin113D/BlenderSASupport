@@ -623,7 +623,11 @@ class Attach:
 
         # writing attach info
         attachPtr = fileW.tell()
-        labels[attachPtr] = self.name
+        print(self.name)
+        if self.name in bpy.data.objects:
+            labels[attachPtr] = "mdl_" + self.name
+        else:
+            labels[attachPtr] = self.name
         if meshDict is not None:
             meshDict[self.name] = (attachPtr, self.bounds)
         fileW.wUInt(posPtr)
