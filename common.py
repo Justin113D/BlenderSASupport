@@ -327,7 +327,7 @@ class ModelData:
 			self.bounds = BoundingBox(None)
 
 			self.saProps = bObject.saSettings.toDictionary()
-			self.saProps["isCollision"] = collision
+			self.saProps["solid"] = collision
 			self.saProps["isVisible"] = visible
 		else:
 			self.bounds = BoundingBox(None)
@@ -384,7 +384,7 @@ class ModelData:
 		"""Updates the mesh pointer of a ModelData list utilizing a meshDict"""
 		for o in objList:
 			if o.processedMesh is not None:
-				if cMeshDict is not None and o.saProps["isCollision"]:
+				if cMeshDict is not None and o.saProps["solid"]:
 					o.meshPtr, bounds = cMeshDict[o.processedMesh.name]
 				else:
 					o.meshPtr, bounds = meshDict[o.processedMesh.name]
@@ -440,29 +440,54 @@ class ModelData:
 			return flags
 		p = self.saProps
 
-		if p["isCollision"]:
-			if p["solid"]:
-				flags |= SA1SurfaceFlags.Solid
-			if p["water"]:
-				flags |= SA1SurfaceFlags.Water
-			if p["noFriction"]:
-				flags |= SA1SurfaceFlags.NoFriction
-			if p["noAcceleration"]:
-				flags |= SA1SurfaceFlags.NoAcceleration
-			if p["cannotLand"]:
-				flags |= SA1SurfaceFlags.CannotLand
-			if p["increasedAcceleration"]:
-				flags |= SA1SurfaceFlags.IncreasedAcceleration
-			if p["diggable"]:
-				flags |= SA1SurfaceFlags.Diggable
-			if p["unclimbable"]:
-				flags |= SA1SurfaceFlags.Unclimbable
-			if p["hurt"]:
-				flags |= SA1SurfaceFlags.Hurt
+		if p["solid"]:
+			flags |= SA1SurfaceFlags.Solid
+		if p["sa1_water"]:
+			flags |= SA1SurfaceFlags.Water
+		if p["sa1_noFriction"]:
+			flags |= SA1SurfaceFlags.NoFriction
+		if p["sa1_noAcceleration"]:
+			flags |= SA1SurfaceFlags.NoAcceleration
+		if p["sa1_lowAcceleration"]:
+			flags |= SA1SurfaceFlags.LowAcceleration
+		if p["sa1_cannotLand"]:
+			flags |= SA1SurfaceFlags.CannotLand
+		if p["sa1_increasedAcceleration"]:
+			flags |= SA1SurfaceFlags.IncreasedAcceleration
+		if p["sa1_diggable"]:
+			flags |= SA1SurfaceFlags.Diggable
+		if p["sa1_waterfall"]:
+			flags |= SA1SurfaceFlags.Waterfall
+		if p["sa1_unclimbable"]:
+			flags |= SA1SurfaceFlags.Unclimbable
+		if p["sa1_chaos0Land"]:
+			flags |= SA1SurfaceFlags.Chaos0Land
+		if p["sa1_stairs"]:
+			flags |= SA1SurfaceFlags.Stairs
+		if p["sa1_hurt"]:
+			flags |= SA1SurfaceFlags.Hurt
+		if p["sa1_lowDepth"]:
+			flags |= SA1SurfaceFlags.LowDepth
+		if p["sa1_footprints"]:
+			flags |= SA1SurfaceFlags.Footprints
+		if p["sa1_accelerate"]:
+			flags |= SA1SurfaceFlags.Accelerate
+		if p["sa1_colWater"]:
+			flags |= SA1SurfaceFlags.WaterCollision
+		if p["sa1_rotByGravity"]:
+			flags |= SA1SurfaceFlags.RotateByGravity
+		if p["sa1_noZWrite"]:
+			flags |= SA1SurfaceFlags.NoZWrite
+		if p["sa1_drawByMesh"]:
+			flags |= SA1SurfaceFlags.DrawByMesh
+		if p["sa1_enableManipulation"]:
+			flags |= SA1SurfaceFlags.EnableManipulation
+		if p["sa1_dynCollision"]:
+			flags |= SA1SurfaceFlags.DynamicCollision
+		if p["sa1_useRotation"]:
+			flags |= SA1SurfaceFlags.UseRotation
 		if p["isVisible"]:
 			flags |= SA1SurfaceFlags.Visible
-			if p["footprints"]:
-				flags |= SA1SurfaceFlags.Footprints
 
 		return flags
 
@@ -474,37 +499,36 @@ class ModelData:
 			return flags
 		p = self.saProps
 
-		if p["isCollision"]:
-			if p["solid"]:
-				flags |= SA2SurfaceFlags.Solid
-			if p["water"]:
-				flags |= SA2SurfaceFlags.Water
-			if p["standOnSlope"]:
-				flags |= SA2SurfaceFlags.StandOnSlope
-			if p["diggable"]:
-				flags |= SA2SurfaceFlags.Diggable
-			if p["unclimbable"]:
-				flags |= SA2SurfaceFlags.Unclimbable
-			if p["hurt"]:
-				flags |= SA2SurfaceFlags.Hurt
-			if p["footprints"]:
-				flags |= SA2SurfaceFlags.Footprints
-			if p["cannotLand"]:
-				flags |= SA2SurfaceFlags.CannotLand
-			if p["water2"]:
-				flags |= SA2SurfaceFlags.Water2
-			if p["unknown24"]:
-				flags |= SA2SurfaceFlags.Unknown24
-			if p["unknown29"]:
-				flags |= SA2SurfaceFlags.Unknown29
-			if p["unknown30"]:
-				flags |= SA2SurfaceFlags.Unknown30
+		if p["solid"]:
+			flags |= SA2SurfaceFlags.Solid
+		if p["sa2_water"]:
+			flags |= SA2SurfaceFlags.Water
+		if p["sa2_standOnSlope"]:
+			flags |= SA2SurfaceFlags.StandOnSlope
+		if p["sa2_diggable"]:
+			flags |= SA2SurfaceFlags.Diggable
+		if p["sa2_unclimbable"]:
+			flags |= SA2SurfaceFlags.Unclimbable
+		if p["sa2_hurt"]:
+			flags |= SA2SurfaceFlags.Hurt
+		if p["sa2_footprints"]:
+			flags |= SA2SurfaceFlags.Footprints
+		if p["sa2_cannotLand"]:
+			flags |= SA2SurfaceFlags.CannotLand
+		if p["sa2_water2"]:
+			flags |= SA2SurfaceFlags.Water2
+		if p["sa2_unknown24"]:
+			flags |= SA2SurfaceFlags.Unknown24
+		if p["sa2_unknown29"]:
+			flags |= SA2SurfaceFlags.Unknown29
+		if p["sa2_unknown30"]:
+			flags |= SA2SurfaceFlags.Unknown30
 		if p["isVisible"]:
 			flags |= SA2SurfaceFlags.Visible
-			if p["noShadows"]:
-				flags |= SA2SurfaceFlags.NoShadows
-			if p["noFog"]:
-				flags |= SA2SurfaceFlags.noFog
+		if p["sa2_noShadows"]:
+			flags |= SA2SurfaceFlags.NoShadows
+		if p["sa2_noFog"]:
+			flags |= SA2SurfaceFlags.noFog
 
 		return flags
 
@@ -1023,10 +1047,10 @@ def convertObjectData(context: bpy.types.Context,
 
 		for o in objects:
 			if o.origObject.type == 'MESH':
-				if o.saProps["isCollision"]:
+				if o.saProps["solid"]:
 					cObjects.append(o)
-				if not o.saProps["isCollision"] \
-						or o.saProps["isCollision"] \
+				if not o.saProps["solid"] \
+						or o.saProps["solid"] \
 						and o.saProps["isVisible"]:
 					vObjects.append(o)
 
@@ -1091,7 +1115,7 @@ def sortChildren(cObject: bpy.types.Object,
 	lastSibling = None
 	if cObject.type == 'MESH':
 		if lvl and fmt != 'SA1' \
-				and cObject.saSettings.isCollision \
+				and cObject.saSettings.solid \
 				and cObject.saSettings.isVisible:
 			model = ModelData(cObject,
 							  parent,
@@ -1110,24 +1134,24 @@ def sortChildren(cObject: bpy.types.Object,
 									False)
 			result.append(lastSibling)
 		else:
-			visible = True if not cObject.saSettings.isCollision \
+			visible = True if not cObject.saSettings.solid \
 						else cObject.saSettings.isVisible
 			model = ModelData(cObject,
 							  parent,
 							  hierarchyDepth,
 							  cObject.name,
 							  export_matrix,
-							  cObject.saSettings.isCollision,
+							  cObject.saSettings.solid,
 							  visible)
 	elif fmt == 'SA2' and not lvl and cObject.type == 'ARMATURE':
-		visible = True if not cObject.saSettings.isCollision \
+		visible = True if not cObject.saSettings.solid \
 					else cObject.saSettings.isVisible
 		model = Armature(cObject,
 						 parent,
 						 hierarchyDepth,
 						 cObject.name,
 						 export_matrix,
-						 cObject.saSettings.isCollision,
+						 cObject.saSettings.solid,
 						 visible)
 	else:
 		# everything that is not a mesh should be written as an empty
@@ -1220,7 +1244,7 @@ def getMeshes(meshesToConvert: List[ModelData],
 
 	for o in meshesToConvert:
 		obj = o.origObject
-		if not (o.saProps["isCollision"] and not o.saProps["isVisible"]):
+		if not (o.saProps["solid"] and not o.saProps["isVisible"]):
 			for m in obj.data.materials:
 				if m.name not in materials:
 					materials[m.name] = m
@@ -1606,8 +1630,8 @@ class Col:
 
 		address += 16
 		from . import __init__
-		from .__init__ import SAObjectSettings
-		saProps = SAObjectSettings.defaultDict()
+		from .__init__ import SALandEntrySettings
+		saProps = SALandEntrySettings.defaultDict()
 
 		if SA2:
 			objectPtr = fileR.rUInt(address)
@@ -1618,7 +1642,7 @@ class Col:
 
 			from .enums import SA2SurfaceFlags
 
-			saProps["sa2_solid"]\
+			saProps["solid"]\
 				= bool(f & SA2SurfaceFlags.Solid.value)
 			saProps["sa2_water"]\
 				= bool(f & SA2SurfaceFlags.Water.value)
@@ -1646,7 +1670,7 @@ class Col:
 				= bool(f & SA2SurfaceFlags.Unknown29.value)
 			saProps["sa2_unknown30"]\
 				= bool(f & SA2SurfaceFlags.Unknown30.value)
-			saProps["sa2_isVisible"]\
+			saProps["isVisible"]\
 				= bool(f & SA2SurfaceFlags.Visible.value)
 
 			saProps["userFlags"]\
@@ -1668,7 +1692,7 @@ class Col:
 			f = fileR.rUInt(address+16)
 			from .enums import SA1SurfaceFlags
 
-			saProps["sa1_solid"]\
+			saProps["solid"]\
 				= bool(f & SA1SurfaceFlags.Solid.value)
 			saProps["sa1_water"]\
 				= bool(f & SA1SurfaceFlags.Water.value)
@@ -1705,7 +1729,7 @@ class Col:
 			saProps["sa1_colWater"]\
 				= bool(f & SA1SurfaceFlags.WaterCollision.value)
 			saProps["sa1_rotByGravity"]\
-				= bool(f & SA1SurfaceFlags.RotationByGravity.value)
+				= bool(f & SA1SurfaceFlags.RotateByGravity.value)
 			saProps["sa1_noZWrite"]\
 				= bool(f & SA1SurfaceFlags.NoZWrite.value)
 			saProps["sa1_drawByMesh"]\

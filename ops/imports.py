@@ -43,7 +43,7 @@ class ImportMDL(bpy.types.Operator, ImportHelper):
 		)
 
 	def execute(self, context):
-		from . import file_MDL
+		from .. import file_MDL
 
 		path = os.path.dirname(self.filepath)
 		for f in self.files:
@@ -80,7 +80,7 @@ class ImportLVL(bpy.types.Operator, ImportHelper):
 			)
 
 	def execute(self, context):
-		from . import file_LVL
+		from .. import file_LVL
 
 		path = os.path.dirname(self.filepath)
 		for f in self.files:
@@ -225,7 +225,7 @@ class LoadAnimFile(bpy.types.Operator, ImportHelper):
 		return active.type == 'ARMATURE'
 
 	def execute(self, context):
-		from . import file_SAANIM
+		from .. import file_SAANIM
 		path = os.path.dirname(self.filepath)
 
 		#if context.active_object.animation_data == None:

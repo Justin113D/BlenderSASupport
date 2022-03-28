@@ -1,7 +1,7 @@
 import bpy
 import os
 import shutil
-from .. import common, setReader
+from .. import common, setReader, strippifier
 from bpy.props import (
 	BoolProperty,
 	FloatProperty,
@@ -27,7 +27,7 @@ def removeFile() -> None:
 		common.exportedFile = None
 
 def exportFile(op, outType, context, **keywords):
-
+	from .. import file_MDL, file_LVL
 	common.exportedFile = None
 
 	profile_output = keywords["profile_output"]
@@ -45,7 +45,7 @@ def exportFile(op, outType, context, **keywords):
 		elif outType == 'LVL':
 			out = file_LVL.write(context, **keywords)
 		elif outType == 'ANIM':
-			from . import file_SAANIM
+			from .. import file_SAANIM
 			out = file_SAANIM(keywords["filepath"], context.active_object)
 	except (strippifier.TopologyError, common.ExportError) as e:
 		op.report({'WARNING'}, "Export stopped!\n" + str(e))
@@ -118,7 +118,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
 		)
 
 	def execute(self, context):
-		from . import file_MDL
+		from .. import file_MDL
 		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
 		keywords["write_Specular"] = True
 		keywords["export_format"] = 'SA1'
@@ -178,7 +178,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
 		)
 
 	def execute(self, context):
-		from . import file_MDL
+		from .. import file_MDL
 		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
 		keywords["export_format"] = 'SA2'
 		return exportFile(self, 'MDL', context, **keywords)
@@ -232,7 +232,7 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
 		)
 
 	def execute(self, context):
-		from . import file_MDL
+		from .. import file_MDL
 		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
 		keywords["write_Specular"] = False
 		keywords["export_format"] = 'SA2B'
@@ -286,7 +286,7 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
 		)
 
 	def execute(self, context):
-		from . import file_LVL
+		from .. import file_LVL
 		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
 		keywords["write_Specular"] = True
 		keywords["export_format"] = 'SA1'
@@ -346,7 +346,7 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
 		)
 
 	def execute(self, context):
-		from . import file_LVL
+		from .. import file_LVL
 		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
 		keywords["export_format"] = 'SA2'
 		return exportFile(self, 'LVL', context, **keywords)
@@ -400,7 +400,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
 		)
 
 	def execute(self, context):
-		from . import file_LVL
+		from .. import file_LVL
 		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
 
 		keywords["write_Specular"] = False
@@ -474,6 +474,6 @@ class ExportAnim(bpy.types.Operator, ExportHelper):
 
 	def execute(self, context):
 		#return exportFile(self, 'ANIM', context, self.as_keywords())
-		from . import file_SAANIM
+		#from .. import file_SAANIM
 		file_SAANIM.write(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
 		return {'FINISHED'}

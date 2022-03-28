@@ -33,8 +33,6 @@ from .ops.imports import(
 	LoadAnimFile
 )
 
-
-
 # meta info
 bl_info = {
 	"name": "SA Model Formats support",
@@ -1244,13 +1242,19 @@ class SALandEntrySettings(bpy.types.PropertyGroup):
 		default="0"
 		)
 
-	# sa1 only
-	sa1_solid: BoolProperty(
+	solid: BoolProperty(
 		name="Solid",
 		description="Sets if the object has collision.",
 		default=True
 		)
 
+	isVisible: BoolProperty(
+		name="Visible",
+		description="Sets visbility of the object.",
+		default=False
+		)
+
+	# sa1 only
 	sa1_water: BoolProperty(
 		name="Water",
 		description="Water collision with transparency sorting.",
@@ -1388,20 +1392,8 @@ class SALandEntrySettings(bpy.types.PropertyGroup):
 		description="N/A",
 		default=False
 		)
-
-	sa1_isVisible: BoolProperty(
-		name="Visible",
-		description="Sets visbility of the object.",
-		default=False
-		)
 		
 	# sa2 only
-	sa2_solid: BoolProperty(
-		name="Solid",
-		description="Sets if the object has collision.",
-		default=True
-		)
-
 	sa2_water: BoolProperty(
 		name="Water",
 		description="Water collision.",
@@ -1480,93 +1472,145 @@ class SALandEntrySettings(bpy.types.PropertyGroup):
 		default=False
 		)
 
-	sa2_isVisible: BoolProperty(
-		name="Visible",
-		description="Sets visbility of the object.",
-		default=False
-		)
-
 	@classmethod
 	def defaultDict(cls) -> dict:
 		d = dict()
-		d["isCollision"] = False
-		d["solid"] = False
-		d["water"] = False
-		d["cannotLand"] = False
-		d["diggable"] = False
-		d["unclimbable"] = False
-		d["hurt"] = False
-		d["isVisible"] = False
-		d["userFlags"] = common.hex4(0)
+		d["solid"]						= False
+		d["isVisible"]					= False
+		
+		d["sa1_water"]					= False
+		d["sa1_noFriction"]				= False
+		d["sa1_noAcceleration"]			= False
+		d["sa1_lowAcceleration"]		= False
+		d["sa1_useSkyDrawDistance"]		= False
+		d["sa1_increasedAcceleration"]	= False
+		d["sa1_cannotLand"]				= False
+		d["sa1_diggable"]				= False
+		d["sa1_waterfall"]				= False
+		d["sa1_unclimbable"]			= False
+		d["sa1_chaos0Land"]				= False
+		d["sa1_stairs"]					= False
+		d["sa1_hurt"]					= False
+		d["sa1_lowDepth"]				= False
+		d["sa1_footprints"]				= False
+		d["sa1_accelerate"]				= False
+		d["sa1_colWater"]				= False
+		d["sa1_rotByGravity"]			= False
+		d["sa1_noZWrite"]				= False
+		d["sa1_drawByMesh"]				= False
+		d["sa1_enableManipulation"]		= False
+		d["sa1_dynCollision"]			= False
+		d["sa1_useRotation"]			= False
 
-		d["standOnSlope"] = False
-		d["water2"] = False
-		d["noShadows"] = False
-		d["noFog"] = False
-		d["unknown24"] = False
-		d["unknown29"] = False
-		d["unknown30"] = False
+		d["sa2_water"]					= False
+		d["sa2_diggable"]				= False
+		d["sa2_unclimbable"]			= False
+		d["sa2_stairs"]					= False
+		d["sa2_hurt"]					= False
+		d["sa2_footprints"]				= False
+		d["sa2_cannotLand"]				= False
+		d["sa2_water2"]					= False
+		d["sa2_noShadows"]				= False
+		d["sa2_noFog"]					= False
+		d["sa2_unknown24"]				= False
+		d["sa2_unknown29"]				= False
+		d["sa2_unknown30"]				= False
 
-		d["noFriction"] = False
-		d["noAcceleration"] = False
-		d["increasedAcceleration"] = False
-		d["footprints"] = False
+		d["userFlags"]					= common.hex4(0)
 		return d
 
 	def toDictionary(self) -> dict:
 		d = dict()
-		d["isCollision"] = self.isCollision
-		d["solid"] = self.solid
-		d["water"] = self.water
-		d["cannotLand"] = self.cannotLand
-		d["diggable"] = self.diggable
-		d["unclimbable"] = self.unclimbable
-		d["hurt"] = self.hurt
-		d["isVisible"] = self.isVisible
-		d["userFlags"] = self.userFlags
+		d["solid"]						= self.solid
+		d["isVisible"]					= self.isVisible
+		
+		d["sa1_water"]					= self.sa1_water
+		d["sa1_noFriction"]				= self.sa1_noFriction
+		d["sa1_noAcceleration"]			= self.sa1_noAcceleration
+		d["sa1_lowAcceleration"]		= self.sa1_lowAcceleration
+		d["sa1_useSkyDrawDistance"]		= self.sa1_useSkyDrawDistance
+		d["sa1_increasedAcceleration"]	= self.sa1_increasedAcceleration
+		d["sa1_cannotLand"]				= self.sa1_cannotLand
+		d["sa1_diggable"]				= self.sa1_diggable
+		d["sa1_waterfall"]				= self.sa1_waterfall
+		d["sa1_unclimbable"]			= self.sa1_unclimbable
+		d["sa1_chaos0Land"]				= self.sa1_chaos0Land
+		d["sa1_stairs"]					= self.sa1_stairs
+		d["sa1_hurt"]					= self.sa1_hurt
+		d["sa1_lowDepth"]				= self.sa1_lowDepth
+		d["sa1_footprints"]				= self.sa1_footprints
+		d["sa1_accelerate"]				= self.sa1_accelerate
+		d["sa1_colWater"]				= self.sa1_colWater
+		d["sa1_rotByGravity"]			= self.sa1_rotByGravity
+		d["sa1_noZWrite"]				= self.sa1_noZWrite
+		d["sa1_drawByMesh"]				= self.sa1_drawByMesh
+		d["sa1_enableManipulation"]		= self.sa1_enableManipulation
+		d["sa1_dynCollision"]			= self.sa1_dynCollision
+		d["sa1_useRotation"]			= self.sa1_useRotation
 
-		d["standOnSlope"] = self.standOnSlope
-		d["water2"] = self.water2
-		d["noShadows"] = self.noShadows
-		d["noFog"] = self.noFog
-		d["unknown24"] = self.unknown24
-		d["unknown29"] = self.unknown29
-		d["unknown30"] = self.unknown30
+		d["sa2_water"]					= self.sa2_water
+		d["sa2_diggable"]				= self.sa2_diggable
+		d["sa2_unclimbable"]			= self.sa2_unclimbable
+		d["sa2_stairs"]					= self.sa2_stairs
+		d["sa2_hurt"]					= self.sa2_hurt
+		d["sa2_footprints"]				= self.sa2_footprints
+		d["sa2_cannotLand"]				= self.sa2_cannotLand
+		d["sa2_water2"]					= self.sa2_water2
+		d["sa2_noShadows"]				= self.sa2_noShadows
+		d["sa2_noFog"]					= self.sa2_noFog
+		d["sa2_unknown24"]				= self.sa2_unknown24
+		d["sa2_unknown29"]				= self.sa2_unknown29
+		d["sa2_unknown30"]				= self.sa2_unknown30
 
-		d["noFriction"] = self.noFriction
-		d["noAcceleration"] = self.noAcceleration
-		d["increasedAcceleration"] = self.increasedAcceleration
-		d["footprints"] = self.footprints
-
-		d["blockbit"] = self.blockbit
+		d["userFlags"]					= self.userFlags
+		d["blockbit"]					= self.blockbit
 
 		return d
 
 	def fromDictionary(self, d: dict):
-		self.isCollision = d["isCollision"]
-		self.solid = d["solid"]
-		self.water = d["water"]
-		self.cannotLand = d["cannotLand"]
-		self.diggable = d["diggable"]
-		self.unclimbable = d["unclimbable"]
-		self.hurt = d["hurt"]
-		self.isVisible = d["isVisible"]
-		self.userFlags = d["userFlags"]
-		self.footprints = d["footprints"]
+		self.solid						= d["solid"]
+		self.isVisible					= d["isVisible"]
+		
+		self.sa1_water					= d["sa1_water"]
+		self.sa1_noFriction				= d["sa1_noFriction"] 
+		self.sa1_noAcceleration			= d["sa1_noAcceleration"] 
+		self.sa1_lowAcceleration		= d["sa1_lowAcceleration"] 
+		self.sa1_useSkyDrawDistance		= d["sa1_useSkyDrawDistance"] 
+		self.sa1_increasedAcceleration	= d["sa1_increasedAcceleration"] 
+		self.sa1_cannotLand				= d["sa1_cannotLand"] 
+		self.sa1_diggable				= d["sa1_diggable"] 
+		self.sa1_waterfall				= d["sa1_waterfall"] 
+		self.sa1_unclimbable			= d["sa1_unclimbable"] 
+		self.sa1_chaos0Land				= d["sa1_chaos0Land"] 
+		self.sa1_stairs					= d["sa1_stairs"] 
+		self.sa1_hurt					= d["sa1_hurt"] 
+		self.sa1_lowDepth				= d["sa1_lowDepth"] 
+		self.sa1_footprints				= d["sa1_footprints"] 
+		self.sa1_accelerate				= d["sa1_accelerate"] 
+		self.sa1_colWater				= d["sa1_colWater"] 
+		self.sa1_rotByGravity			= d["sa1_rotByGravity"] 
+		self.sa1_noZWrite				= d["sa1_noZWrite"] 
+		self.sa1_drawByMesh				= d["sa1_drawByMesh"] 
+		self.sa1_enableManipulation		= d["sa1_enableManipulation"] 
+		self.sa1_dynCollision			= d["sa1_dynCollision"] 
+		self.sa1_useRotation			= d["sa1_useRotation"] 
 
-		self.standOnSlope = d["standOnSlope"]
-		self.water2 = d["water2"]
-		self.noShadows = d["noShadows"]
-		self.noFog = d["noFog"]
-		self.unknown24 = d["unknown24"]
-		self.unknown29 = d["unknown29"]
-		self.unknown30 = d["unknown30"]
+		self.sa2_water					= d["sa2_water"] 
+		self.sa2_diggable				= d["sa2_diggable"] 
+		self.sa2_unclimbable			= d["sa2_unclimbable"] 
+		self.sa2_stairs					= d["sa2_stairs"] 
+		self.sa2_hurt					= d["sa2_hurt"] 
+		self.sa2_footprints				= d["sa2_footprints"] 
+		self.sa2_cannotLand				= d["sa2_cannotLand"] 
+		self.sa2_water2					= d["sa2_water2"] 
+		self.sa2_noShadows				= d["sa2_noShadows"] 
+		self.sa2_noFog					= d["sa2_noFog"] 
+		self.sa2_unknown24				= d["sa2_unknown24"] 
+		self.sa2_unknown29				= d["sa2_unknown29"] 
+		self.sa2_unknown30				= d["sa2_unknown30"] 
 
-		self.noFriction = d["noFriction"]
-		self.noAcceleration = d["noAcceleration"]
-		self.increasedAcceleration = d["increasedAcceleration"]
-
-		self.blockbit = d["blockbit"]
+		self.userFlags					= d["userFlags"] 
+		self.blockbit					= d["blockbit"]
 
 class SAMaterialSettings(bpy.types.PropertyGroup):
 	"""Hosts all of the material data necessary for exporting"""
@@ -2307,68 +2351,63 @@ def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = Fal
 
 	sProps = bpy.context.scene.saSettings
 
-	layout.prop(objProps, "isSA1")
-	layout.prop(objProps, "isSA2")
-
 	# sa1 flags
-	if (objProps.isSA1 or qe):
-		box = layout.box()
-		box.prop(menuProps, "expandedSA1obj",
-			icon="TRIA_DOWN" if menuProps.expandedSA1obj else "TRIA_RIGHT",
-			emboss = False
-			)
+	box = layout.box()
+	box.prop(menuProps, "expandedSA1obj",
+		icon="TRIA_DOWN" if menuProps.expandedSA1obj else "TRIA_RIGHT",
+		emboss = False
+		)
 
-		if menuProps.expandedSA1obj:
-			box.prop(objProps, "sa1_solid")
-			box.prop(objProps, "sa1_water")
-			box.prop(objProps, "sa1_noFriction")
-			box.prop(objProps, "sa1_noAcceleration")
-			box.prop(objProps, "sa1_lowAcceleration")
-			box.prop(objProps, "sa1_useSkyDrawDistance")
-			box.prop(objProps, "sa1_cannotLand")
-			box.prop(objProps, "sa1_increasedAcceleration")
-			box.prop(objProps, "sa1_diggable")
-			box.prop(objProps, "sa1_waterfall")
-			box.prop(objProps, "sa1_unclimbable")
-			box.prop(objProps, "sa1_chaos0Land")
-			box.prop(objProps, "sa1_stairs")
-			box.prop(objProps, "sa1_hurt")
-			box.prop(objProps, "sa1_lowDepth")
-			box.prop(objProps, "sa1_footprints")
-			box.prop(objProps, "sa1_accelerate")
-			box.prop(objProps, "sa1_colWater")
-			box.prop(objProps, "sa1_rotByGravity")
-			box.prop(objProps, "sa1_noZWrite")
-			box.prop(objProps, "sa1_drawByMesh")
-			box.prop(objProps, "sa1_eneableManipulation")
-			box.prop(objProps, "sa1_dynCollision")
-			box.prop(objProps, "sa1_useRotation")
-			box.prop(objProps, "sa1_isVisible")
+	if menuProps.expandedSA1obj:
+		box.prop(objProps, "solid")
+		box.prop(objProps, "sa1_water")
+		box.prop(objProps, "sa1_noFriction")
+		box.prop(objProps, "sa1_noAcceleration")
+		box.prop(objProps, "sa1_lowAcceleration")
+		box.prop(objProps, "sa1_useSkyDrawDistance")
+		box.prop(objProps, "sa1_cannotLand")
+		box.prop(objProps, "sa1_increasedAcceleration")
+		box.prop(objProps, "sa1_diggable")
+		box.prop(objProps, "sa1_waterfall")
+		box.prop(objProps, "sa1_unclimbable")
+		box.prop(objProps, "sa1_chaos0Land")
+		box.prop(objProps, "sa1_stairs")
+		box.prop(objProps, "sa1_hurt")
+		box.prop(objProps, "sa1_lowDepth")
+		box.prop(objProps, "sa1_footprints")
+		box.prop(objProps, "sa1_accelerate")
+		box.prop(objProps, "sa1_colWater")
+		box.prop(objProps, "sa1_rotByGravity")
+		box.prop(objProps, "sa1_noZWrite")
+		box.prop(objProps, "sa1_drawByMesh")
+		box.prop(objProps, "sa1_eneableManipulation")
+		box.prop(objProps, "sa1_dynCollision")
+		box.prop(objProps, "sa1_useRotation")
+		box.prop(objProps, "isVisible")
 
 	# sa2 flags
-	if (objProps.isSA2 or qe):
-		box = layout.box()
-		box.prop(menuProps, "expandedSA2obj",
-			icon="TRIA_DOWN" if menuProps.expandedSA2obj else "TRIA_RIGHT",
-			emboss = False
-			)
+	box = layout.box()
+	box.prop(menuProps, "expandedSA2obj",
+		icon="TRIA_DOWN" if menuProps.expandedSA2obj else "TRIA_RIGHT",
+		emboss = False
+		)
 
-		if menuProps.expandedSA2obj:
-			box.prop(objProps, "sa2_solid")
-			box.prop(objProps, "sa2_water")
-			box.prop(objProps, "sa2_diggable")
-			box.prop(objProps, "sa2_unclimbable")
-			box.prop(objProps, "sa2_standOnSlope")
-			box.prop(objProps, "sa2_hurt")
-			box.prop(objProps, "sa2_footprints")
-			box.prop(objProps, "sa2_cannotLand")
-			box.prop(objProps, "sa2_water2")
-			box.prop(objProps, "sa2_noShadows")
-			box.prop(objProps, "sa2_noFog")
-			box.prop(objProps, "sa2_unknown24")
-			box.prop(objProps, "sa2_unknown29")
-			box.prop(objProps, "sa2_unknown30")
-			box.prop(objProps, "sa2_isVisible")
+	if menuProps.expandedSA2obj:
+		box.prop(objProps, "solid")
+		box.prop(objProps, "sa2_water")
+		box.prop(objProps, "sa2_diggable")
+		box.prop(objProps, "sa2_unclimbable")
+		box.prop(objProps, "sa2_standOnSlope")
+		box.prop(objProps, "sa2_hurt")
+		box.prop(objProps, "sa2_footprints")
+		box.prop(objProps, "sa2_cannotLand")
+		box.prop(objProps, "sa2_water2")
+		box.prop(objProps, "sa2_noShadows")
+		box.prop(objProps, "sa2_noFog")
+		box.prop(objProps, "sa2_unknown24")
+		box.prop(objProps, "sa2_unknown29")
+		box.prop(objProps, "sa2_unknown30")
+		box.prop(objProps, "isVisible")
 
 	propAdv(layout, "Custom (hex):  0x", objProps, "userFlags", sProps, "obj_apply_userFlags", qe = qe)
 

@@ -214,10 +214,11 @@ def read(context: bpy.types.Context,
 
         for c in COLs:
             obj = c.toBlenderObject()
-            if c.saProps["isCollision"]:
-                cCollection.objects.link(obj)
+            if c.saProps["solid"]:
                 if c.saProps["isVisible"]:
                     vCollection.objects.link(obj)
+                else:
+                    cCollection.objects.link(obj)
             else:
                 vCollection.objects.link(obj)
 
