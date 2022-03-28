@@ -2,6 +2,17 @@ import bpy
 import os
 import shutil
 from . import common, setReader
+from .ops.export import (
+	ExportSA1MDL,
+	ExportSA2MDL,
+	ExportSA2BMDL,
+	ExportSA1LVL,
+	ExportSA2LVL,
+	ExportSA2BLVL,
+	ExportPAK,
+	ExportPVMX,
+	ExportAnim
+)
 from bpy.props import (
 	BoolProperty,
 	FloatProperty,
@@ -56,469 +67,6 @@ class TOPBAR_MT_SA_export(bpy.types.Menu):
 		layout.operator("export_scene.sa2blvl")
 
 # export operators
-def removeFile() -> None:
-	'''Removes the currently assigned temporary export file'''
-
-	# get the export file (its set from outside this script,
-	# so for some reason it only works with the __init__ in front of it)
-	fileW = common.exportedFile
-	# if the file is assigned, close and remove it
-	if fileW is not None:
-		fileW.close()
-		os.remove(fileW.filepath)
-		common.exportedFile = None
-
-def exportFile(op, outType, context, **keywords):
-
-	common.exportedFile = None
-
-	profile_output = keywords["profile_output"]
-	del keywords["profile_output"]
-
-	if profile_output:
-		import cProfile
-		import pstats
-		pr = cProfile.Profile()
-		pr.enable()
-
-	try:
-		if outType == 'MDL':
-			out = file_MDL.write(context, **keywords)
-		elif outType == 'LVL':
-			out = file_LVL.write(context, **keywords)
-		elif outType == 'ANIM':
-			from . import file_SAANIM
-			out = file_SAANIM(keywords["filepath"], context.active_object)
-	except (strippifier.TopologyError, common.ExportError) as e:
-		op.report({'WARNING'}, "Export stopped!\n" + str(e))
-		removeFile()
-		if profile_output:
-			pr.disable()
-		return {'CANCELLED'}
-	except Exception as e:
-		removeFile()
-		if profile_output:
-			pqr.disable()
-		raise e
-
-	filepath = keywords["filepath"]
-
-	if profile_output:
-		pr.disable()
-		prPath = filepath + ".profile"
-		if(os.path.isfile(prPath)):
-			os.remove(prPath)
-		with open(prPath, 'w') as prStream:
-			ps = pstats.Stats(pr, stream=prStream)
-			ps.sort_stats("cumulative").print_stats()
-
-	# moving and renaming the temporary file
-	# Note: this is also removing the file that existed before
-	fileW = common.exportedFile
-
-	if(os.path.isfile(filepath)):
-		os.remove(filepath)
-	shutil.move(fileW.filepath, filepath)
-
-	return {'FINISHED'}
-
-class ExportSA1MDL(bpy.types.Operator, ExportHelper):
-	"""Export objects into an SA1 model file"""
-	bl_idname = "export_scene.sa1mdl"
-	bl_label = "SA1 model (.sa1mdl)"
-	bl_options = {'PRESET', 'UNDO'}
-
-	filename_ext = ".sa1mdl"
-
-	filter_glob: StringProperty(
-		default="*.sa1mdl;",
-		options={'HIDDEN'},
-		)
-
-	use_selection: BoolProperty(
-		name="Selection Only",
-		description="Export selected objects only",
-		default=False,
-		)
-
-	apply_modifs: BoolProperty(
-		name="Apply Modifiers",
-		description="Apply active viewport modifiers",
-		default=True,
-		)
-
-	console_debug_output: BoolProperty(
-		name = "Console Output",
-		description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-		default = False,
-		)
-
-	profile_output: BoolProperty(
-		name = "Profiling output",
-		description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
-		default = False
-		)
-
-	def execute(self, context):
-		from . import file_MDL
-		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
-		keywords["write_Specular"] = True
-		keywords["export_format"] = 'SA1'
-		return exportFile(self, 'MDL', context, **keywords)
-
-	def draw(self, context):
-		layout: bpy.types.UILayout = self.layout
-		layout.alignment = 'RIGHT'
-
-		layout.prop(self, "use_selection")
-		layout.prop(self, "apply_modifs")
-		layout.separator()
-		layout.prop(self, "console_debug_output")
-		layout.prop(self, "profile_output")
-
-class ExportSA2MDL(bpy.types.Operator, ExportHelper):
-	"""Export objects into an SA2 model file"""
-	bl_idname = "export_scene.sa2mdl"
-	bl_label = "SA2 model (.sa2mdl)"
-	bl_options = {'PRESET', 'UNDO'}
-
-	filename_ext = ".sa2mdl"
-
-	filter_glob: StringProperty(
-		default="*.sa2mdl;",
-		options={'HIDDEN'},
-		)
-
-	write_Specular: BoolProperty(
-		name = "Write Specular",
-		description = "Write specular info to materials",
-		default = False
-		)
-
-	use_selection: BoolProperty(
-		name="Selection Only",
-		description="Export selected objects only",
-		default=False,
-		)
-
-	apply_modifs: BoolProperty(
-		name="Apply Modifiers",
-		description="Apply active viewport modifiers",
-		default=True,
-		)
-
-	console_debug_output: BoolProperty(
-		name = "Console Output",
-		description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-		default = False,
-		)
-
-	profile_output: BoolProperty(
-		name = "Profiling output",
-		description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
-		default = False
-		)
-
-	def execute(self, context):
-		from . import file_MDL
-		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
-		keywords["export_format"] = 'SA2'
-		return exportFile(self, 'MDL', context, **keywords)
-
-	def draw(self, context):
-		layout: bpy.types.UILayout = self.layout
-		layout.alignment = 'RIGHT'
-
-		layout.prop(self, "write_Specular")
-		layout.prop(self, "use_selection")
-		layout.prop(self, "apply_modifs")
-		layout.separator()
-		layout.prop(self, "console_debug_output")
-		layout.prop(self, "profile_output")
-
-class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
-	"""Export objects into an SA2B model file"""
-	bl_idname = "export_scene.sa2bmdl"
-	bl_label = "SA2B model (.sa2bmdl)"
-	bl_options = {'PRESET', 'UNDO'}
-
-	filename_ext = ".sa2bmdl"
-
-	filter_glob: StringProperty(
-		default="*.sa2bmdl;",
-		options={'HIDDEN'},
-		)
-
-	use_selection: BoolProperty(
-		name="Selection Only",
-		description="Export selected objects only",
-		default=False,
-		)
-
-	apply_modifs: BoolProperty(
-		name="Apply Modifiers",
-		description="Apply active viewport modifiers",
-		default=True,
-		)
-
-	console_debug_output: BoolProperty(
-		name = "Console Output",
-		description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-		default = False,
-		)
-
-	profile_output: BoolProperty(
-		name = "Profiling output",
-		description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
-		default = False
-		)
-
-	def execute(self, context):
-		from . import file_MDL
-		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
-		keywords["write_Specular"] = False
-		keywords["export_format"] = 'SA2B'
-		return exportFile(self, 'MDL', context, **keywords)
-
-	def draw(self, context):
-		layout: bpy.types.UILayout = self.layout
-		layout.alignment = 'RIGHT'
-
-		layout.prop(self, "use_selection")
-		layout.prop(self, "apply_modifs")
-		layout.separator()
-		layout.prop(self, "console_debug_output")
-		layout.prop(self, "profile_output")
-
-class ExportSA1LVL(bpy.types.Operator, ExportHelper):
-	"""Export scene into an SA1 level file"""
-	bl_idname = "export_scene.sa1lvl"
-	bl_label = "SA1 level (.sa1lvl)"
-	bl_options = {'PRESET', 'UNDO'}
-
-	filename_ext = ".sa1lvl"
-
-	filter_glob: StringProperty(
-		default="*.sa1lvl;",
-		options={'HIDDEN'},
-		)
-
-	use_selection: BoolProperty(
-		name="Selection Only",
-		description="Export selected objects only",
-		default=False,
-		)
-
-	apply_modifs: BoolProperty(
-		name="Apply Modifiers",
-		description="Apply active viewport modifiers",
-		default=True,
-		)
-
-	console_debug_output: BoolProperty(
-		name = "Console Output",
-		description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-		default = False,
-		)
-
-	profile_output: BoolProperty(
-		name = "Profiling output",
-		description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
-		default = False
-		)
-
-	def execute(self, context):
-		from . import file_LVL
-		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
-		keywords["write_Specular"] = True
-		keywords["export_format"] = 'SA1'
-		return exportFile(self, 'LVL', context, **keywords)
-
-	def draw(self, context):
-		layout: bpy.types.UILayout = self.layout
-		layout.alignment = 'RIGHT'
-
-		layout.prop(self, "use_selection")
-		layout.prop(self, "apply_modifs")
-		layout.separator()
-		layout.prop(self, "console_debug_output")
-		layout.prop(self, "profile_output")
-
-class ExportSA2LVL(bpy.types.Operator, ExportHelper):
-	"""Export scene into an SA2 level file"""
-	bl_idname = "export_scene.sa2lvl"
-	bl_label = "SA2 level (.sa2lvl)"
-	bl_options = {'PRESET', 'UNDO'}
-
-	filename_ext = ".sa2lvl"
-
-	filter_glob: StringProperty(
-		default="*.sa2lvl;",
-		options={'HIDDEN'},
-		)
-
-	write_Specular: BoolProperty(
-		name = "Write Specular",
-		description = "Write specular info to materials",
-		default = False
-		)
-
-	use_selection: BoolProperty(
-		name="Selection Only",
-		description="Export selected objects only",
-		default=False,
-		)
-
-	apply_modifs: BoolProperty(
-		name="Apply Modifiers",
-		description="Apply active viewport modifiers",
-		default=True,
-		)
-
-	console_debug_output: BoolProperty(
-		name = "Console Output",
-		description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-		default = False,
-		)
-
-	profile_output: BoolProperty(
-		name = "Profiling output",
-		description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
-		default = False
-		)
-
-	def execute(self, context):
-		from . import file_LVL
-		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
-		keywords["export_format"] = 'SA2'
-		return exportFile(self, 'LVL', context, **keywords)
-
-	def draw(self, context):
-		layout: bpy.types.UILayout = self.layout
-		layout.alignment = 'RIGHT'
-
-		layout.prop(self, "write_Specular")
-		layout.prop(self, "use_selection")
-		layout.prop(self, "apply_modifs")
-		layout.separator()
-		layout.prop(self, "console_debug_output")
-		layout.prop(self, "profile_output")
-
-class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
-	"""Export scene into an SA2B level file"""
-	bl_idname = "export_scene.sa2blvl"
-	bl_label = "SA2B level (.sa2blvl)"
-	bl_options = {'PRESET', 'UNDO'}
-
-	filename_ext = ".sa2blvl"
-
-	filter_glob: StringProperty(
-		default="*.sa2blvl;",
-		options={'HIDDEN'},
-		)
-
-	use_selection: BoolProperty(
-		name="Selection Only",
-		description="Export selected objects only",
-		default=False,
-		)
-
-	apply_modifs: BoolProperty(
-		name="Apply Modifiers",
-		description="Apply active viewport modifiers",
-		default=True,
-		)
-
-	console_debug_output: BoolProperty(
-		name = "Console Output",
-		description = "Shows exporting progress in Console (Slows down Exporting Immensely)",
-		default = False,
-		)
-
-	profile_output: BoolProperty(
-		name = "Profiling output",
-		description = "Records where the addon spends most of its time and writes it to a file next to the actual output file",
-		default = False
-		)
-
-	def execute(self, context):
-		from . import file_LVL
-		keywords = self.as_keywords(ignore=( "check_existing", "filter_glob"))
-
-		keywords["write_Specular"] = False
-		keywords["export_format"] = 'SA2B'
-		return exportFile(self, 'LVL', context, **keywords)
-
-	def draw(self, context):
-		layout: bpy.types.UILayout = self.layout
-		layout.alignment = 'RIGHT'
-
-		layout.prop(self, "use_selection")
-		layout.prop(self, "apply_modifs")
-		layout.separator()
-		layout.prop(self, "console_debug_output")
-		layout.prop(self, "profile_output")
-
-class ExportPAK(bpy.types.Operator, ExportHelper):
-	bl_idname = "export_texture.pak"
-	bl_label = "Export as PAK (SA2)"
-
-	def execute(self, context):
-		return {'FINISHED'}
-
-class ExportPVMX(bpy.types.Operator, ExportHelper):
-	bl_idname = "export_texture.pvmx"
-	bl_label = "Export as PVMX (SADX)"
-
-	def execute(self, context):
-		return {'FINISHED'}
-
-class ExportAnim(bpy.types.Operator, ExportHelper):
-	bl_idname = "object.export_anim"
-	bl_label = "Export anim"
-
-	filename_ext = ".json"
-
-	bakeAll: BoolProperty(
-		name = "Bake all keyframes",
-		description="Bakes all keyframes of the exported curves, instead of calculating only the necessary ones",
-		default=False
-		)
-
-	shortRot: BoolProperty(
-		name = "Short Rotation",
-		description="Save rotation values in a short, not an int. Required for chao anmimations",
-		default = False
-		)
-
-	bezierInterpolation: BoolProperty(
-		name = "Bezier Interpolation",
-		description = "Set keyframe interoplation mode to bezier",
-		default = False
-		)
-
-	currentTransforms: BoolProperty(
-		name = "Current Transforms",
-		description="If e.g. one of the 3 positional channels are not set in the animation, then use the current corresponding channel of the bone for that channel instead of a default value (always 0, except W in quaternions and scales which is 1)",
-		default=False
-		)
-
-	@classmethod
-	def poll(cls, context):
-		active = context.active_object
-		if active is None:
-			return False
-		if active.type != 'ARMATURE':
-			return False
-		if active.animation_data is None:
-			return False
-		return active.animation_data.action != None
-
-	def execute(self, context):
-		#return exportFile(self, 'ANIM', context, self.as_keywords())
-		from . import file_SAANIM
-		file_SAANIM.write(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
-		return {'FINISHED'}
 
 # import operators
 class ImportMDL(bpy.types.Operator, ImportHelper):
@@ -702,7 +250,7 @@ class LoadSetFile(bpy.types.Operator, ImportHelper):
 class LoadAnimFile(bpy.types.Operator, ImportHelper):
 	"""Loads animations from saanim files to a selected armature"""
 	bl_idname = "object.load_saanim"
-	bl_label = "Load Anim JSON file"
+	bl_label = "Import JSON Animation"
 	bl_description = "Loads JSON animation files to a selected armature"
 
 	filter_glob: StringProperty(
@@ -1115,14 +663,13 @@ def autotexUpdate(context, newValue):
 
 	# place texList into array for ease of reference
 	for t in texList:
-		print("Process Texlist")
+		#print("Process Texlist")
 		if t.image is not None:
-			t.name = os.path.splitext(t.image.name)[0]
 			copyTex.append(t.name)
 
 	# loop through all objects
 	for o in objects:
-		print("Checking Objects")
+		#print("Checking Objects")
 		if o.type == 'MESH':
 			# if mesh type, check material slots
 			for matslot in o.material_slots:
@@ -1133,23 +680,29 @@ def autotexUpdate(context, newValue):
 						# search valid materials for Texture Image input node
 						if n.type == 'TEX_IMAGE':
 							matname = os.path.splitext(str(n.image.name))[0]
-							index = copyTex.index(matname)
-							if index > -1:
-								# if updated index is > -1, update SA Material Texture ID
-								matProps.b_TextureID = index
-								print("Texture updated!")
-								found = True
+							if matname in texList:
+								#print("Found, " + matname)
+								index = copyTex.index(matname)
+								if index > -1:
+									# if updated index is > -1, update SA Material Texture ID
+									matProps.b_TextureID = index
+									#print("Texture updated!")
+									found = True
 			
 			# if Texture Image input cannot be found, check material name as backup.
 			if found == False:
 				for matslot in o.material_slots:
 					if matslot.material:
 						matname = matslot.material.name
-						index = copyTex.index(matname)
-						if index > -1:
-							# if updated index > -1, update SA Material Texture ID
-							matProps.b_TextureID = index
-							print("Texture updated!")
+						if matname in texList:
+							#print("Found, " + matname)
+							index = copyTex.index(matname)
+							if index > -1:
+								# if updated index > -1, update SA Material Texture ID
+								matProps.b_TextureID = index
+								#print("Texture updated!")
+						else:
+							print("Error! No matching texture for " + matname + "in object " + o.name)
 
 class AutoAssignTextures(bpy.types.Operator):
 	bl_idname = "scene.saautoassignmmd"
@@ -1186,167 +739,167 @@ class ToPrincipledBsdf(bpy.types.Operator):
 		return {'FINISHED'}
 
 class UpdateMaterials(bpy.types.Operator):
-    bl_idname = "scene.saupdatemats"
-    bl_label="Update Materials"
-    bl_description="Sets material nodetrees and variables of all selected objects to imitate how they would look in sadx/sa2"
+	bl_idname = "scene.saupdatemats"
+	bl_label="Update Materials"
+	bl_description="Sets material nodetrees and variables of all selected objects to imitate how they would look in sadx/sa2"
 
-    @classmethod
-    def addDriver(cls, inputSocket, scene, path, entry = -1):
-        #curve = inputSocket.driver_add("default_value")
-        #driver = curve.driver
-        #driver.type = 'AVERAGE'
-        #variable = driver.variables.new()
-        #variable.targets[0].id_type = 'SCENE'
-        #variable.targets[0].id = scene
-        #variable.targets[0].data_path = "saSettings." + path + ("" if entry == -1 else "[" + str(entry) + "]")
-        #curve.update()
-        inputSocket.default_value = getattr(scene.saSettings, path) if entry == -1 else getattr(scene.saSettings, path)[entry]
+	@classmethod
+	def addDriver(cls, inputSocket, scene, path, entry = -1):
+		#curve = inputSocket.driver_add("default_value")
+		#driver = curve.driver
+		#driver.type = 'AVERAGE'
+		#variable = driver.variables.new()
+		#variable.targets[0].id_type = 'SCENE'
+		#variable.targets[0].id = scene
+		#variable.targets[0].data_path = "saSettings." + path + ("" if entry == -1 else "[" + str(entry) + "]")
+		#curve.update()
+		inputSocket.default_value = getattr(scene.saSettings, path) if entry == -1 else getattr(scene.saSettings, path)[entry]
 
-    def execute(self, context):
-        # remove old trees
+	def execute(self, context):
+		# remove old trees
 
-        ng = bpy.data.node_groups
+		ng = bpy.data.node_groups
 
-        n = ng.find("UV Tiling")
-        if n > -1:
-            ng.remove(ng[n])
+		n = ng.find("UV Tiling")
+		if n > -1:
+			ng.remove(ng[n])
 
-        n = ng.find("SAShader")
-        if n > -1:
-            ng.remove(ng[n])
+		n = ng.find("SAShader")
+		if n > -1:
+			ng.remove(ng[n])
 
-        n = ng.find("EnvMap")
-        if n > -1:
-            ng.remove(ng[n])
+		n = ng.find("EnvMap")
+		if n > -1:
+			ng.remove(ng[n])
 
-        # now reload them them
-        directory = os.path.dirname(os.path.realpath(__file__)) + "\\Shaders.blend\\NodeTree\\"
-        bpy.ops.wm.append(filename="UV Tiling", directory=directory)
-        bpy.ops.wm.append(filename="SAShader", directory=directory)
-        bpy.ops.wm.append(filename="EnvMap", directory=directory)
+		# now reload them them
+		directory = os.path.dirname(os.path.realpath(__file__)) + "\\Shaders.blend\\NodeTree\\"
+		bpy.ops.wm.append(filename="UV Tiling", directory=directory)
+		bpy.ops.wm.append(filename="SAShader", directory=directory)
+		bpy.ops.wm.append(filename="EnvMap", directory=directory)
 
-        tilingGroup = ng[ng.find("UV Tiling")]
-        saShaderGroup = ng[ng.find("SAShader")]
-        envMapGroup = ng[ng.find("EnvMap")]
+		tilingGroup = ng[ng.find("UV Tiling")]
+		saShaderGroup = ng[ng.find("SAShader")]
+		envMapGroup = ng[ng.find("EnvMap")]
 
-        # Drivers dont update automatically when set like this, and i cant find a way to update them through python, so we'll just set them temporarily
-        nd = saShaderGroup.nodes
-        lightDirNode: bpy.types.ShaderNodeCombineXYZ = nd[nd.find("LightDir")]
-        lightColNode: bpy.types.ShaderNodeCombineRGB = nd[nd.find("LightCol")]
-        ambientColNode: bpy.types.ShaderNodeCombineRGB = nd[nd.find("AmbientCol")]
-        displSpecularNode: bpy.types.ShaderNodeValue = nd[nd.find("DisplSpecular")]
+		# Drivers dont update automatically when set like this, and i cant find a way to update them through python, so we'll just set them temporarily
+		nd = saShaderGroup.nodes
+		lightDirNode: bpy.types.ShaderNodeCombineXYZ = nd[nd.find("LightDir")]
+		lightColNode: bpy.types.ShaderNodeCombineRGB = nd[nd.find("LightCol")]
+		ambientColNode: bpy.types.ShaderNodeCombineRGB = nd[nd.find("AmbientCol")]
+		displSpecularNode: bpy.types.ShaderNodeValue = nd[nd.find("DisplSpecular")]
 
-        UpdateMaterials.addDriver(lightDirNode.inputs[0], context.scene, "LightDir", 0)
-        UpdateMaterials.addDriver(lightDirNode.inputs[1], context.scene, "LightDir", 1)
-        UpdateMaterials.addDriver(lightDirNode.inputs[2], context.scene, "LightDir", 2)
+		UpdateMaterials.addDriver(lightDirNode.inputs[0], context.scene, "LightDir", 0)
+		UpdateMaterials.addDriver(lightDirNode.inputs[1], context.scene, "LightDir", 1)
+		UpdateMaterials.addDriver(lightDirNode.inputs[2], context.scene, "LightDir", 2)
 
-        UpdateMaterials.addDriver(lightColNode.inputs[0], context.scene, "LightColor", 0)
-        UpdateMaterials.addDriver(lightColNode.inputs[1], context.scene, "LightColor", 1)
-        UpdateMaterials.addDriver(lightColNode.inputs[2], context.scene, "LightColor", 2)
+		UpdateMaterials.addDriver(lightColNode.inputs[0], context.scene, "LightColor", 0)
+		UpdateMaterials.addDriver(lightColNode.inputs[1], context.scene, "LightColor", 1)
+		UpdateMaterials.addDriver(lightColNode.inputs[2], context.scene, "LightColor", 2)
 
-        UpdateMaterials.addDriver(ambientColNode.inputs[0], context.scene, "LightAmbientColor", 0)
-        UpdateMaterials.addDriver(ambientColNode.inputs[1], context.scene, "LightAmbientColor", 1)
-        UpdateMaterials.addDriver(ambientColNode.inputs[2], context.scene, "LightAmbientColor", 2)
+		UpdateMaterials.addDriver(ambientColNode.inputs[0], context.scene, "LightAmbientColor", 0)
+		UpdateMaterials.addDriver(ambientColNode.inputs[1], context.scene, "LightAmbientColor", 1)
+		UpdateMaterials.addDriver(ambientColNode.inputs[2], context.scene, "LightAmbientColor", 2)
 
-        UpdateMaterials.addDriver(displSpecularNode.outputs[0], context.scene, "DisplaySpecular")
+		UpdateMaterials.addDriver(displSpecularNode.outputs[0], context.scene, "DisplaySpecular")
 
-        # The materials know whether the shader displays vertex colors based on the object color, its weird i know, but i didnt find any better way
-        import math
-        for o in context.scene.objects:
-            if o.type == 'MESH':
-                isNrm = o.data.saSettings.sa2ExportType == 'NRM'
-                r = o.color[0]
-                rc = bool(math.floor(r * 1000) % 2)
+		# The materials know whether the shader displays vertex colors based on the object color, its weird i know, but i didnt find any better way
+		import math
+		for o in context.scene.objects:
+			if o.type == 'MESH':
+				isNrm = o.data.saSettings.sa2ExportType == 'NRM'
+				r = o.color[0]
+				rc = bool(math.floor(r * 1000) % 2)
 
-                if isNrm and rc:
-                    r = (math.floor(r * 1000) + (1 if r < 1 else (-1))) / 1000.0
-                elif not isNrm and not rc:
-                    r = (math.floor(r * 1000) + ((-1) if r > 0 else 1)) / 1000.0
-                o.color[0] = r
+				if isNrm and rc:
+					r = (math.floor(r * 1000) + (1 if r < 1 else (-1))) / 1000.0
+				elif not isNrm and not rc:
+					r = (math.floor(r * 1000) + ((-1) if r > 0 else 1)) / 1000.0
+				o.color[0] = r
 
-        # now its time to set all of the materials
-        for m in bpy.data.materials:
-            #creating an settings nodes
-            mProps = m.saSettings
-            m.use_nodes = True
-            tree: bpy.types.NodeTree = m.node_tree
-            nodes = tree.nodes
-            nodes.clear()
+		# now its time to set all of the materials
+		for m in bpy.data.materials:
+			#creating an settings nodes
+			mProps = m.saSettings
+			m.use_nodes = True
+			tree: bpy.types.NodeTree = m.node_tree
+			nodes = tree.nodes
+			nodes.clear()
 
-            out = nodes.new("ShaderNodeOutputMaterial")
-            saShader = nodes.new("ShaderNodeGroup")
-            saShader.node_tree = saShaderGroup
+			out = nodes.new("ShaderNodeOutputMaterial")
+			saShader = nodes.new("ShaderNodeGroup")
+			saShader.node_tree = saShaderGroup
 
-            saShader.inputs[2].default_value = mProps.b_Diffuse
-            saShader.inputs[3].default_value = mProps.b_Diffuse[3]
-            saShader.inputs[4].default_value = mProps.b_ignoreLighting
+			saShader.inputs[2].default_value = mProps.b_Diffuse
+			saShader.inputs[3].default_value = mProps.b_Diffuse[3]
+			saShader.inputs[4].default_value = mProps.b_ignoreLighting
 
-            saShader.inputs[5].default_value = mProps.b_Specular
-            saShader.inputs[6].default_value = mProps.b_Specular[3]
-            saShader.inputs[7].default_value = mProps.b_Exponent
-            saShader.inputs[8].default_value = mProps.b_ignoreSpecular
+			saShader.inputs[5].default_value = mProps.b_Specular
+			saShader.inputs[6].default_value = mProps.b_Specular[3]
+			saShader.inputs[7].default_value = mProps.b_Exponent
+			saShader.inputs[8].default_value = mProps.b_ignoreSpecular
 
-            saShader.inputs[9].default_value = mProps.b_Ambient
-            saShader.inputs[10].default_value = mProps.b_Ambient[3]
-            saShader.inputs[11].default_value = mProps.b_ignoreAmbient
+			saShader.inputs[9].default_value = mProps.b_Ambient
+			saShader.inputs[10].default_value = mProps.b_Ambient[3]
+			saShader.inputs[11].default_value = mProps.b_ignoreAmbient
 
-            saShader.inputs[12].default_value = mProps.b_flatShading
+			saShader.inputs[12].default_value = mProps.b_flatShading
 
-            saShader.location = (-200, 0)
+			saShader.location = (-200, 0)
 
-            tree.links.new(out.inputs[0], saShader.outputs[0])
+			tree.links.new(out.inputs[0], saShader.outputs[0])
 
-            if mProps.b_useTexture:
-                try:
-                    img = context.scene.saSettings.textureList[mProps.b_TextureID]
-                except IndexError:
-                    img = None
+			if mProps.b_useTexture:
+				try:
+					img = context.scene.saSettings.textureList[mProps.b_TextureID]
+				except IndexError:
+					img = None
 
-                if img is not None:
-                    tex = nodes.new("ShaderNodeTexImage")
-                    tex.image = img.image
-                    tex.interpolation = 'Closest' if mProps.b_texFilter == 'POINT' else 'Smart'
-                    tex.location = (-500, 0)
-                    tree.links.new(tex.outputs[0], saShader.inputs[0])
-                    tree.links.new(tex.outputs[1], saShader.inputs[1])
+				if img is not None:
+					tex = nodes.new("ShaderNodeTexImage")
+					tex.image = img.image
+					tex.interpolation = 'Closest' if mProps.b_texFilter == 'POINT' else 'Smart'
+					tex.location = (-500, 0)
+					tree.links.new(tex.outputs[0], saShader.inputs[0])
+					tree.links.new(tex.outputs[1], saShader.inputs[1])
 
 
-                    uvNode = nodes.new("ShaderNodeGroup")
-                    if mProps.b_useEnv:
-                        uvNode.node_tree = envMapGroup
-                    else:
-                        uvNode.node_tree = tilingGroup
+					uvNode = nodes.new("ShaderNodeGroup")
+					if mProps.b_useEnv:
+						uvNode.node_tree = envMapGroup
+					else:
+						uvNode.node_tree = tilingGroup
 
-                        uvNode.inputs[1].default_value = mProps.b_mirrorV
-                        uvNode.inputs[2].default_value = mProps.b_mirrorU
-                        uvNode.inputs[3].default_value = mProps.b_clampV
-                        uvNode.inputs[4].default_value = mProps.b_clampU
+						uvNode.inputs[1].default_value = mProps.b_mirrorV
+						uvNode.inputs[2].default_value = mProps.b_mirrorU
+						uvNode.inputs[3].default_value = mProps.b_clampV
+						uvNode.inputs[4].default_value = mProps.b_clampU
 
-                        uvSrc = nodes.new("ShaderNodeUVMap")
-                        uvSrc.location = (-900, 0)
-                        tree.links.new(uvSrc.outputs[0], uvNode.inputs[0])
-                    tree.links.new(uvNode.outputs[0], tex.inputs[0])
-                    uvNode.location = (-700, 0)
-                else:
-                    saShader.inputs[0].default_value = (1,0,1,1)
+						uvSrc = nodes.new("ShaderNodeUVMap")
+						uvSrc.location = (-900, 0)
+						tree.links.new(uvSrc.outputs[0], uvNode.inputs[0])
+					tree.links.new(uvNode.outputs[0], tex.inputs[0])
+					uvNode.location = (-700, 0)
+				else:
+					saShader.inputs[0].default_value = (1,0,1,1)
 
-            if mProps.b_useAlpha:
-                m.blend_method = context.scene.saSettings.viewportAlphaType
-                m.alpha_threshold = context.scene.saSettings.viewportAlphaCutoff
-            else:
-                m.blend_method = 'OPAQUE'
-            m.shadow_method = 'NONE'
-            m.use_backface_culling = not mProps.b_doubleSided
+			if mProps.b_useAlpha:
+				m.blend_method = context.scene.saSettings.viewportAlphaType
+				m.alpha_threshold = context.scene.saSettings.viewportAlphaCutoff
+			else:
+				m.blend_method = 'OPAQUE'
+			m.shadow_method = 'NONE'
+			m.use_backface_culling = not mProps.b_doubleSided
 
-        # setting the color management
-        context.scene.display_settings.display_device = 'sRGB'
-        context.scene.view_settings.view_transform = 'Standard'
-        context.scene.view_settings.look = 'None'
-        context.scene.view_settings.exposure = 0
-        context.scene.view_settings.gamma = 1
-        context.scene.sequencer_colorspace_settings.name = 'sRGB'
-        context.scene.view_settings.use_curve_mapping = False
-        return {'FINISHED'}
+		# setting the color management
+		context.scene.display_settings.display_device = 'sRGB'
+		context.scene.view_settings.view_transform = 'Standard'
+		context.scene.view_settings.look = 'None'
+		context.scene.view_settings.exposure = 0
+		context.scene.view_settings.gamma = 1
+		context.scene.sequencer_colorspace_settings.name = 'sRGB'
+		context.scene.view_settings.use_curve_mapping = False
+		return {'FINISHED'}
 
 class MatToAssetLibrary(bpy.types.Operator):
 	bl_idname = "scene.samatslib"
@@ -1479,7 +1032,7 @@ def qeUpdate(context, newValue):
 		for o in objects:
 
 			objProps = o.saSettings
-			for k, v in SAObjectSettings.defaultDict().items():
+			for k, v in SALandEntrySettings.defaultDict().items():
 				if isinstance(v, bool) and getattr(qEditSettings.objQProps, k):
 					setattr(objProps, k, newValue)
 
@@ -1556,7 +1109,7 @@ class qeReset(bpy.types.Operator):
 
 		if menuProps.useObjEdit:
 			objProps = context.scene.saSettings.objQProps
-			for k, v in SAObjectSettings.defaultDict().items():
+			for k, v in SALandEntrySettings.defaultDict().items():
 				if isinstance(v, bool):
 					setattr(objProps, k, False)
 
@@ -1599,7 +1152,7 @@ class qeInvert(bpy.types.Operator):
 
 		if menuProps.useObjEdit:
 			objProps = context.scene.saSettings.objQProps
-			for k, v in SAObjectSettings.defaultDict().items():
+			for k, v in SALandEntrySettings.defaultDict().items():
 				if isinstance(v, bool):
 					setattr(objProps, k, not getattr(objProps, k))
 
@@ -1630,7 +1183,7 @@ class SASettings(bpy.types.PropertyGroup):
 		)
 
 	texFileName: StringProperty(
-		name="Tex-File name",
+		name="Texture Filename",
 		description="The name of the texture file specified in the landtable info (lvl format)",
 		default=""
 		)
@@ -1654,7 +1207,7 @@ class SASettings(bpy.types.PropertyGroup):
 		)
 
 	doubleSidedCollision: BoolProperty(
-		name="Double sided collision",
+		name="Double-Sided Collision",
 		description="Enables double sided collision detection. This is supposed to be used as a failsafe for people unexperienced with how normals work",
 		default=False
 		)
@@ -1724,10 +1277,24 @@ class SASettings(bpy.types.PropertyGroup):
 		default=0.5
 		)
 
+	ToolsPath: StringProperty(
+		name="SA Tools Folder: ",
+		description="Path to the SA Tools root folder.",
+		default="",
+		subtype='DIR_PATH'
+		)
+
+	ProjectPath: StringProperty(
+		name="SA Project File: ",
+		description="Sets a Project File (*.sap) file.",
+		default="",
+		subtype='FILE_PATH'
+		)
+
 	#panel stuff
-	expandedLTPanel: BoolProperty( name="Landtable data", default=False )
-	expandedTexturePanel: BoolProperty( name="Texture list", default=False )
-	expandedLightingPanel: BoolProperty( name="Lighting data", default=False )
+	expandedLTPanel: BoolProperty( name="Landtable Info", default=False )
+	expandedTexturePanel: BoolProperty( name="Texture List Info", default=False )
+	expandedLightingPanel: BoolProperty( name="Lighting Data", default=False )
 
 	expandedQEPanel: BoolProperty( name="Quick Edit", default=False )
 
@@ -1742,14 +1309,14 @@ class SASettings(bpy.types.PropertyGroup):
 		default=False
 		)
 
-	useObjEdit: BoolProperty(
-		name ="Activate Quick Object Edit",
+	useLandEntryEdit: BoolProperty(
+		name ="Activate Quick LandEntry Edit",
 		description="When active, the Buttons will use and apply the object properties",
 		default=False
 		)
-	expandedObjEdit: BoolProperty(
-		name ="Object Quick Edit",
-		description="A menu for quickly assigning object properties to mutliple objects",
+	expandedLandEntryEdit: BoolProperty(
+		name ="LandEntry Quick Edit",
+		description="A menu for quickly assigning LandEntry properties to mutliple objects",
 		default=False)
 
 	useMeshEdit: BoolProperty(
@@ -1868,61 +1435,25 @@ class SAEditPanelSettings(bpy.types.PropertyGroup):
 	expandedSA1obj: BoolProperty( name ="Object SA1 Properties", default=False)
 	expandedSA2obj: BoolProperty( name ="Object SA2 Properties", default=False)
 
-class SAObjectSettings(bpy.types.PropertyGroup):
+class SALandEntrySettings(bpy.types.PropertyGroup):
 	"""hosts all properties to edit the surface flags of a COL"""
-	# used in both
-	isCollision: BoolProperty(
-		name="Is Collision",
-		description="Whether the object can be collided with at all. \n Also determines whether the mesh is invisible in sa2",
+
+	isSA1: BoolProperty(
+		name="SA1 LandEntry Object",
+		description="Enables SA1 LandEntry Flags.",
 		default=False
 		)
 
-	solid: BoolProperty(
-		name="Solid",
-		description="Whether the character can collide with the model",
-		default=True
-		)
-
-	water: BoolProperty(
-		name="Water",
-		description="The model will act like water",
+	isSA2: BoolProperty(
+		name="SA2 LandEntry Object",
+		description="Enables SA2 LandEntry Flags.",
 		default=False
 		)
-
-	cannotLand: BoolProperty(
-		name="Cannot land",
-		description="Whether you can stand on the model",
-		default=False
-		)
-
-	diggable: BoolProperty(
-		name="Diggable",
-		description="Whether the treasure hunter characters can dig on the models surface",
-		default=False
-		)
-
-	unclimbable: BoolProperty(
-		name="Unclimbable",
-		description="Whether the treasure hunter characters can climb on the models surface",
-		default=False
-		)
-
-	footprints: BoolProperty(
-		name="Footprints",
-		description="The character will leave footprints behind when walking on this models surface",
-		default=False
-		)
-
-	hurt: BoolProperty(
-		name="Hurt",
-		description="The character will take damage when coming in contact with this model",
-		default=False
-		)
-
-	isVisible: BoolProperty(
-		name="isVisible",
-		description="Whether the model is Visible (only matters in sa1)",
-		default=False
+	
+	blockbit: StringProperty(
+		name="Blockbit (hex)",
+		description="BitFlags for LandEntry Objects",
+		default="0"
 		)
 
 	userFlags: StringProperty(
@@ -1931,76 +1462,247 @@ class SAObjectSettings(bpy.types.PropertyGroup):
 		default="0"
 		)
 
-	# sa2 only
+	# sa1 only
+	sa1_solid: BoolProperty(
+		name="Solid",
+		description="Sets if the object has collision.",
+		default=True
+		)
 
-	standOnSlope: BoolProperty(
-		name="Stand on slope",
-		description="Whether the character wont slide down when standing on stairs",
+	sa1_water: BoolProperty(
+		name="Water",
+		description="Water collision with transparency sorting.",
+		default=False
+		)
+		
+	sa1_noFriction: BoolProperty(
+		name="No Friction",
+		description="Disable friction on object.",
 		default=False
 		)
 
-	water2: BoolProperty(
+	sa1_noAcceleration: BoolProperty(
+		name="No Acceleration",
+		description="Object will reset character acceleration on contact.",
+		default=False
+		)
+		
+	sa1_lowAcceleration: BoolProperty(
+		name="Low Acceleration",
+		description="Lower Acceleration for character.",
+		default=False
+		)
+		
+	sa1_useSkyDrawDistance: BoolProperty(
+		name="Use Sky Draw Distance",
+		description="Forces the object to use the Sky Draw Distance.",
+		default=False
+		)
+
+	sa1_increasedAcceleration: BoolProperty(
+		name="Increased acceleration",
+		description="Increases acceleration of the character on interaction.",
+		default=False
+		)
+
+	sa1_cannotLand: BoolProperty(
+		name="Cannot Land",
+		description="Disables the ability to stand on the object.",
+		default=False
+		)
+
+	sa1_diggable: BoolProperty(
+		name="Diggable",
+		description="Allows Knuckles to dig on the object.",
+		default=False
+		)
+		
+	sa1_waterfall: BoolProperty(
+		name="Waterfall",
+		description="N/A",
+		default=False
+		)
+
+	sa1_unclimbable: BoolProperty(
+		name="Unclimbable",
+		description="Disables Knuckles ability to climb on the object.",
+		default=False
+		)
+		
+	sa1_chaos0Land: BoolProperty(
+		name="Chaos 0 Deload",
+		description="Used to load/deload geometry based on if Chaos 0 is on a flagpole in his boss fight.",
+		default=False
+		)
+	
+	sa1_stairs: BoolProperty(
+		name="Stairs",
+		description="Treats a slope as a flat surface to walk up or down on.",
+		default=False
+		)
+		
+	sa1_hurt: BoolProperty(
+		name="Hurt",
+		description="Damages the player on contact.",
+		default=False
+		)
+		
+	sa1_lowDepth: BoolProperty(
+		name="Low Depth",
+		description="Places the model earlier in the draw queue for transparency sorting.",
+		default=False
+		)
+
+	sa1_footprints: BoolProperty(
+		name="Footprints",
+		description="Player will leave footprints on the object.",
+		default=False
+		)
+
+	sa1_accelerate: BoolProperty(
+		name="Accelerate",
+		description="N/A",
+		default=False
+		)
+		
+	sa1_colWater: BoolProperty(
+		name="Water Collision",
+		description="Water collision without transparency sorting.",
+		default=False
+		)
+		
+	sa1_rotByGravity: BoolProperty(
+		name="Rotate By Gravity",
+		description="N/A",
+		default=False
+		)
+
+	sa1_noZWrite: BoolProperty(
+		name="No Z Writing",
+		description="Disables Z Writing for rendering the mesh in-game.",
+		default=False
+		)
+		
+	sa1_drawByMesh: BoolProperty(
+		name="Draw By Mesh",
+		description="N/A",
+		default=False
+		)
+		
+	sa1_enableManipulation: BoolProperty(
+		name="Enable Manipulation",
+		description="N/A",
+		default=False
+		)
+		
+	sa1_dynCollision: BoolProperty(
+		name="Dynamic Collision",
+		description="Sets Collision for moving objects.",
+		default=False
+		)
+
+	sa1_useRotation: BoolProperty(
+		name="Use Rotation",
+		description="N/A",
+		default=False
+		)
+
+	sa1_isVisible: BoolProperty(
+		name="Visible",
+		description="Sets visbility of the object.",
+		default=False
+		)
+		
+	# sa2 only
+	sa2_solid: BoolProperty(
+		name="Solid",
+		description="Sets if the object has collision.",
+		default=True
+		)
+
+	sa2_water: BoolProperty(
+		name="Water",
+		description="Water collision.",
+		default=False
+		)
+		
+	sa2_diggable: BoolProperty(
+		name="Diggable",
+		description="Allows Treasure Hunting characters to dig on the object.",
+		default=False
+		)
+		
+	sa2_unclimbable: BoolProperty(
+		name="Unclimbable",
+		description="Determines if Treasure Hunting characters can climb on the object.",
+		default=False
+		)
+		
+	sa2_stairs: BoolProperty(
+		name="Stairs",
+		description="Treats a slope as a flat surface to walk up or down on.",
+		default=False
+		)
+		
+	sa2_hurt: BoolProperty(
+		name="Hurt",
+		description="Damages the player on contact.",
+		default=False
+		)
+		
+	sa2_footprints: BoolProperty(
+		name="Footprints",
+		description="Player will leave footprints on the object.",
+		default=False
+		)
+
+	sa2_cannotLand: BoolProperty(
+		name="Cannot Land",
+		description="Disables the ability to stand on the object.",
+		default=False
+		)
+		
+	sa2_water2: BoolProperty(
 		name="Water 2",
 		description="The same as water, but different!",
 		default=False
 		)
 
-	noShadows: BoolProperty(
-		name="No shadows",
-		description="No shadows will be displayed on mesh",
+	sa2_noShadows: BoolProperty(
+		name="No Shadows",
+		description="Shadows will not render on the object.",
 		default=False
 		)
 
-	noFog: BoolProperty(
-		name="No fog",
-		description="Disables fog for this object",
+	sa2_noFog: BoolProperty(
+		name="No Fog",
+		description="Disables Fog on the object.",
 		default=False
 		)
 
-	unknown24: BoolProperty(
+	sa2_unknown24: BoolProperty(
 		name="Unknown 24",
-		description="No idea what this does",
+		description="N/A",
 		default=False
 		)
 
-	unknown29: BoolProperty(
+	sa2_unknown29: BoolProperty(
 		name="Unknown 29",
-		description="No idea what this does",
+		description="N/A",
 		default=False
 		)
 
-	unknown30: BoolProperty(
+	sa2_unknown30: BoolProperty(
 		name="Unknown 30",
-		description="No idea what this does",
+		description="N/A",
 		default=False
 		)
 
-	blockbit: StringProperty(
-		name="Blockbit (hex)",
-		description="Bitflags of an SA2 Landentry",
-		default="0"
-	)
-
-	# sa1 only
-
-	noFriction: BoolProperty(
-		name="No friction",
-		description="Whether the model has friction",
+	sa2_isVisible: BoolProperty(
+		name="Visible",
+		description="Sets visbility of the object.",
 		default=False
 		)
-
-	noAcceleration: BoolProperty(
-		name="no acceleration",
-		description="If the acceleration of the character should stay when interacting with the model",
-		default=False
-		)
-
-	increasedAcceleration: BoolProperty(
-		name="Increased acceleration",
-		description="Whether the acceleration of the character should be raised when interacting with the model",
-		default=False
-		)
-
 
 	@classmethod
 	def defaultDict(cls) -> dict:
@@ -2689,7 +2391,7 @@ class SATexture(bpy.types.PropertyGroup):
 		default=0,
 		)
 
-# panels
+# special panel draw functions
 def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):
 	'''For quick edit properties, to put simply'''
 
@@ -2819,64 +2521,72 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
 			else: #SRTG
 				propAdv(box, "Source:", matProps, "gc_texGenSourceSRTG", sProps, "gc_apply_src", qe = qe)
 
-def drawObjectPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = False):
+def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = False):
 
 	sProps = bpy.context.scene.saSettings
 
-	layout.prop(objProps, "isCollision")
-	if objProps.isCollision:
-		layout.prop(objProps, "isVisible")
+	layout.prop(objProps, "isSA1")
+	layout.prop(objProps, "isSA2")
 
 	# sa1 flags
-	box = layout.box()
-	box.prop(menuProps, "expandedSA1obj",
-		icon="TRIA_DOWN" if menuProps.expandedSA1obj else "TRIA_RIGHT",
-		emboss = False
-		)
+	if (objProps.isSA1 or qe):
+		box = layout.box()
+		box.prop(menuProps, "expandedSA1obj",
+			icon="TRIA_DOWN" if menuProps.expandedSA1obj else "TRIA_RIGHT",
+			emboss = False
+			)
 
-	if menuProps.expandedSA1obj and (objProps.isCollision or qe):
-		box.prop(objProps, "solid")
-		box.prop(objProps, "water")
-		box.prop(objProps, "noFriction")
-		box.prop(objProps, "noAcceleration")
-		box.prop(objProps, "cannotLand")
-		box.prop(objProps, "increasedAcceleration")
-		box.prop(objProps, "diggable")
-		box.prop(objProps, "unclimbable")
-		box.prop(objProps, "hurt")
-
-	if menuProps.expandedSA1obj and ((not objProps.isCollision or objProps.isCollision and objProps.isVisible) or qe):
-		box.prop(objProps, "footprints")
+		if menuProps.expandedSA1obj:
+			box.prop(objProps, "sa1_solid")
+			box.prop(objProps, "sa1_water")
+			box.prop(objProps, "sa1_noFriction")
+			box.prop(objProps, "sa1_noAcceleration")
+			box.prop(objProps, "sa1_lowAcceleration")
+			box.prop(objProps, "sa1_useSkyDrawDistance")
+			box.prop(objProps, "sa1_cannotLand")
+			box.prop(objProps, "sa1_increasedAcceleration")
+			box.prop(objProps, "sa1_diggable")
+			box.prop(objProps, "sa1_waterfall")
+			box.prop(objProps, "sa1_unclimbable")
+			box.prop(objProps, "sa1_chaos0Land")
+			box.prop(objProps, "sa1_stairs")
+			box.prop(objProps, "sa1_hurt")
+			box.prop(objProps, "sa1_lowDepth")
+			box.prop(objProps, "sa1_footprints")
+			box.prop(objProps, "sa1_accelerate")
+			box.prop(objProps, "sa1_colWater")
+			box.prop(objProps, "sa1_rotByGravity")
+			box.prop(objProps, "sa1_noZWrite")
+			box.prop(objProps, "sa1_drawByMesh")
+			box.prop(objProps, "sa1_eneableManipulation")
+			box.prop(objProps, "sa1_dynCollision")
+			box.prop(objProps, "sa1_useRotation")
+			box.prop(objProps, "sa1_isVisible")
 
 	# sa2 flags
+	if (objProps.isSA2 or qe):
+		box = layout.box()
+		box.prop(menuProps, "expandedSA2obj",
+			icon="TRIA_DOWN" if menuProps.expandedSA2obj else "TRIA_RIGHT",
+			emboss = False
+			)
 
-	box = layout.box()
-	box.prop(menuProps, "expandedSA2obj",
-		icon="TRIA_DOWN" if menuProps.expandedSA2obj else "TRIA_RIGHT",
-		emboss = False
-		)
-
-	if menuProps.expandedSA2obj and (objProps.isCollision or qe):
-		box.prop(objProps, "solid")
-		box.prop(objProps, "water")
-		box.prop(objProps, "standOnSlope")
-		box.prop(objProps, "diggable")
-		box.prop(objProps, "unclimbable")
-		box.prop(objProps, "footprints")
-		box.prop(objProps, "hurt")
-		box.prop(objProps, "cannotLand")
-		box.prop(objProps, "water2")
-
-	if menuProps.expandedSA2obj and ((not objProps.isCollision or objProps.isCollision and objProps.isVisible) or qe):
-		box.prop(objProps, "noShadows")
-		box.prop(objProps, "noFog")
-
-	if menuProps.expandedSA2obj and (objProps.isCollision or qe):
-		box.separator()
-		box.label(text="Experimental")
-		box.prop(objProps, "unknown24")
-		box.prop(objProps, "unknown29")
-		box.prop(objProps, "unknown30")
+		if menuProps.expandedSA2obj:
+			box.prop(objProps, "sa2_solid")
+			box.prop(objProps, "sa2_water")
+			box.prop(objProps, "sa2_diggable")
+			box.prop(objProps, "sa2_unclimbable")
+			box.prop(objProps, "sa2_standOnSlope")
+			box.prop(objProps, "sa2_hurt")
+			box.prop(objProps, "sa2_footprints")
+			box.prop(objProps, "sa2_cannotLand")
+			box.prop(objProps, "sa2_water2")
+			box.prop(objProps, "sa2_noShadows")
+			box.prop(objProps, "sa2_noFog")
+			box.prop(objProps, "sa2_unknown24")
+			box.prop(objProps, "sa2_unknown29")
+			box.prop(objProps, "sa2_unknown30")
+			box.prop(objProps, "sa2_isVisible")
 
 	propAdv(layout, "Custom (hex):  0x", objProps, "userFlags", sProps, "obj_apply_userFlags", qe = qe)
 
@@ -2895,60 +2605,6 @@ class SCENE_UL_SATexList(bpy.types.UIList):
 		split.prop(item, "name", text="", emboss=False, icon_value=icon, icon= 'X' if item.image == None else 'CHECKMARK')
 		split.prop(item, "globalID", text=str(index), emboss=False, icon_value=icon)
 
-class SAObjectPanel(bpy.types.Panel):
-	bl_idname = "OBJECT_PT_saProperties"
-	bl_label = "SA Object Properties"
-	bl_space_type = 'PROPERTIES'
-	bl_region_type = 'WINDOW'
-	bl_context = "object"
-
-	@classmethod
-	def poll(cls, context):
-		return context.active_object.type == 'MESH'
-
-	def draw(self, context):
-		layout = self.layout
-		objProps = context.active_object.saSettings
-		menuProps = context.scene.saSettings.editorSettings
-
-		drawObjectPanel(layout, menuProps, objProps)
-
-class SAMeshPanel(bpy.types.Panel):
-	bl_idname = "MESH_PT_saProperties"
-	bl_label = "SA Mesh Properties"
-	bl_space_type = 'PROPERTIES'
-	bl_region_type = 'WINDOW'
-	bl_context = "data"
-
-	@classmethod
-	def poll(cls, context):
-		return context.active_object.type == 'MESH'
-
-	def draw(self, context):
-		layout = self.layout
-		meshprops = context.active_object.data.saSettings
-
-		drawMeshPanel(layout, meshprops)
-
-class SAMaterialPanel(bpy.types.Panel):
-	bl_idname = "MATERIAL_PT_saProperties"
-	bl_label = "SA Material Properties"
-	bl_space_type = 'PROPERTIES'
-	bl_region_type = 'WINDOW'
-	bl_context = "material"
-
-
-	@classmethod
-	def poll(cls, context):
-		return (context.active_object.active_material is not None)
-
-	def draw(self, context):
-		layout = self.layout
-		menuProps = context.scene.saSettings.editorSettings
-		matProps = context.active_object.active_material.saSettings
-
-		drawMaterialPanel(layout, menuProps, matProps)
-
 class SCENE_MT_Texture_Context_Menu(bpy.types.Menu):
 	bl_label = "Texture list specials"
 
@@ -2965,12 +2621,51 @@ class SCENE_MT_Texture_Context_Menu(bpy.types.Menu):
 		layout.operator(ExportPVMX.bl_idname)
 		layout.operator(ExportPAK.bl_idname)
 
-class SAScenePanel(bpy.types.Panel):
-	bl_idname = "SCENE_PT_saProperties"
-	bl_label = "SA file info"
+class MATERIAL_UL_saMaterialSlots(bpy.types.UIList):
+	# Draws a secondary Material Slots Viewer in the SA Materials Properties Panel
+	def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
+		ob = data
+		slot = item
+		mat = slot.material
+
+		layout.prop(mat, "name", text="", emboss=False, icon_value=icon)
+
+# panel spaces
+class SA_UI_Panel:				## Viewport UI Panel
+	bl_space_type = "VIEW_3D"
+	bl_region_type = "UI"
+	bl_category = "SA Tools"
+
+class SA_Scene_Panel:			## Scene Panel Info
 	bl_space_type = 'PROPERTIES'
 	bl_region_type = 'WINDOW'
 	bl_context = "scene"
+
+class SA_Tool_Panel:			## Active Tool Panel
+	bl_space_type = 'PROPERTIES'
+	bl_region_type = 'WINDOW'
+	bl_category = 'Tool'
+
+class SA_Object_Panel:			## Object Panel
+	bl_space_type = 'PROPERTIES'
+	bl_region_type = 'WINDOW'
+	bl_context = "object"
+
+class SA_Model_Panel:			## Mesh Panel
+	bl_space_type = 'PROPERTIES'
+	bl_region_type = 'WINDOW'
+	bl_context = "data"
+
+class SA_Material_Panel:		## Material Panel
+	bl_space_type = 'PROPERTIES'
+	bl_region_type = 'WINDOW'
+	bl_context = "material"
+
+# Viewport UI Menu Panels
+class SA_SceneInfo_Panel(SA_UI_Panel, bpy.types.Panel):				## Scene Information Panel (Author, Texlist, etc)
+	bl_idname = "SCENE_PT_saProperties"
+	bl_label = "Scene Information"
+	bl_options = {"DEFAULT_CLOSED"}
 
 	def draw(self, context):
 		layout = self.layout
@@ -2978,29 +2673,14 @@ class SAScenePanel(bpy.types.Panel):
 
 		layout.prop(settings, "author")
 		layout.prop(settings, "description")
-
+		layout.separator()
+		layout.alignment = 'CENTER'
+		layout.label(text="Scene Update Functions")
+		layout.alignment = 'EXPAND'
+		layout.operator(UpdateMaterials.bl_idname)
 		layout.separator(factor=2)
 
-		box = layout.box()
-		box.prop(settings, "expandedLTPanel",
-			icon="TRIA_DOWN" if settings.expandedLTPanel else "TRIA_RIGHT",
-			emboss = False
-			)
-		if settings.expandedLTPanel:
-			box.prop(settings, "landtableName")
-
-			split = box.split(factor=0.5)
-			split.label(text="Draw Distance:")
-			split.prop(settings, "drawDistance", text="")
-
-			row = box.row()
-			row.alignment='LEFT'
-			row.label(text="TexListPtr:  0x")
-			row.alignment='EXPAND'
-			row.prop(settings, "texListPointer", text="")
-
-			box.prop(settings, "doubleSidedCollision")
-
+		# Scene Texlist
 		box = layout.box()
 		box.prop(settings, "expandedTexturePanel",
 			icon="TRIA_DOWN" if settings.expandedTexturePanel else "TRIA_RIGHT",
@@ -3008,9 +2688,6 @@ class SAScenePanel(bpy.types.Panel):
 			)
 
 		if settings.expandedTexturePanel:
-			split = box.split(factor=0.4)
-			split.label(text="Tex-file name")
-			split.prop(settings, "texFileName", text="")
 			row = box.row()
 			row.template_list("SCENE_UL_SATexList", "", settings, "textureList", settings, "active_texture_index")
 
@@ -3027,6 +2704,8 @@ class SAScenePanel(bpy.types.Panel):
 				tex = settings.textureList[settings.active_texture_index]
 				box.prop_search(tex, "image", bpy.data, "images")
 
+		
+		# Scene Lighting
 		box = layout.box()
 		box.prop(settings, "expandedLightingPanel",
 			icon="TRIA_DOWN" if settings.expandedLightingPanel else "TRIA_RIGHT",
@@ -3054,19 +2733,85 @@ class SAScenePanel(bpy.types.Panel):
 			if settings.viewportAlphaType == 'CUT':
 				box.prop(settings, "viewportAlphaCutoff")
 
-		layout.operator(LoadSetFile.bl_idname)
-		layout.operator(ToPrincipledBsdf.bl_idname)
-		layout.operator(MatToAssetLibrary.bl_idname)
-		split = layout.split()
-		split.operator(LoadAnimFile.bl_idname)
-		split.operator(ExportAnim.bl_idname)
+class SA_LandEntryProperties_Panel(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJECT Information Panel
+	bl_idname = "OBJECT_PT_saProperties"
+	bl_label = "Landtable Entry Properties"
+	bl_options = {"DEFAULT_CLOSED"}
 
-class SA3DPanel(bpy.types.Panel):
+	@classmethod
+	def poll(cls, context):
+		return context.active_object.type == 'MESH'
+
+	def draw(self, context):
+		layout = self.layout
+		objProps = context.active_object.saSettings
+		menuProps = context.scene.saSettings.editorSettings
+
+		drawLandEntryPanel(layout, menuProps, objProps)
+
+class SA_ModelProps_Panel(SA_UI_Panel, bpy.types.Panel):			## NJS_MODEL Information Panel
+	bl_idname = "MESH_PT_saProperties"
+	bl_label = "Model Properties"
+	bl_options = {"DEFAULT_CLOSED"}
+
+	@classmethod
+	def poll(cls, context):
+		return context.active_object.type == 'MESH'
+
+	def draw(self, context):
+		layout = self.layout
+		meshprops = context.active_object.data.saSettings
+
+		drawMeshPanel(layout, meshprops)
+
+class SA_MaterialProps_Panel(SA_UI_Panel, bpy.types.Panel):			## NJS_MATERIAL Panel
+	bl_idname = "MATERIAL_PT_saProperties"
+	bl_label = "Material Properties"
+	bl_options = {"DEFAULT_CLOSED"}
+
+	@classmethod
+	def poll(cls, context):
+		return context.active_object.type == 'MESH'
+
+	def draw(self, context):
+		layout = self.layout
+
+		obj = context.object
+		is_sortable = len(obj.material_slots) > 1
+
+		box = layout.box()
+		row = box.row()
+		row.template_list("MATERIAL_UL_saMaterialSlots", "", obj, "material_slots", obj, "active_material_index")
+		col = row.column()
+		col.operator("object.material_slot_add", icon='ADD', text="")
+		col.operator("object.material_slot_remove", icon='REMOVE', text="")
+		col.separator()
+		col.menu("MATERIAL_MT_context_menu", icon='DOWNARROW_HLT', text="")
+		if is_sortable:
+			col.separator()
+			col.operator("object.material_slot_move", icon='TRIA_UP', text="").direction = 'UP'
+			col.operator("object.material_slot_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+		
+		row = box.row()
+		if obj:
+			row.template_ID(obj, "active_material", new="material.new")
+			if obj.mode == 'EDIT':
+				row = layout.row(align=True)
+				row.operator("object.material_slot_assign", text="Assign")
+				row.operator("object.material_slot_select", text="Select")
+				row.operator("object.material_slot_deselect", text="Deselect")
+
+		layout.separator()
+
+		if context.active_object.active_material is not None:
+			menuProps = context.scene.saSettings.editorSettings
+			matProps = context.active_object.active_material.saSettings
+			drawMaterialPanel(layout, menuProps, matProps)
+
+class SA_QuickEditMenu_Panel(SA_UI_Panel, bpy.types.Panel):			## Quick Edit Menu + Update Material Button, etc
 	bl_idname = 'MESH_PT_satools'
-	bl_label = 'SA Tools'
-	bl_space_type = 'VIEW_3D'
-	bl_region_type = 'UI'
-	bl_category = 'Tool'
+	bl_label = 'Quick Edit Menu'
+	bl_options = {"DEFAULT_CLOSED"}
 
 	@classmethod
 	def poll(cls, context):
@@ -3079,68 +2824,134 @@ class SA3DPanel(bpy.types.Panel):
 
 		outerBox = layout.box()
 
-		outerBox.prop(settings, "expandedQEPanel",
-			icon="TRIA_DOWN" if settings.expandedQEPanel else "TRIA_RIGHT",
+		split = outerBox.split(factor=0.5)
+		split.operator(qeUpdateSet.bl_idname)
+		split.operator(qeUpdateUnset.bl_idname)
+		outerBox.separator(factor=0.1)
+		split = outerBox.split(factor=0.5)
+		split.operator(qeReset.bl_idname)
+		split.operator(qeInvert.bl_idname)
+
+		box = outerBox.box()
+
+		row = box.row()
+		row.prop(settings, "useMatEdit", text="")
+		row.prop(settings, "expandedMatEdit",
+			icon="TRIA_DOWN" if settings.expandedMatEdit else "TRIA_RIGHT",
 			emboss = False
 			)
 
-		if settings.expandedQEPanel:
-			split = outerBox.split(factor=0.5)
-			split.operator(qeUpdateSet.bl_idname)
-			split.operator(qeUpdateUnset.bl_idname)
-			outerBox.separator(factor=0.1)
-			split = outerBox.split(factor=0.5)
-			split.operator(qeReset.bl_idname)
-			split.operator(qeInvert.bl_idname)
+		if settings.expandedMatEdit:
+			box.separator()
+			drawMaterialPanel(box, settings.qEditorSettings, settings.matQProps, qe=True)
+			box.separator()
 
-			box = outerBox.box()
+		box = outerBox.box()
 
-			row = box.row()
-			row.prop(settings, "useMatEdit", text="")
-			row.prop(settings, "expandedMatEdit",
-				icon="TRIA_DOWN" if settings.expandedMatEdit else "TRIA_RIGHT",
-				emboss = False
-				)
+		row = box.row()
+		row.prop(settings, "useLandEntryEdit", text="")
+		row.prop(settings, "expandedLandEntryEdit",
+			icon="TRIA_DOWN" if settings.expandedLandEntryEdit else "TRIA_RIGHT",
+			emboss = False
+			)
 
-			if settings.expandedMatEdit:
-				box.separator()
-				drawMaterialPanel(box, settings.qEditorSettings, settings.matQProps, qe=True)
-				box.separator()
+		if settings.expandedLandEntryEdit:
+			box.separator()
+			drawLandEntryPanel(box, settings.qEditorSettings, settings.objQProps, qe=True)
+			box.separator()
 
-			box = outerBox.box()
+		box = outerBox.box()
 
-			row = box.row()
-			row.prop(settings, "useObjEdit", text="")
-			row.prop(settings, "expandedObjEdit",
-				icon="TRIA_DOWN" if settings.expandedObjEdit else "TRIA_RIGHT",
-				emboss = False
-				)
+		row = box.row()
+		row.prop(settings, "useMeshEdit", text="")
+		row.prop(settings, "expandedMeshEdit",
+			icon="TRIA_DOWN" if settings.expandedMeshEdit else "TRIA_RIGHT",
+			emboss = False
+			)
 
-			if settings.expandedObjEdit:
-				box.separator()
-				drawObjectPanel(box, settings.qEditorSettings, settings.objQProps, qe=True)
-				box.separator()
+		if settings.expandedMeshEdit:
+			box.separator()
+			drawMeshPanel(box, settings.meshQProps, qe=True)
+			box.separator()
 
-			box = outerBox.box()
+class SA_LevelInfo_Panel(SA_UI_Panel, bpy.types.Panel):				## Level Information (landtable name, texlist pointer, texture name, etc)
+	bl_idname = "UI_saLevelInfo"
+	bl_label = "Level Properies"
+	bl_options = {"DEFAULT_CLOSED"}
 
-			row = box.row()
-			row.prop(settings, "useMeshEdit", text="")
-			row.prop(settings, "expandedMeshEdit",
-				icon="TRIA_DOWN" if settings.expandedMeshEdit else "TRIA_RIGHT",
-				emboss = False
-				)
+	def draw(self, context):
+		layout = self.layout
+		settings = context.scene.saSettings
 
-			if settings.expandedMeshEdit:
-				box.separator()
-				drawMeshPanel(box, settings.meshQProps, qe=True)
-				box.separator()
-				
-		layout.operator(UpdateMaterials.bl_idname)
-		layout.operator(AutoAssignTextures.bl_idname)
+		# Info Box
+		box = layout.box()
+		box.prop(settings, "landtableName")
+
+		split = box.split(factor=0.5)
+		split.label(text="Draw Distance:")
+		split.prop(settings, "drawDistance", text="")
+
+		row = box.row()
+		row.alignment='LEFT'
+		row.label(text="Texlist Pointer:  0x")
+		row.alignment='EXPAND'
+		row.prop(settings, "texListPointer", text="")
 		layout.separator()
+		split = box.split(factor=0.4)
+		split.label(text="Texture Filename")
+		split.prop(settings, "texFileName", text="")
+
+		box.prop(settings, "doubleSidedCollision")
+
+class SA_AdditionalOperators_Panel(SA_UI_Panel, bpy.types.Panel):	## Additional Operators (Loading other files, extra functions, etc)
+	bl_idname = "UI_PT_saAddOperators"
+	bl_label = "Additional Functions"
+	bl_options = {"DEFAULT_CLOSED"}
+
+	def draw(self, context):
+		layout = self.layout
+
+		layout.label(text="Import/Export")
+		layout.operator(LoadSetFile.bl_idname)
+		split = layout.split()
+		split.operator(LoadAnimFile.bl_idname)
+		split.operator(ExportAnim.bl_idname)
+
+		layout.separator()
+		layout.label(text="Material Helpers")
+		layout.operator(AutoAssignTextures.bl_idname)
+		layout.operator(ToPrincipledBsdf.bl_idname)
+		layout.operator(MatToAssetLibrary.bl_idname)
+
+		layout.separator()
+		layout.label(text="Other Helpers")
 		layout.operator(ArmatureFromObjects.bl_idname)
 		layout.operator(StrippifyTest.bl_idname)
 
+class SA_ProjectManagement_Panel(SA_UI_Panel, bpy.types.Panel):		## Project Support Panel, currently unused.
+	bl_idname = "UI_PT_saProjectManagement"
+	bl_label = "Project Management"
+	bl_options = {"DEFAULT_CLOSED"}
+
+	def draw(self, context):
+		layout = self.layout
+		settings = context.scene.saSettings
+
+		# Need custom load def for filtering by type.
+		layout.prop(settings, "ToolsPath")
+		layout.prop(settings, "ProjectPath")
+		
+class SA_AddonInfo_Panel(SA_UI_Panel, bpy.types.Panel):				## Addon Information, currently unused.
+	bl_idname = "UI_PT_saProperties"
+	bl_label = "Addon Info"
+	bl_options = {"DEFAULT_CLOSED"}
+
+	def draw(self, context):
+		layout = self.layout
+
+		layout.label(text="Current Ver: ")
+
+# menus
 def menu_func_exportsa(self, context):
 	self.layout.menu("TOPBAR_MT_SA_export")
 
@@ -3184,20 +2995,25 @@ classes = (
 	qeUpdateSet,
 	qeUpdateUnset,
 
-	SAObjectSettings,
+	SALandEntrySettings,
 	SASettings,
 	SAMaterialSettings,
 	SAEditPanelSettings,
 	SAMeshSettings,
 	SATexture,
 
+	SA_SceneInfo_Panel,
 	SCENE_UL_SATexList,
-	SAObjectPanel,
-	SAMaterialPanel,
 	SCENE_MT_Texture_Context_Menu,
-	SAScenePanel,
-	SA3DPanel,
-	SAMeshPanel,
+	MATERIAL_UL_saMaterialSlots,
+	SA_MaterialProps_Panel,
+	SA_ModelProps_Panel,
+	SA_LandEntryProperties_Panel,
+	SA_LevelInfo_Panel,
+	SA_QuickEditMenu_Panel,
+	SA_AdditionalOperators_Panel,
+	#SA_AddonInfo_Panel,
+	#SA_ProjectManagement_Panel,
 	)
 
 def register():
@@ -3209,7 +3025,7 @@ def register():
 	SASettings.editorSettings = bpy.props.PointerProperty(type=SAEditPanelSettings)
 	SASettings.qEditorSettings = bpy.props.PointerProperty(type=SAEditPanelSettings)
 	SASettings.matQProps = bpy.props.PointerProperty(type=SAMaterialSettings)
-	SASettings.objQProps = bpy.props.PointerProperty(type=SAObjectSettings)
+	SASettings.objQProps = bpy.props.PointerProperty(type=SALandEntrySettings)
 	SASettings.meshQProps = bpy.props.PointerProperty(type=SAMeshSettings)
 	SASettings.textureList = bpy.props.CollectionProperty(
 		type=SATexture,
@@ -3218,7 +3034,7 @@ def register():
 		)
 
 	bpy.types.Scene.saSettings = bpy.props.PointerProperty(type=SASettings)
-	bpy.types.Object.saSettings = bpy.props.PointerProperty(type=SAObjectSettings)
+	bpy.types.Object.saSettings = bpy.props.PointerProperty(type=SALandEntrySettings)
 	bpy.types.Material.saSettings = bpy.props.PointerProperty(type=SAMaterialSettings)
 	bpy.types.Mesh.saSettings = bpy.props.PointerProperty(type=SAMeshSettings)
 
