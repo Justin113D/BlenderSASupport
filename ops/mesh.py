@@ -13,7 +13,7 @@ from bpy.props import (
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 from typing import List, Dict, Union, Tuple
 
-from .. import common
+from .. import common, strippifier
 
 class StrippifyTest(bpy.types.Operator):
 	'''An operator for test-strippifying a model'''
