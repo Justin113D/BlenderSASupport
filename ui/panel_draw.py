@@ -25,6 +25,13 @@ from ..prop.properties import(
 from ..ops.materials import(
 	UpdateMaterials
 )
+from ..ops.textures import(
+	AddTextureSlot,
+	RemoveTextureSlot,
+	MoveTextureSlot,
+	ClearTextureList,
+	AutoNameTextures
+)
 
 def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):		## Advanced Properties draw definition.
 	'''For quick edit properties, to put simply'''
