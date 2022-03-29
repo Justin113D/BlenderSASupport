@@ -22,6 +22,9 @@ from ..prop.properties import(
     SAMeshSettings,
     SATexture
 )
+from ..ops.materials import(
+	UpdateMaterials
+)
 
 def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):		## Advanced Properties draw definition.
 	'''For quick edit properties, to put simply'''
@@ -219,10 +222,72 @@ def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = Fal
 	propAdv(layout, "Blockbit (hex):  0x", objProps, "blockbit", sProps, "obj_apply_blockbit", qe = qe)
 
 def drawMeshPanel(layout: bpy.types.UILayout, meshProps, qe = False):								## Draws the Mesh Properties Panel.
-
 	sProps = bpy.context.scene.saSettings
 	propAdv(layout, "Export Type (SA2)", meshProps, "sa2ExportType", sProps, "me_apply_ExportType", qe = qe)
 	propAdv(layout, "+ Vertex Offset (SA2)", meshProps, "sa2IndexOffset", sProps, "me_apply_addVO", qe = qe)
+
+def drawScenePanel(layout: bpy.types.UILayout, settings, qe = False):
+	layout.prop(settings, "author")
+	layout.prop(settings, "description")
+	layout.separator()
+	layout.alignment = 'CENTER'
+	layout.label(text="Scene Update Functions")
+	layout.alignment = 'EXPAND'
+	layout.operator(UpdateMaterials.bl_idname)
+	layout.separator(factor=2)
+
+	# Scene Texlist
+	box = layout.box()
+	box.prop(settings, "expandedTexturePanel",
+		icon="TRIA_DOWN" if settings.expandedTexturePanel else "TRIA_RIGHT",
+		emboss = False
+		)
+
+	if settings.expandedTexturePanel:
+		row = box.row()
+		row.template_list("SCENE_UL_SATexList", "", settings, "textureList", settings, "active_texture_index")
+
+		col = row.column()
+		col.operator(AddTextureSlot.bl_idname, icon='ADD', text="")
+		col.operator(RemoveTextureSlot.bl_idname, icon='REMOVE', text="")
+
+		col.separator()
+		col.operator(MoveTextureSlot.bl_idname, icon='TRIA_UP', text="").direction = 'UP'
+		col.operator(MoveTextureSlot.bl_idname, icon='TRIA_DOWN', text="").direction = 'DOWN'
+		col.menu("SCENE_MT_Texture_Context_Menu", icon='DOWNARROW_HLT', text="")
+
+		if settings.active_texture_index >= 0:
+			tex = settings.textureList[settings.active_texture_index]
+			box.prop_search(tex, "image", bpy.data, "images")
+
+		
+	# Scene Lighting
+	box = layout.box()
+	box.prop(settings, "expandedLightingPanel",
+		icon="TRIA_DOWN" if settings.expandedLightingPanel else "TRIA_RIGHT",
+		emboss = False
+		)
+
+	if settings.expandedLightingPanel:
+		split = box.split(factor=0.5)
+		split.label(text="Light Direction")
+		split.prop(settings, "LightDir", text="")
+
+		split = box.split(factor=0.5)
+		split.label(text="Light Color")
+		split.prop(settings, "LightColor", text="")
+
+		split = box.split(factor=0.5)
+		split.label(text="Ambient Light")
+		split.prop(settings, "LightAmbientColor", text="")
+
+		box.separator(factor=0.5)
+		box.prop(settings, "DisplaySpecular")
+		split = box.split(factor=0.5)
+		split.label(text="Viewport blend mode")
+		split.prop(settings, "viewportAlphaType", text="")
+		if settings.viewportAlphaType == 'CUT':
+			box.prop(settings, "viewportAlphaCutoff")
 
 class SCENE_UL_SATexList(bpy.types.UIList):															## UI List draw for Scene Texture List items.
 

@@ -27,6 +27,7 @@ from .panel_draw import(
 	drawMaterialPanel,
 	drawLandEntryPanel,
 	drawMeshPanel,
+	drawScenePanel,
 	SCENE_UL_SATexList,
 	SCENE_MT_Texture_Context_Menu,
 	MATERIAL_UL_saMaterialSlots
@@ -41,9 +42,24 @@ from ..ops.quickEdit import(
 	qeReset,
 	qeInvert
 )
+from ..ops.imports import(
+	LoadSetFile,
+	LoadAnimFile
+)
+from ..ops.exports import(
+	ExportAnim
+)
+from ..ops.materials import(
+	AutoAssignTextures,
+	ToPrincipledBsdf,
+	MatToAssetLibrary
+)
+from ..ops.object import(
+	ArmatureFromObjects
+)
 
-class SA_SceneInfo_Panel(SA_UI_Panel, bpy.types.Panel):				## Scene Information Panel (Author, Texlist, etc)
-	bl_idname = "SCENE_PT_saProperties"
+class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Information Panel (Author, Texlist, etc)
+	bl_idname = "SCENE_UI_saProperties"
 	bl_label = "Scene Information"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -51,70 +67,10 @@ class SA_SceneInfo_Panel(SA_UI_Panel, bpy.types.Panel):				## Scene Information 
 		layout = self.layout
 		settings = context.scene.saSettings
 
-		layout.prop(settings, "author")
-		layout.prop(settings, "description")
-		layout.separator()
-		layout.alignment = 'CENTER'
-		layout.label(text="Scene Update Functions")
-		layout.alignment = 'EXPAND'
-		layout.operator(UpdateMaterials.bl_idname)
-		layout.separator(factor=2)
+		drawScenePanel(layout, settings)
 
-		# Scene Texlist
-		box = layout.box()
-		box.prop(settings, "expandedTexturePanel",
-			icon="TRIA_DOWN" if settings.expandedTexturePanel else "TRIA_RIGHT",
-			emboss = False
-			)
-
-		if settings.expandedTexturePanel:
-			row = box.row()
-			row.template_list("SCENE_UL_SATexList", "", settings, "textureList", settings, "active_texture_index")
-
-			col = row.column()
-			col.operator(AddTextureSlot.bl_idname, icon='ADD', text="")
-			col.operator(RemoveTextureSlot.bl_idname, icon='REMOVE', text="")
-
-			col.separator()
-			col.operator(MoveTextureSlot.bl_idname, icon='TRIA_UP', text="").direction = 'UP'
-			col.operator(MoveTextureSlot.bl_idname, icon='TRIA_DOWN', text="").direction = 'DOWN'
-			col.menu("SCENE_MT_Texture_Context_Menu", icon='DOWNARROW_HLT', text="")
-
-			if settings.active_texture_index >= 0:
-				tex = settings.textureList[settings.active_texture_index]
-				box.prop_search(tex, "image", bpy.data, "images")
-
-		
-		# Scene Lighting
-		box = layout.box()
-		box.prop(settings, "expandedLightingPanel",
-			icon="TRIA_DOWN" if settings.expandedLightingPanel else "TRIA_RIGHT",
-			emboss = False
-			)
-
-		if settings.expandedLightingPanel:
-			split = box.split(factor=0.5)
-			split.label(text="Light Direction")
-			split.prop(settings, "LightDir", text="")
-
-			split = box.split(factor=0.5)
-			split.label(text="Light Color")
-			split.prop(settings, "LightColor", text="")
-
-			split = box.split(factor=0.5)
-			split.label(text="Ambient Light")
-			split.prop(settings, "LightAmbientColor", text="")
-
-			box.separator(factor=0.5)
-			box.prop(settings, "DisplaySpecular")
-			split = box.split(factor=0.5)
-			split.label(text="Viewport blend mode")
-			split.prop(settings, "viewportAlphaType", text="")
-			if settings.viewportAlphaType == 'CUT':
-				box.prop(settings, "viewportAlphaCutoff")
-
-class SA_LandEntryProperties_Panel(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJECT Information Panel
-	bl_idname = "OBJECT_PT_saProperties"
+class SA_LandEntryProperties_Viewport(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJECT Information Panel
+	bl_idname = "OBJECT_UI_saProperties"
 	bl_label = "Landtable Entry Properties"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -129,8 +85,8 @@ class SA_LandEntryProperties_Panel(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJECT 
 
 		drawLandEntryPanel(layout, menuProps, objProps)
 
-class SA_ModelProps_Panel(SA_UI_Panel, bpy.types.Panel):			## NJS_MODEL Information Panel
-	bl_idname = "MESH_PT_saProperties"
+class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_MODEL Information Panel
+	bl_idname = "MESH_UI_saProperties"
 	bl_label = "Model Properties"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -144,8 +100,8 @@ class SA_ModelProps_Panel(SA_UI_Panel, bpy.types.Panel):			## NJS_MODEL Informat
 
 		drawMeshPanel(layout, meshprops)
 
-class SA_MaterialProps_Panel(SA_UI_Panel, bpy.types.Panel):			## NJS_MATERIAL Panel
-	bl_idname = "MATERIAL_PT_saProperties"
+class SA_MaterialProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_MATERIAL Panel
+	bl_idname = "MATERIAL_UI_saProperties"
 	bl_label = "Material Properties"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -188,8 +144,8 @@ class SA_MaterialProps_Panel(SA_UI_Panel, bpy.types.Panel):			## NJS_MATERIAL Pa
 			matProps = context.active_object.active_material.saSettings
 			drawMaterialPanel(layout, menuProps, matProps)
 
-class SA_QuickEditMenu_Panel(SA_UI_Panel, bpy.types.Panel):			## Quick Edit Menu + Update Material Button, etc
-	bl_idname = 'MESH_PT_satools'
+class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit Menu + Update Material Button, etc
+	bl_idname = 'MESH_UI_satools'
 	bl_label = 'Quick Edit Menu'
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -254,9 +210,9 @@ class SA_QuickEditMenu_Panel(SA_UI_Panel, bpy.types.Panel):			## Quick Edit Menu
 			drawMeshPanel(box, settings.meshQProps, qe=True)
 			box.separator()
 
-class SA_LevelInfo_Panel(SA_UI_Panel, bpy.types.Panel):				## Level Information (landtable name, texlist pointer, texture name, etc)
+class SA_LevelInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Level Information (landtable name, texlist pointer, texture name, etc)
 	bl_idname = "UI_saLevelInfo"
-	bl_label = "Level Properies"
+	bl_label = "Level Properties"
 	bl_options = {"DEFAULT_CLOSED"}
 
 	def draw(self, context):
@@ -283,8 +239,8 @@ class SA_LevelInfo_Panel(SA_UI_Panel, bpy.types.Panel):				## Level Information 
 
 		box.prop(settings, "doubleSidedCollision")
 
-class SA_AdditionalOperators_Panel(SA_UI_Panel, bpy.types.Panel):	## Additional Operators (Loading other files, extra functions, etc)
-	bl_idname = "UI_PT_saAddOperators"
+class SA_AdditionalOperators_Vieport(SA_UI_Panel, bpy.types.Panel):	## Additional Operators (Loading other files, extra functions, etc)
+	bl_idname = "UI_saAddOperators"
 	bl_label = "Additional Functions"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -308,8 +264,8 @@ class SA_AdditionalOperators_Panel(SA_UI_Panel, bpy.types.Panel):	## Additional 
 		layout.operator(ArmatureFromObjects.bl_idname)
 		layout.operator(StrippifyTest.bl_idname)
 
-class SA_ProjectManagement_Panel(SA_UI_Panel, bpy.types.Panel):		## Project Support Panel, currently unused.
-	bl_idname = "UI_PT_saProjectManagement"
+class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project Support Panel, currently unused.
+	bl_idname = "UI_saProjectManagement"
 	bl_label = "Project Management"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -321,8 +277,8 @@ class SA_ProjectManagement_Panel(SA_UI_Panel, bpy.types.Panel):		## Project Supp
 		layout.prop(settings, "ToolsPath")
 		layout.prop(settings, "ProjectPath")
 		
-class SA_AddonInfo_Panel(SA_UI_Panel, bpy.types.Panel):				## Addon Information, currently unused.
-	bl_idname = "UI_PT_saProperties"
+class SA_AddonInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Addon Information, currently unused.
+	bl_idname = "UI_saAddonInfo"
 	bl_label = "Addon Info"
 	bl_options = {"DEFAULT_CLOSED"}
 

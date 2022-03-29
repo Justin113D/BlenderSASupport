@@ -72,20 +72,27 @@ from .ui.panel_draw import(
 	drawMaterialPanel,
 	drawLandEntryPanel,
 	drawMeshPanel,
+	drawScenePanel,
 	SCENE_UL_SATexList,
 	SCENE_MT_Texture_Context_Menu,
 	MATERIAL_UL_saMaterialSlots
 )
 from .ui.panel_viewport import(
-	SA_SceneInfo_Panel,
-	SA_LandEntryProperties_Panel,
-	SA_ModelProps_Panel,
-	SA_MaterialProps_Panel,
-	SA_QuickEditMenu_Panel,
-	SA_LevelInfo_Panel,
-	SA_AdditionalOperators_Panel,
-	SA_ProjectManagement_Panel,
-	SA_AddonInfo_Panel
+	SA_SceneInfo_Viewport,
+	SA_LandEntryProperties_Viewport,
+	SA_ModelProps_Viewport,
+	SA_MaterialProps_Viewport,
+	SA_QuickEditMenu_Viewport,
+	SA_LevelInfo_Viewport,
+	SA_AdditionalOperators_Vieport,
+	SA_ProjectManagement_Viewport,
+	SA_AddonInfo_Viewport
+)
+from .ui.panel_material import(
+	SA_MaterialProps_MaterialPanel 
+)
+from .ui.panel_scene import(
+	SA_SceneInfo_ScenePanel
 )
 
 ## Start Addon Initialization
@@ -138,7 +145,7 @@ def menu_func_importsa(self, context):
 	self.layout.operator(ImportMDL.bl_idname)
 	self.layout.operator(ImportLVL.bl_idname)
 
-# Register output
+# Register/Unregister for Addon
 classes = (
 	TOPBAR_MT_SA_export,
 	ExportSA1MDL,
@@ -181,18 +188,21 @@ classes = (
 	SAMeshSettings,
 	SATexture,
 
-	SA_SceneInfo_Panel,
 	SCENE_UL_SATexList,
 	SCENE_MT_Texture_Context_Menu,
 	MATERIAL_UL_saMaterialSlots,
-	SA_MaterialProps_Panel,
-	SA_ModelProps_Panel,
-	SA_LandEntryProperties_Panel,
-	SA_LevelInfo_Panel,
-	SA_QuickEditMenu_Panel,
-	SA_AdditionalOperators_Panel,
-	#SA_AddonInfo_Panel,
-	#SA_ProjectManagement_Panel,
+	SA_SceneInfo_Viewport,
+	SA_MaterialProps_Viewport,
+	SA_ModelProps_Viewport,
+	SA_LandEntryProperties_Viewport,
+	SA_LevelInfo_Viewport,
+	SA_QuickEditMenu_Viewport,
+	SA_AdditionalOperators_Vieport,
+	#SA_AddonInfo_Viewport,
+	#SA_ProjectManagement_Viewport,
+
+	SA_SceneInfo_ScenePanel,
+	SA_MaterialProps_MaterialPanel,
 	)
 
 def register():
