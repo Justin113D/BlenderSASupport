@@ -226,7 +226,7 @@ def drawMeshPanel(layout: bpy.types.UILayout, meshProps, qe = False):								## 
 	propAdv(layout, "Export Type (SA2)", meshProps, "sa2ExportType", sProps, "me_apply_ExportType", qe = qe)
 	propAdv(layout, "+ Vertex Offset (SA2)", meshProps, "sa2IndexOffset", sProps, "me_apply_addVO", qe = qe)
 
-def drawScenePanel(layout: bpy.types.UILayout, settings, qe = False):
+def drawScenePanel(layout: bpy.types.UILayout, settings, qe = False):								## Draws the Scene Properties Panel.
 	layout.prop(settings, "author")
 	layout.prop(settings, "description")
 	layout.separator()

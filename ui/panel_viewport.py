@@ -85,7 +85,7 @@ class SA_LandEntryProperties_Viewport(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJE
 
 		drawLandEntryPanel(layout, menuProps, objProps)
 
-class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_MODEL Information Panel
+class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## NJS_MODEL Information Panel
 	bl_idname = "MESH_UI_saProperties"
 	bl_label = "Model Properties"
 	bl_options = {"DEFAULT_CLOSED"}
@@ -239,7 +239,7 @@ class SA_LevelInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Level Informati
 
 		box.prop(settings, "doubleSidedCollision")
 
-class SA_AdditionalOperators_Vieport(SA_UI_Panel, bpy.types.Panel):	## Additional Operators (Loading other files, extra functions, etc)
+class SA_AdditionalOperators_Vieport(SA_UI_Panel, bpy.types.Panel):		## Additional Operators (Loading other files, extra functions, etc)
 	bl_idname = "UI_saAddOperators"
 	bl_label = "Additional Functions"
 	bl_options = {"DEFAULT_CLOSED"}
