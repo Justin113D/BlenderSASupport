@@ -15,7 +15,7 @@ from typing import List, Dict, Union, Tuple
 
 from .. import common
 
-def autotexUpdate(context, newValue):
+def autotexUpdate(context, newValue):			## Definition for the auto-assign texture operator.
 	# variables
 	mats = []
 	copyTex = []
@@ -69,7 +69,7 @@ def autotexUpdate(context, newValue):
 						else:
 							print("Error! No matching texture for " + matname + "in object " + o.name)
 
-class AutoAssignTextures(bpy.types.Operator):
+class AutoAssignTextures(bpy.types.Operator):	## Auto-Assign texture IDs based on initial material's image name or material name.
 	bl_idname = "scene.saautoassignmmd"
 	bl_label = "Auto Assign Textures"
 	bl_description = "Attempts to match texture or material names to an imported texlist. Only checks visible objects, may not work."
@@ -78,7 +78,7 @@ class AutoAssignTextures(bpy.types.Operator):
 		autotexUpdate(context, True)
 		return {'FINISHED'}
 
-class ToPrincipledBsdf(bpy.types.Operator):
+class ToPrincipledBsdf(bpy.types.Operator):		## Converts all materials in a scene to Principled BSDF for export.
 	bl_idname = "scene.convmaterials"
 	bl_label = "Convert to Principled BSDF"
 	bl_description = "Converts materials to a Principled BSDF for exporting purposes."
@@ -103,7 +103,7 @@ class ToPrincipledBsdf(bpy.types.Operator):
 			tree.links.new(bsdf.outputs[0], out.inputs[0])
 		return {'FINISHED'}
 
-class UpdateMaterials(bpy.types.Operator):
+class UpdateMaterials(bpy.types.Operator):		## Updates all materials in the scene to use the SA Shader.
 	bl_idname = "scene.saupdatemats"
 	bl_label="Update Materials"
 	bl_description="Sets material nodetrees and variables of all selected objects to imitate how they would look in sadx/sa2"
@@ -266,7 +266,7 @@ class UpdateMaterials(bpy.types.Operator):
 		context.scene.view_settings.use_curve_mapping = False
 		return {'FINISHED'}
 
-class MatToAssetLibrary(bpy.types.Operator):
+class MatToAssetLibrary(bpy.types.Operator):	## Creates Asset Library Material entries based on an imported Texlist.
 	bl_idname = "scene.samatslib"
 	bl_label="Materials to Asset Library"
 	bl_description="Generates new materials from an imported texlist and automatically marks them for the Asset Library."

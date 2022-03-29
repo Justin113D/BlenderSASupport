@@ -15,7 +15,7 @@ from typing import List, Dict, Union, Tuple
 
 from .. import common, strippifier
 
-class StrippifyTest(bpy.types.Operator):
+class StrippifyTest(bpy.types.Operator):		## Tests strippifying models for export.
 	'''An operator for test-strippifying a model'''
 	bl_idname = "object.strippifytest"
 	bl_label = "Strippify (testing)"

@@ -14,7 +14,7 @@ from bpy.props import (
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 from typing import List, Dict, Union, Tuple
 
-def removeFile() -> None:
+def removeFile() -> None:									## Removes the temporarily created export file.
 	'''Removes the currently assigned temporary export file'''
 
 	# get the export file (its set from outside this script,
@@ -26,7 +26,7 @@ def removeFile() -> None:
 		os.remove(fileW.filepath)
 		common.exportedFile = None
 
-def exportFile(op, outType, context, **keywords):
+def exportFile(op, outType, context, **keywords):			## Main definition for exporting files.
 	from .. import file_MDL, file_LVL
 	common.exportedFile = None
 
@@ -80,7 +80,7 @@ def exportFile(op, outType, context, **keywords):
 
 	return {'FINISHED'}
 
-class ExportSA1MDL(bpy.types.Operator, ExportHelper):
+class ExportSA1MDL(bpy.types.Operator, ExportHelper):		## Exports an SA1MDL file.
 	"""Export objects into an SA1 model file"""
 	bl_idname = "export_scene.sa1mdl"
 	bl_label = "SA1 model (.sa1mdl)"
@@ -134,7 +134,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
 
-class ExportSA2MDL(bpy.types.Operator, ExportHelper):
+class ExportSA2MDL(bpy.types.Operator, ExportHelper):		## Exports an SA2MDL file.
 	"""Export objects into an SA2 model file"""
 	bl_idname = "export_scene.sa2mdl"
 	bl_label = "SA2 model (.sa2mdl)"
@@ -194,7 +194,7 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
 
-class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
+class ExportSA2BMDL(bpy.types.Operator, ExportHelper):		## Exports an SA2BMDL file.
 	"""Export objects into an SA2B model file"""
 	bl_idname = "export_scene.sa2bmdl"
 	bl_label = "SA2B model (.sa2bmdl)"
@@ -248,7 +248,7 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
 
-class ExportSA1LVL(bpy.types.Operator, ExportHelper):
+class ExportSA1LVL(bpy.types.Operator, ExportHelper):		## Exports an SA1LVL file.
 	"""Export scene into an SA1 level file"""
 	bl_idname = "export_scene.sa1lvl"
 	bl_label = "SA1 level (.sa1lvl)"
@@ -302,7 +302,7 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
 
-class ExportSA2LVL(bpy.types.Operator, ExportHelper):
+class ExportSA2LVL(bpy.types.Operator, ExportHelper):		## Exports an SA2LVL file.
 	"""Export scene into an SA2 level file"""
 	bl_idname = "export_scene.sa2lvl"
 	bl_label = "SA2 level (.sa2lvl)"
@@ -362,7 +362,7 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
 
-class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
+class ExportSA2BLVL(bpy.types.Operator, ExportHelper):		## Exports an SA2BLVL file.
 	"""Export scene into an SA2B level file"""
 	bl_idname = "export_scene.sa2blvl"
 	bl_label = "SA2B level (.sa2blvl)"
@@ -417,21 +417,21 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
 
-class ExportPAK(bpy.types.Operator, ExportHelper):
+class ExportPAK(bpy.types.Operator, ExportHelper):			## Non-functional. Planned to export PAK texture archives.
 	bl_idname = "export_texture.pak"
 	bl_label = "Export as PAK (SA2)"
 
 	def execute(self, context):
 		return {'FINISHED'}
 
-class ExportPVMX(bpy.types.Operator, ExportHelper):
+class ExportPVMX(bpy.types.Operator, ExportHelper):			## Non-functional. Planned to export PVMX texture archives.
 	bl_idname = "export_texture.pvmx"
 	bl_label = "Export as PVMX (SADX)"
 
 	def execute(self, context):
 		return {'FINISHED'}
 
-class ExportAnim(bpy.types.Operator, ExportHelper):
+class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 	bl_idname = "object.export_anim"
 	bl_label = "Export JSON Animation"
 

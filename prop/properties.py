@@ -15,7 +15,7 @@ from bpy.props import (
 
 from .. import common
 
-class SASettings(bpy.types.PropertyGroup):
+class SASettings(bpy.types.PropertyGroup):				## Property Groups used across the Addon.
 	"""Information global to the scene"""
 
 	author: StringProperty(
@@ -269,7 +269,7 @@ class SASettings(bpy.types.PropertyGroup):
 		default=False
 		)
 
-class SAEditPanelSettings(bpy.types.PropertyGroup):
+class SAEditPanelSettings(bpy.types.PropertyGroup):		## Property Group for managing expanded Material Properties menus.
 	"""Menu settings for the material edit menus determining which menu should be visible"""
 
 	expandedBMipMap: BoolProperty( name="Mipmap Distance Multiplicator", default=False )
@@ -283,7 +283,7 @@ class SAEditPanelSettings(bpy.types.PropertyGroup):
 	expandedSA1obj: BoolProperty( name ="Object SA1 Properties", default=False)
 	expandedSA2obj: BoolProperty( name ="Object SA2 Properties", default=False)
 
-class SALandEntrySettings(bpy.types.PropertyGroup):
+class SALandEntrySettings(bpy.types.PropertyGroup):		## Property Group for managing Land Entry surface flags.
 	"""hosts all properties to edit the surface flags of a COL"""
 
 	isSA1: BoolProperty(
@@ -680,7 +680,7 @@ class SALandEntrySettings(bpy.types.PropertyGroup):
 		self.userFlags					= d["userFlags"] 
 		self.blockbit					= d["blockbit"]
 
-class SAMaterialSettings(bpy.types.PropertyGroup):
+class SAMaterialSettings(bpy.types.PropertyGroup):		## Property Group for managing Material Properties.
 	"""Hosts all of the material data necessary for exporting"""
 	# sa1 properties
 
@@ -1097,7 +1097,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):
 		d["gc_texCoordID"] = 'TEXCOORD0'
 		return d
 
-class SAMeshSettings(bpy.types.PropertyGroup):
+class SAMeshSettings(bpy.types.PropertyGroup):			## Property Group for managing Mesh Properties.
 	'''Settings used by the exporters for specific meshes'''
 
 	sa2ExportType: EnumProperty(
@@ -1116,7 +1116,7 @@ class SAMeshSettings(bpy.types.PropertyGroup):
 		default = 0
 	)
 
-def texUpdate(self, context):
+def texUpdate(self, context):							## Definitions for handling texture updates.
 	settings = context.scene.saSettings
 
 	# checking if texture object is in list
@@ -1255,7 +1255,7 @@ def texUpdate(self, context):
 
 			self.globalID = closestFree
 
-class SATexture(bpy.types.PropertyGroup):
+class SATexture(bpy.types.PropertyGroup):				## Property Group for storing Texture List information.
 
 	name: StringProperty(
 		name = "Slot name",

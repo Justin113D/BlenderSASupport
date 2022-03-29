@@ -15,7 +15,7 @@ from typing import List, Dict, Union, Tuple
 
 from .. import common
 
-class AddTextureSlot(bpy.types.Operator):
+class AddTextureSlot(bpy.types.Operator):		## Adds a texture slot to the Scene Texture List.
 	bl_idname = "scene.saaddtexturesslot"
 	bl_label="Add texture"
 	bl_description="Adds texture to the texture list"
@@ -47,7 +47,7 @@ class AddTextureSlot(bpy.types.Operator):
 
 		return {'FINISHED'}
 
-class RemoveTextureSlot(bpy.types.Operator):
+class RemoveTextureSlot(bpy.types.Operator):	## Removes the selected texture slot from the Scene Texture List.
 	bl_idname = "scene.saremovetexturesslot"
 	bl_label="Remove texture"
 	bl_description="Removes the selected texture from the texture list"
@@ -64,7 +64,7 @@ class RemoveTextureSlot(bpy.types.Operator):
 
 		return {'FINISHED'}
 
-class MoveTextureSlot(bpy.types.Operator):
+class MoveTextureSlot(bpy.types.Operator):		## Moves the selected texture slot in the Scene Texture List.
 	bl_idname = "scene.samovetexturesslot"
 	bl_label="Move texture"
 	bl_description="Moves texture slot in list"
@@ -92,7 +92,7 @@ class MoveTextureSlot(bpy.types.Operator):
 			settings.active_texture_index = newIndex
 		return {'FINISHED'}
 
-class ClearTextureList(bpy.types.Operator):
+class ClearTextureList(bpy.types.Operator):		## Clears all entries from the Scene Texture List.
 	bl_idname = "scene.sacleartexturelist"
 	bl_label="Clear list"
 	bl_description="Removes all entries from the list"
@@ -109,7 +109,7 @@ class ClearTextureList(bpy.types.Operator):
 		settings.textureList.clear()
 		return {'FINISHED'}
 
-class AutoNameTextures(bpy.types.Operator):
+class AutoNameTextures(bpy.types.Operator):		## Autonames Scene Texture List entries based on their assigned image names.
 	bl_idname = "scene.saautonametexlist"
 	bl_label="Autoname entries"
 	bl_description="Renames all entries to the assigned texture"

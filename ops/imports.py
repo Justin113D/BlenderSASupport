@@ -14,7 +14,7 @@ from bpy.props import (
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 from typing import List, Dict, Union, Tuple
 
-class ImportMDL(bpy.types.Operator, ImportHelper):
+class ImportMDL(bpy.types.Operator, ImportHelper):			## Imports *MDL files made with the SA Tools.
 	"""Imports any sonic adventure mdl file"""
 	bl_idname = "import_scene.mdl"
 	bl_label = "Sonic Adv. model (.*mdl)"
@@ -51,7 +51,7 @@ class ImportMDL(bpy.types.Operator, ImportHelper):
 
 		return {'FINISHED'}
 
-class ImportLVL(bpy.types.Operator, ImportHelper):
+class ImportLVL(bpy.types.Operator, ImportHelper):			## Imports *LVL files made with the SA Tools.
 	"""Imports any sonic adventure lvl file"""
 	bl_idname = "import_scene.lvl"
 	bl_label = "Sonic Adv. level (.*lvl)"
@@ -87,7 +87,7 @@ class ImportLVL(bpy.types.Operator, ImportHelper):
 			file_LVL.read(context, path + "\\" + f.name, self.noDoubleVerts, self.console_debug_output)
 		return {'FINISHED'}
 
-class ImportTexFile(bpy.types.Operator, ImportHelper):
+class ImportTexFile(bpy.types.Operator, ImportHelper):		## Imports texture archives. Only texture packs supported currently.
 	"""Imports any sonic adventure texture file"""
 	bl_idname = "import_texture.tex"
 	bl_label = "Import SA tex file"
@@ -172,7 +172,7 @@ class ImportTexFile(bpy.types.Operator, ImportHelper):
 				tex.image = img
 		return {'FINISHED'}
 
-class LoadSetFile(bpy.types.Operator, ImportHelper):
+class LoadSetFile(bpy.types.Operator, ImportHelper):		## Imports a set file to empties with generic position, rotation, and scaling applie.
 	"""Loads a Set file and places objects at the correct locations"""
 	bl_idname = "object.load_set"
 	bl_label = "Load SET file"
@@ -192,7 +192,7 @@ class LoadSetFile(bpy.types.Operator, ImportHelper):
 		setReader.ReadFile(self.filepath, context, self.bigEndian)
 		return {'FINISHED'}
 
-class LoadAnimFile(bpy.types.Operator, ImportHelper):
+class LoadAnimFile(bpy.types.Operator, ImportHelper):		## Imports a SAANIM file made with the SA Tools.
 	"""Loads animations from saanim files to a selected armature"""
 	bl_idname = "object.load_saanim"
 	bl_label = "Import JSON Animation"

@@ -15,7 +15,7 @@ from typing import List, Dict, Union, Tuple
 
 from .. import common
 
-class ArmatureFromObjects(bpy.types.Operator):
+class ArmatureFromObjects(bpy.types.Operator):		## Creates an armature for models that do not use armatures.
 	'''Generates an armature based on the selected node and its child hierarchy'''
 	bl_idname = "object.armaturefromobjects"
 	bl_label = "Armature from objects"

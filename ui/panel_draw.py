@@ -23,7 +23,7 @@ from ..prop.properties import(
     SATexture
 )
 
-def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):
+def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):		## Advanced Properties draw definition.
 	'''For quick edit properties, to put simply'''
 
 	if not autoScale:
@@ -44,7 +44,7 @@ def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False
 		row.alignment='EXPAND'
 		row.prop(prop1, prop1Name, text="")
 
-def drawMaterialPanel(layout, menuProps, matProps, qe = False):
+def drawMaterialPanel(layout, menuProps, matProps, qe = False):										## Draws the Material Properties Panel.
 
 	sProps = bpy.context.scene.saSettings
 
@@ -152,7 +152,7 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):
 			else: #SRTG
 				propAdv(box, "Source:", matProps, "gc_texGenSourceSRTG", sProps, "gc_apply_src", qe = qe)
 
-def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = False):
+def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = False):				## Draws the Land Entry Properties Panel.
 
 	sProps = bpy.context.scene.saSettings
 
@@ -218,20 +218,20 @@ def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = Fal
 
 	propAdv(layout, "Blockbit (hex):  0x", objProps, "blockbit", sProps, "obj_apply_blockbit", qe = qe)
 
-def drawMeshPanel(layout: bpy.types.UILayout, meshProps, qe = False):
+def drawMeshPanel(layout: bpy.types.UILayout, meshProps, qe = False):								## Draws the Mesh Properties Panel.
 
 	sProps = bpy.context.scene.saSettings
 	propAdv(layout, "Export Type (SA2)", meshProps, "sa2ExportType", sProps, "me_apply_ExportType", qe = qe)
 	propAdv(layout, "+ Vertex Offset (SA2)", meshProps, "sa2IndexOffset", sProps, "me_apply_addVO", qe = qe)
 
-class SCENE_UL_SATexList(bpy.types.UIList):
+class SCENE_UL_SATexList(bpy.types.UIList):															## UI List draw for Scene Texture List items.
 
 	def draw_item(self, context, layout: bpy.types.UILayout, data, item, icon, active_data, active_propname, index, flt_flag):
 		split = layout.split(factor=0.6)
 		split.prop(item, "name", text="", emboss=False, icon_value=icon, icon= 'X' if item.image == None else 'CHECKMARK')
 		split.prop(item, "globalID", text=str(index), emboss=False, icon_value=icon)
 
-class SCENE_MT_Texture_Context_Menu(bpy.types.Menu):
+class SCENE_MT_Texture_Context_Menu(bpy.types.Menu):												## Scene Texture List Specials Menu.
 	bl_label = "Texture list specials"
 
 	def draw(self, context):
@@ -247,7 +247,7 @@ class SCENE_MT_Texture_Context_Menu(bpy.types.Menu):
 		layout.operator(ExportPVMX.bl_idname)
 		layout.operator(ExportPAK.bl_idname)
 
-class MATERIAL_UL_saMaterialSlots(bpy.types.UIList):
+class MATERIAL_UL_saMaterialSlots(bpy.types.UIList):												## UI List draw for Viewport Material List.
 	# Draws a secondary Material Slots Viewer in the SA Materials Properties Panel
 	def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
 		ob = data

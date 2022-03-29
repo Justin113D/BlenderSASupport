@@ -15,15 +15,15 @@ from typing import List, Dict, Union, Tuple
 
 from .. import common
 from ..prop.properties import(
-    SASettings,
-    SAEditPanelSettings,
-    SALandEntrySettings,
-    SAMaterialSettings,
-    SAMeshSettings,
-    SATexture
+	SASettings,
+	SAEditPanelSettings,
+	SALandEntrySettings,
+	SAMaterialSettings,
+	SAMeshSettings,
+	SATexture
 )
 
-def qeUpdate(context, newValue):
+def qeUpdate(context, newValue):			## Quick Edit Menu Update Definition.
 	'''Updates all selected objects with according properties'''
 
 	qEditSettings = context.scene.saSettings
@@ -129,7 +129,7 @@ def qeUpdate(context, newValue):
 			if qEditSettings.me_apply_addVO and newValue:
 				meshProps.sa2IndexOffset = qEditSettings.meshQProps.sa2IndexOffset
 
-class qeUpdateSet(bpy.types.Operator):
+class qeUpdateSet(bpy.types.Operator):		## Sets the applied Quick Edit Menu selections.
 	"""Quick Material Editor Updater for setting selected field to true"""
 	bl_idname = "object.qeset"
 	bl_label = "SET"
@@ -139,7 +139,7 @@ class qeUpdateSet(bpy.types.Operator):
 		qeUpdate(context, True)
 		return {'FINISHED'}
 
-class qeUpdateUnset(bpy.types.Operator):
+class qeUpdateUnset(bpy.types.Operator):	## Removes the applied Quick Edit Menu selections.
 	"""Quick Material Editor Updater for unsetting selected field to true"""
 	bl_idname = "object.qeunset"
 	bl_label = "UNSET"
@@ -149,7 +149,7 @@ class qeUpdateUnset(bpy.types.Operator):
 		qeUpdate(context, False)
 		return {'FINISHED'}
 
-class qeReset(bpy.types.Operator):
+class qeReset(bpy.types.Operator):			## Resets the Quick Edit Menu to default selections.
 	"""Quick Material Editor Resetter"""
 	bl_idname = "object.qereset"
 	bl_label = "Reset"
@@ -193,7 +193,7 @@ class qeReset(bpy.types.Operator):
 
 		return {'FINISHED'}
 
-class qeInvert(bpy.types.Operator):
+class qeInvert(bpy.types.Operator):			## Inverts current Quick Edit Menu selections.
 	"""Quick Material Editor Inverter"""
 	bl_idname = "object.qeinvert"
 	bl_label = "Invert"

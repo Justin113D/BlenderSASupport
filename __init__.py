@@ -1,3 +1,4 @@
+# Standard Imports
 import bpy
 import os
 import shutil
@@ -13,6 +14,7 @@ from bpy.props import (
 	CollectionProperty
 	)
 
+# Addon Imports
 from . import common, setReader
 from .ops.exports import (
 	ExportSA1MDL,
@@ -86,7 +88,9 @@ from .ui.panel_viewport import(
 	SA_AddonInfo_Panel
 )
 
-# meta info
+## Start Addon Initialization
+
+# Addon Meta Information
 bl_info = {
 	"name": "SA Model Formats support",
 	"author": "Justin113D",
@@ -127,7 +131,6 @@ class TOPBAR_MT_SA_export(bpy.types.Menu):
 		layout.operator("export_scene.sa2lvl")
 		layout.operator("export_scene.sa2blvl")
 
-# menus
 def menu_func_exportsa(self, context):
 	self.layout.menu("TOPBAR_MT_SA_export")
 
@@ -135,7 +138,7 @@ def menu_func_importsa(self, context):
 	self.layout.operator(ImportMDL.bl_idname)
 	self.layout.operator(ImportLVL.bl_idname)
 
-# registers
+# Register output
 classes = (
 	TOPBAR_MT_SA_export,
 	ExportSA1MDL,
