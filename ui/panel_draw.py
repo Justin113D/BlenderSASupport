@@ -32,6 +32,13 @@ from ..ops.textures import(
 	ClearTextureList,
 	AutoNameTextures
 )
+from ..ops.imports import(
+	ImportTexFile
+)
+from ..ops.exports import(
+	ExportPAK,
+	ExportPVMX
+)
 
 def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):		## Advanced Properties draw definition.
 	'''For quick edit properties, to put simply'''

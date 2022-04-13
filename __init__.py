@@ -1,4 +1,4 @@
-# Standard Imports
+#region Standard Imports
 import bpy
 import os
 import shutil
@@ -13,8 +13,13 @@ from bpy.props import (
 	StringProperty,
 	CollectionProperty
 	)
+#endregion
 
-# Addon Imports
+#region Modules
+from . import addon_updater_ops
+#endregion
+
+#region Addon Imports
 from . import common, setReader
 from .ops.exports import (
 	ExportSA1MDL,
@@ -59,6 +64,13 @@ from .ops.quickEdit import(
 	qeReset,
 	qeInvert
 )
+from .ops.projects import(
+	openToolsHub,
+	openSALVL,
+	openSAMDL,
+	openTexEdit,
+	saveProjectPreferences
+)
 from .prop.properties import(
     SASettings,
     SAEditPanelSettings,
@@ -94,22 +106,23 @@ from .ui.panel_material import(
 from .ui.panel_scene import(
 	SA_SceneInfo_ScenePanel
 )
+#endregion
 
 ## Start Addon Initialization
 
 # Addon Meta Information
 bl_info = {
-	"name": "SA Model Formats support",
+	"name": "Sonic Adventure Tools",
 	"author": "Justin113D",
+	"description": "Import/Exporter for the SA Models Formats.",
 	"version": (1, 6, 5),
 	"blender": (2, 91, 0),
 	"location": "File > Import/Export",
-	"description": ("Import/Exporter for the SA Models Formats.\n"
-					"Bugs should be reported to the github repository."),
 	"warning": "",
-	"wiki_url": "https://github.com/Justin113D/BlenderSASupport/wiki",
-	"support": 'COMMUNITY',
-	"category": "Import-Export"}
+	"doc_url": "https://github.com/Justin113D/BlenderSASupport/wiki",
+	"tracker_url": "https://github.com/Justin113D/BlenderSASupport/issues/new",
+	"category": "Import-Export"
+}
 
 if locals().get('loaded'):
 	loaded = False
@@ -121,6 +134,48 @@ if locals().get('loaded'):
 		if name.startswith(f"{__package__}."):
 			globals()[name] = reload(module)
 	del reload, modules
+
+@addon_updater_ops.make_annotations
+class AddonPreferences(bpy.types.AddonPreferences):
+	bl_idname = __package__
+
+	auto_check_update = BoolProperty(
+		name="Auto-check for Update",
+		description="If enabled, auto-check for updates using an interval",
+		default=False)
+
+	updater_interval_months = IntProperty(
+		name='Months',
+		description="Number of months between checking for updates",
+		default=0,
+		min=0)
+
+	updater_interval_days = IntProperty(
+		name='Days',
+		description="Number of days between checking for updates",
+		default=7,
+		min=0,
+		max=31)
+
+	updater_interval_hours = IntProperty(
+		name='Hours',
+		description="Number of hours between checking for updates",
+		default=0,
+		min=0,
+		max=23)
+
+	updater_interval_minutes = IntProperty(
+		name='Minutes',
+		description="Number of minutes between checking for updates",
+		default=0,
+		min=0,
+		max=59)
+
+	def draw(self, context):
+		layout = self.layout
+		mainrow = layout.row()
+		col = mainrow.column()
+		addon_updater_ops.update_settings_ui(self, context)
 
 class TOPBAR_MT_SA_export(bpy.types.Menu):
 	'''The export submenu in the export menu'''
@@ -175,6 +230,11 @@ classes = (
 	UpdateMaterials,
 	AutoAssignTextures,
 	MatToAssetLibrary,
+	openToolsHub,
+	openSALVL,
+	openSAMDL,
+	openTexEdit,
+	saveProjectPreferences,
 
 	qeReset,
 	qeInvert,
@@ -198,17 +258,20 @@ classes = (
 	SA_LevelInfo_Viewport,
 	SA_QuickEditMenu_Viewport,
 	SA_AdditionalOperators_Vieport,
-	#SA_AddonInfo_Viewport,
+	SA_AddonInfo_Viewport,
 	#SA_ProjectManagement_Viewport,
 
 	SA_SceneInfo_ScenePanel,
 	SA_MaterialProps_MaterialPanel,
-	)
+	AddonPreferences,
+)
 
 def register():
+	# Updater Registration
+	addon_updater_ops.register(bl_info)
 	for cls in classes:
 		bpy.utils.register_class(cls)
-
+	
 	SATexture.image = bpy.props.PointerProperty(type=bpy.types.Image)
 
 	SASettings.editorSettings = bpy.props.PointerProperty(type=SAEditPanelSettings)
@@ -238,7 +301,7 @@ def register():
 
 def unregister():
 	del common.DLL
-
+	addon_updater_ops.unregister()
 	bpy.types.TOPBAR_MT_file_export.remove(menu_func_exportsa)
 	bpy.types.TOPBAR_MT_file_import.remove(menu_func_importsa)
 

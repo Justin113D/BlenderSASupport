@@ -1,4 +1,5 @@
 import bpy
+import addon_utils
 import os
 import shutil
 from bpy_extras.io_utils import ExportHelper, ImportHelper
@@ -13,6 +14,7 @@ from bpy.props import (
 	CollectionProperty
 	)
 
+#region Addon Imports
 from .. import common
 from ..prop.properties import(
     SASettings,
@@ -57,6 +59,17 @@ from ..ops.materials import(
 from ..ops.object import(
 	ArmatureFromObjects
 )
+from ..ops.projects import(
+	openToolsHub,
+	openSALVL,
+	openSAMDL,
+	openTexEdit,
+	saveProjectPreferences
+)
+#endregion
+
+version = [addon.bl_info.get('version') for addon in addon_utils.modules()
+            if addon.bl_info['name'] == "Sonic Adventure Tools"][0]
 
 class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Information Panel (Author, Texlist, etc)
 	bl_idname = "SCENE_UI_saProperties"
@@ -276,7 +289,14 @@ class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project S
 		# Need custom load def for filtering by type.
 		layout.prop(settings, "ToolsPath")
 		layout.prop(settings, "ProjectPath")
-		
+		layout.separator()
+		layout.operator(openToolsHub.bl_idname)
+		layout.operator(openSALVL.bl_idname)
+		layout.operator(openSAMDL.bl_idname)
+		layout.operator(openTexEdit.bl_idname)
+		layout.separator()
+		layout.operator(saveProjectPreferences.bl_idname, toolPath=settings.ToolsPath, projFile=settings.ProjectPath)
+	
 class SA_AddonInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Addon Information, currently unused.
 	bl_idname = "UI_saAddonInfo"
 	bl_label = "Addon Info"
@@ -285,4 +305,4 @@ class SA_AddonInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Addon Informati
 	def draw(self, context):
 		layout = self.layout
 
-		layout.label(text="Current Ver: ")
+		layout.label(text="Current Version: " + str(verison))
