@@ -66,10 +66,13 @@ from ..ops.projects import(
 	openTexEdit,
 	saveProjectPreferences
 )
+from .. import addon_updater_ops
 #endregion
 
-version = [addon.bl_info.get('version') for addon in addon_utils.modules()
+addonVersion = [addon.bl_info.get('version') for addon in addon_utils.modules()
             if addon.bl_info['name'] == "Sonic Adventure Tools"][0]
+
+verNum = str(addonVersion).split('(')[1].split(')')[0].replace(',', '.').replace(' ', '')
 
 class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Information Panel (Author, Texlist, etc)
 	bl_idname = "SCENE_UI_saProperties"
@@ -304,5 +307,6 @@ class SA_AddonInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Addon Informati
 
 	def draw(self, context):
 		layout = self.layout
+		layout.label(text="Current Version: " + str(verNum))
 
-		layout.label(text="Current Version: " + str(verison))
+		addon_updater_ops.update_notice_box_ui()
