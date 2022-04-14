@@ -68,8 +68,7 @@ from .ops.projects import(
 	openToolsHub,
 	openSALVL,
 	openSAMDL,
-	openTexEdit,
-	saveProjectPreferences
+	openTexEdit
 )
 from .prop.properties import(
     SASettings,
@@ -171,8 +170,14 @@ class AddonPreferences(bpy.types.AddonPreferences):
 		min=0,
 		max=59)
 
+	toolspath: StringProperty(
+        name="SA Tools Path",
+        subtype='FILE_PATH',
+    )	
+
 	def draw(self, context):
 		layout = self.layout
+		layout.prop(self, "toolspath")
 		mainrow = layout.row()
 		col = mainrow.column()
 		addon_updater_ops.update_settings_ui(self, context)
@@ -234,7 +239,6 @@ classes = (
 	openSALVL,
 	openSAMDL,
 	openTexEdit,
-	saveProjectPreferences,
 
 	qeReset,
 	qeInvert,
@@ -258,8 +262,8 @@ classes = (
 	SA_LevelInfo_Viewport,
 	SA_QuickEditMenu_Viewport,
 	SA_AdditionalOperators_Vieport,
+	SA_ProjectManagement_Viewport,
 	SA_AddonInfo_Viewport,
-	#SA_ProjectManagement_Viewport,
 
 	SA_SceneInfo_ScenePanel,
 	SA_MaterialProps_MaterialPanel,

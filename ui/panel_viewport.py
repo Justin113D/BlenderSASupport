@@ -63,8 +63,7 @@ from ..ops.projects import(
 	openToolsHub,
 	openSALVL,
 	openSAMDL,
-	openTexEdit,
-	saveProjectPreferences
+	openTexEdit
 )
 from .. import addon_updater_ops
 #endregion
@@ -289,16 +288,12 @@ class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project S
 		layout = self.layout
 		settings = context.scene.saSettings
 
-		# Need custom load def for filtering by type.
-		layout.prop(settings, "ToolsPath")
 		layout.prop(settings, "ProjectPath")
 		layout.separator()
 		layout.operator(openToolsHub.bl_idname)
 		layout.operator(openSALVL.bl_idname)
 		layout.operator(openSAMDL.bl_idname)
 		layout.operator(openTexEdit.bl_idname)
-		layout.separator()
-		layout.operator(saveProjectPreferences.bl_idname, toolPath=settings.ToolsPath, projFile=settings.ProjectPath)
 	
 class SA_AddonInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Addon Information, currently unused.
 	bl_idname = "UI_saAddonInfo"

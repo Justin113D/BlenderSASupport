@@ -125,13 +125,6 @@ class SASettings(bpy.types.PropertyGroup):				## Property Groups used across the
 		default=0.5
 		)
 
-	ToolsPath: StringProperty(
-		name="SA Tools Folder: ",
-		description="Path to the SA Tools root folder.",
-		default="",
-		subtype='DIR_PATH'
-		)
-
 	ProjectPath: StringProperty(
 		name="SA Project File: ",
 		description="Sets a Project File (*.sap) file.",

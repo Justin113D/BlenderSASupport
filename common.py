@@ -1,4 +1,5 @@
 from struct import error
+import os, os.path
 import bpy
 import mathutils
 import math
@@ -7,6 +8,15 @@ from typing import List, Dict, Tuple
 from . import fileHelper, enums
 
 DO = False  # Debug Out
+
+def get_path():
+    return os.path.dirname(os.path.realpath(__file__))
+
+def get_name():
+    return os.path.basename(get_path())
+
+def get_prefs():
+    return bpy.context.preferences.addons[get_name()].preferences
 
 def center(p1: float, p2: float) -> float:
 	"""Returns the mid point between two numbers"""
