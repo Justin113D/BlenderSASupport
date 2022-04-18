@@ -1,7 +1,7 @@
 import bpy
 import os
 import shutil
-from .. import common, setReader, strippifier
+from .. import common, setReader, strippifier, file_SAANIM
 from bpy.props import (
 	BoolProperty,
 	FloatProperty,
