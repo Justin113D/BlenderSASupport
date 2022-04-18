@@ -1,7 +1,7 @@
 import bpy
 import os
 import shutil
-from .. import common, setReader, strippifier, file_SAANIM
+from .. import common, setReader, strippifier
 from bpy.props import (
 	BoolProperty,
 	FloatProperty,
@@ -473,7 +473,7 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 		return active.animation_data.action != None
 
 	def execute(self, context):
-		#return exportFile(self, 'ANIM', context, self.as_keywords())
-		#from .. import file_SAANIM
+		return exportFile(self, 'ANIM', context, self.as_keywords())
+		from .. import file_SAANIM
 		file_SAANIM.write(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
 		return {'FINISHED'}
