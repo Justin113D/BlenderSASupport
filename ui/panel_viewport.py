@@ -32,7 +32,8 @@ from .panel_draw import(
 	drawScenePanel,
 	SCENE_UL_SATexList,
 	SCENE_MT_Texture_Context_Menu,
-	MATERIAL_UL_saMaterialSlots
+	MATERIAL_UL_saMaterialSlots,
+	drawProjectData
 )
 from .panel_spaces import(
     SA_UI_Panel
@@ -279,7 +280,7 @@ class SA_AdditionalOperators_Vieport(SA_UI_Panel, bpy.types.Panel):		## Addition
 		layout.operator(ArmatureFromObjects.bl_idname)
 		layout.operator(StrippifyTest.bl_idname)
 
-class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project Support Panel, currently unused.
+class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project Support Panel
 	bl_idname = "UI_saProjectManagement"
 	bl_label = "Project Management"
 	bl_options = {"DEFAULT_CLOSED"}
@@ -288,14 +289,15 @@ class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project S
 		layout = self.layout
 		settings = context.scene.saSettings
 
-		layout.prop(settings, "ProjectPath")
+		layout.prop(settings, "ProjectFilePath")
 		layout.separator()
 		layout.operator(openToolsHub.bl_idname)
 		layout.operator(openSALVL.bl_idname)
 		layout.operator(openSAMDL.bl_idname)
 		layout.operator(openTexEdit.bl_idname)
+		drawProjectData(layout, settings.ProjectFilePath, settings)
 	
-class SA_AddonInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Addon Information, currently unused.
+class SA_AddonInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Addon Information
 	bl_idname = "UI_saAddonInfo"
 	bl_label = "Addon Info"
 	bl_options = {"DEFAULT_CLOSED"}

@@ -125,11 +125,17 @@ class SASettings(bpy.types.PropertyGroup):				## Property Groups used across the
 		default=0.5
 		)
 
-	ProjectPath: StringProperty(
+	ProjectFilePath: StringProperty(
 		name="SA Project File: ",
 		description="Sets a Project File (*.sap) file.",
 		default="",
 		subtype='FILE_PATH'
+		)
+
+	ProjectFolder: StringProperty(
+		name="SA Project Folder",
+		description="Project Path",
+		default=""
 		)
 
 	#panel stuff

@@ -29,16 +29,21 @@ tools = [
 	"\\tools\\TextureEditor.exe"
 ]
 
-def openTool(idx):
+def openTool(idx, useArgs: bool):
 	settings = bpy.context.scene.saSettings
 	
 	path = common.get_prefs().toolspath
 	toolpath = path + tools[idx]
-	args = "\"" + settings.ProjectPath + "\""
 
-	executePath = toolpath + " " + args
-	print(executePath)
-	subprocess.Popen(executePath)
+	if useArgs:
+		if settings.ProjectFilePath is not None:
+			args = "\"" + settings.ProjectFilePath + "\""
+			executePath = toolpath + " " + args
+			subprocess.Popen(executePath)
+		else:
+			subprocess.Popen(toolpath)
+	else:
+		subprocess.Popen(toolpath)
 
 class openToolsHub(bpy.types.Operator):
 	bl_idname = "sap.opentoolshub"
@@ -47,7 +52,7 @@ class openToolsHub(bpy.types.Operator):
 
 	def execute(self, context):
 
-		openTool(0)
+		openTool(0, True)
 		return {'FINISHED'}
 
 class openSALVL(bpy.types.Operator):
@@ -56,7 +61,7 @@ class openSALVL(bpy.types.Operator):
 	bl_description = "Opens the SALVL program."
 
 	def execute(self, context):
-		openTool(1)
+		openTool(1, True)
 		return {'FINISHED'}
 
 class openSAMDL(bpy.types.Operator):
@@ -65,7 +70,7 @@ class openSAMDL(bpy.types.Operator):
 	bl_description = "Opens the SAMDL program."
 
 	def execute(self, context):
-		openTool(2)
+		openTool(2, True)
 		return {'FINISHED'}
 
 class openTexEdit(bpy.types.Operator):
@@ -74,5 +79,5 @@ class openTexEdit(bpy.types.Operator):
 	bl_description = "Opens the Texture Editor program."
 
 	def execute(self, context):
-		openTool(3)
+		openTool(3, False)
 		return {'FINISHED'}

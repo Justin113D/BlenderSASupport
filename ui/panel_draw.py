@@ -15,12 +15,12 @@ from bpy.props import (
 
 from .. import common
 from ..prop.properties import(
-    SASettings,
-    SAEditPanelSettings,
-    SALandEntrySettings,
-    SAMaterialSettings,
-    SAMeshSettings,
-    SATexture
+	SASettings,
+	SAEditPanelSettings,
+	SALandEntrySettings,
+	SAMaterialSettings,
+	SAMeshSettings,
+	SATexture
 )
 from ..ops.materials import(
 	UpdateMaterials
@@ -39,6 +39,20 @@ from ..ops.exports import(
 	ExportPAK,
 	ExportPVMX
 )
+from ..parse.pxml import(
+	ProjectInfo,
+	SplitEntry,
+	SplitEntryMdl,
+	ProjectFile
+)
+from ..parse.pini import(
+	ModFile,
+	DLLMetaData,
+	DataFile
+)
+
+def getIniFilesList(self, settings: SASettings, itemsToAdd: list()):
+	settings.iniFiles = itemsToAdd
 
 def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):		## Advanced Properties draw definition.
 	'''For quick edit properties, to put simply'''
@@ -334,3 +348,22 @@ class MATERIAL_UL_saMaterialSlots(bpy.types.UIList):												## UI List draw 
 		mat = slot.material
 
 		layout.prop(mat, "name", text="", emboss=False, icon_value=icon)
+
+def drawProjectData(layout: bpy.types.UILayout, filepath, settings: SASettings):
+	if filepath is not "":
+		project = ProjectFile(filepath)
+		if project.GameInfo:
+			projPath = project.GameInfo.ProjectFolder
+			if projPath.__contains__("\"") is False:
+				path = settings.ProjectFilePath.split(".")
+				projPath = path[0]
+
+			modfile = ModFile(projPath + "\\mod.ini")
+			#settings.ProjectFolder = projPath
+			col = layout.column()
+			col.label(text="Project Information")
+			col.label(text="Mod Name: " + modfile.Name)
+			if modfile.Author is not "":
+				col.label(text="Author: " + modfile.Author)
+			col.label(text="Game: " + project.GameInfo.GameName)
+			

@@ -138,7 +138,7 @@ class UpdateMaterials(bpy.types.Operator):		## Updates all materials in the scen
 			ng.remove(ng[n])
 
 		# now reload them them
-		directory = os.path.dirname(os.path.realpath(__file__)) + "\\Shaders.blend\\NodeTree\\"
+		directory = os.path.dirname(os.path.realpath(__file__)) + "\\..\\Shaders.blend\\NodeTree\\"
 		bpy.ops.wm.append(filename="UV Tiling", directory=directory)
 		bpy.ops.wm.append(filename="SAShader", directory=directory)
 		bpy.ops.wm.append(filename="EnvMap", directory=directory)
