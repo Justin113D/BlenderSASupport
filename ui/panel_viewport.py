@@ -66,6 +66,9 @@ from ..ops.projects import(
 	openSAMDL,
 	openTexEdit
 )
+from ..ops.mesh import(
+	StrippifyTest
+)
 from .. import addon_updater_ops
 #endregion
 
