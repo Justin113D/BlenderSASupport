@@ -349,14 +349,24 @@ class MATERIAL_UL_saMaterialSlots(bpy.types.UIList):												## UI List draw 
 
 		layout.prop(mat, "name", text="", emboss=False, icon_value=icon)
 
-def drawSAMDLPanel(layout: bpy.types.UILayout, settings: SASettings, iniFiles: list()):
-	iniDropDown: EnumProperty(
+class LoadDataFiles(bpy.types.PropertyGroup):
+	def loadIniFiles(files: list()):
+		items = []
+		for file in files:
+			items.append(file)
+
+		return items
+
+	iniFilesList: EnumProperty(
 		name="Data Files",
-		items=iniFiles,
-		default=0
+		items=loadIniFiles,
+		description="Data Files ",
+		default=None
 	)
 
-	layout.prop(self, "iniDropDown")
+def drawSAMDLPanel(layout: bpy.types.UILayout, settings: SASettings, iniFiles: list()):
+	LoadDataFiles.loadIniFiles(iniFiles)
+	layout.prop(LoadDataFiles, "iniFilesList")
 
 def drawProjectData(layout: bpy.types.UILayout, filepath, settings: SASettings):
 	if filepath is not "":
@@ -376,7 +386,7 @@ def drawProjectData(layout: bpy.types.UILayout, filepath, settings: SASettings):
 				col.label(text="Author: " + modfile.Author)
 			col.label(text="Game: " + project.GameInfo.GameName)
 
-			#drawSAMDLPanel(layout, settings, project.SplitEntries)
+			drawSAMDLPanel(layout, settings, project.SplitEntries)
 			
 
 

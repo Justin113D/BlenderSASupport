@@ -13,6 +13,13 @@ from bpy.props import (
 	)
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 from typing import List, Dict, Union, Tuple
+from ..parse.pini import (
+	PathEntry,
+	PathData
+)
+from .object import(
+	CreatePath
+)
 
 class ImportMDL(bpy.types.Operator, ImportHelper):			## Imports *MDL files made with the SA Tools.
 	"""Imports any sonic adventure mdl file"""
@@ -237,4 +244,19 @@ class LoadAnimFile(bpy.types.Operator, ImportHelper):		## Imports a SAANIM file 
 			except file_SAANIM.ArmatureInvalidException as e:
 				self.report({'WARNING'}, str(e))
 				continue
+		return {'FINISHED'}
+
+class LoadPathFile(bpy.types.Operator, ImportHelper):
+	bl_idname = "object.load_pathini"
+	bl_label = "Import Path INI Files"
+	bl_description = "Loads a Path from an ini file."
+
+	filter_glob: StringProperty(
+		default="*.ini",
+		options={'HIDDEN'},
+		)
+
+	def execute(self, context):
+		path = PathData(self.filepath)
+		CreatePath(path.Name, path.Entries)
 		return {'FINISHED'}

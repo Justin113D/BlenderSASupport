@@ -169,3 +169,19 @@ class ArmatureFromObjects(bpy.types.Operator):		## Creates an armature for model
 
 
 		return {'FINISHED'}
+
+def CreatePath(name: str, points: list()):
+	if points.count is not 0:
+		crv = bpy.data.curves.new("curve" + name, 'CURVE')
+		crv.dimensions = '3D'
+		spline = crv.splines.new(type='POLY')
+		for po in points:
+			spline.points[-1].co = [po.px, po.pz*-1, po.py, 1]
+			spline.points[-1].tilt = po.ZRotation
+			if po != points[-1]:
+				spline.points.add(1)
+
+		obj = bpy.data.objects.new(name, crv)
+		bpy.context.scene.collection.objects.link(obj)
+	else:
+		print("Points list was 0")

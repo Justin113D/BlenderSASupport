@@ -37,7 +37,8 @@ from .ops.imports import(
 	ImportLVL,
 	ImportTexFile,
 	LoadSetFile,
-	LoadAnimFile
+	LoadAnimFile,
+	LoadPathFile
 )
 from .ops.materials import(
 	AutoAssignTextures,
@@ -86,7 +87,8 @@ from .ui.panel_draw import(
 	drawScenePanel,
 	SCENE_UL_SATexList,
 	SCENE_MT_Texture_Context_Menu,
-	MATERIAL_UL_saMaterialSlots
+	MATERIAL_UL_saMaterialSlots,
+	LoadDataFiles
 )
 from .ui.panel_viewport import(
 	SA_SceneInfo_Viewport,
@@ -223,6 +225,7 @@ classes = (
 	ImportTexFile,
 	LoadSetFile,
 	LoadAnimFile,
+	LoadPathFile,
 
 	StrippifyTest,
 	ArmatureFromObjects,
@@ -255,6 +258,7 @@ classes = (
 	SCENE_UL_SATexList,
 	SCENE_MT_Texture_Context_Menu,
 	MATERIAL_UL_saMaterialSlots,
+	#LoadDataFiles,
 	SA_SceneInfo_Viewport,
 	SA_MaterialProps_Viewport,
 	SA_ModelProps_Viewport,

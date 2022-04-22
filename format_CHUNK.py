@@ -9,7 +9,7 @@ import collections
 
 from . import enums, fileHelper, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox
-from .__init__ import SAMaterialSettings
+from .prop.properties import SAMaterialSettings
 
 DO = False
 writeSpecular = True

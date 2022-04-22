@@ -1,7 +1,10 @@
+import bpy
 from typing import List, Dict, Tuple
 import os
 import io
 import configparser
+from .. import common
+import mathutils
 
 class DLLMetaData:
 	"""Metadata used in SAMDL."""
@@ -96,3 +99,75 @@ class ModFile:
 				self.Version = cp.get('mod', 'Version')
 			else:
 				self.Version = ""
+
+class PathEntry:
+	ZRotation: float
+	Distance: float
+	px: float
+	py: float
+	pz: float
+
+	def __init__(self, 
+				coords: str,
+				rotation: str,
+				distance: float
+				):
+
+		print(coords)
+		print(rotation)
+		print(distance)
+
+		sx = coords.split(', ')[0]
+		sy = coords.split(', ')[1]
+		sz = coords.split(', ')[2]
+		self.px = float(sx)
+		self.py = float(sy)
+		self.pz = float(sz)
+
+		zrot = int(rotation, 16)
+		self.ZRotation = common.BAMSToRad(zrot)
+
+		if distance is not "":
+			self.Distance = float(distance)
+		else:
+			self.Distance = 0
+
+class PathData:
+	"""Ini Formatted Path Data from the Adventure Games."""
+
+	Name: str
+	TotalDistance: float
+	Entries: List[PathEntry]
+
+	def __init__(self, path):
+		config = io.StringIO()
+		filepath = os.path.abspath(path)
+		print(filepath)
+
+		if os.path.isfile(path):
+			config.write('[Head]\n')
+			config.write(open(filepath).read())
+			config.seek(0, os.SEEK_SET)
+
+			cp = configparser.ConfigParser()
+			cp.read_file(config)
+			entries = []
+			self.Name = os.path.basename(filepath)
+			for section in cp.sections():
+				if section == "Head":
+					self.TotalDistance = cp.getfloat(section, "TotalDistance")
+				else:
+					coords = ""
+					if cp.has_option(section, "Position"):
+						coords = cp.get(section, "Position")
+					rotation = ""
+					if cp.has_option(section, "ZRotation"):
+						rotation = cp.get(section, "ZRotation")
+					distance = 0
+					if cp.has_option(section, "Distance"):
+						distance = cp.getfloat(section, "Distance")
+
+					entry = PathEntry(coords, rotation, distance)
+					entries.append(entry)
+
+			self.Entries = entries

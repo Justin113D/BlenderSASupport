@@ -44,7 +44,7 @@ from ..ops.quickEdit import(
 )
 
 class SA_SceneInfo_ScenePanel(SA_Scene_Panel, bpy.types.Panel):				## Scene Information Panel (Author, Texlist, etc)
-	bl_idname = "SCENE_saProperties"
+	bl_idname = "WORLD_PT_saProperties"
 	bl_label = "SA Scene Information"
 
 	def draw(self, context):

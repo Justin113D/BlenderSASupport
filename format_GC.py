@@ -6,7 +6,7 @@ import copy
 
 from . import fileHelper, enums, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox
-from .__init__ import SAMaterialSettings
+from .prop.properties import SAMaterialSettings
 
 DO = False
 

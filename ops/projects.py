@@ -81,3 +81,4 @@ class openTexEdit(bpy.types.Operator):
 	def execute(self, context):
 		openTool(3, False)
 		return {'FINISHED'}
+

@@ -47,7 +47,8 @@ from ..ops.quickEdit import(
 )
 from ..ops.imports import(
 	LoadSetFile,
-	LoadAnimFile
+	LoadAnimFile,
+	LoadPathFile
 )
 from ..ops.exports import(
 	ExportAnim
@@ -78,7 +79,7 @@ addonVersion = [addon.bl_info.get('version') for addon in addon_utils.modules()
 verNum = str(addonVersion).split('(')[1].split(')')[0].replace(',', '.').replace(' ', '')
 
 class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Information Panel (Author, Texlist, etc)
-	bl_idname = "SCENE_UI_saProperties"
+	bl_idname = "SCENE_PT_infoPanel"
 	bl_label = "Scene Information"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -89,7 +90,7 @@ class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Informati
 		drawScenePanel(layout, settings)
 
 class SA_LandEntryProperties_Viewport(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJECT Information Panel
-	bl_idname = "OBJECT_UI_saProperties"
+	bl_idname = "SCENE_PT_lvlProperties"
 	bl_label = "Landtable Entry Properties"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -105,7 +106,7 @@ class SA_LandEntryProperties_Viewport(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJE
 		drawLandEntryPanel(layout, menuProps, objProps)
 
 class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## NJS_MODEL Information Panel
-	bl_idname = "MESH_UI_saProperties"
+	bl_idname = "SCENE_PT_mdlProperties"
 	bl_label = "Model Properties"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -120,7 +121,7 @@ class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## NJS_MODEL Info
 		drawMeshPanel(layout, meshprops)
 
 class SA_MaterialProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_MATERIAL Panel
-	bl_idname = "MATERIAL_UI_saProperties"
+	bl_idname = "SCENE_PT_matProperties"
 	bl_label = "Material Properties"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -164,7 +165,7 @@ class SA_MaterialProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_MATERIAL
 			drawMaterialPanel(layout, menuProps, matProps)
 
 class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit Menu + Update Material Button, etc
-	bl_idname = 'MESH_UI_satools'
+	bl_idname = 'SCENE_PT_satools'
 	bl_label = 'Quick Edit Menu'
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -230,7 +231,7 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit M
 			box.separator()
 
 class SA_LevelInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Level Information (landtable name, texlist pointer, texture name, etc)
-	bl_idname = "UI_saLevelInfo"
+	bl_idname = "SCENE_PT_saLevelInfo"
 	bl_label = "Level Properties"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -259,7 +260,7 @@ class SA_LevelInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Level Informati
 		box.prop(settings, "doubleSidedCollision")
 
 class SA_AdditionalOperators_Vieport(SA_UI_Panel, bpy.types.Panel):		## Additional Operators (Loading other files, extra functions, etc)
-	bl_idname = "UI_saAddOperators"
+	bl_idname = "SCENE_PT_saAddOperators"
 	bl_label = "Additional Functions"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -268,6 +269,7 @@ class SA_AdditionalOperators_Vieport(SA_UI_Panel, bpy.types.Panel):		## Addition
 
 		layout.label(text="Import/Export")
 		layout.operator(LoadSetFile.bl_idname)
+		layout.operator(LoadPathFile.bl_idname)
 		split = layout.split()
 		split.operator(LoadAnimFile.bl_idname)
 		split.operator(ExportAnim.bl_idname)
@@ -284,7 +286,7 @@ class SA_AdditionalOperators_Vieport(SA_UI_Panel, bpy.types.Panel):		## Addition
 		layout.operator(StrippifyTest.bl_idname)
 
 class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project Support Panel
-	bl_idname = "UI_saProjectManagement"
+	bl_idname = "SCENE_PT_saProjectManagement"
 	bl_label = "Project Management"
 	bl_options = {"DEFAULT_CLOSED"}
 
@@ -301,7 +303,7 @@ class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project S
 		drawProjectData(layout, settings.ProjectFilePath, settings)
 	
 class SA_AddonInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Addon Information
-	bl_idname = "UI_saAddonInfo"
+	bl_idname = "SCENE_PT_saAddonInfo"
 	bl_label = "Addon Info"
 	bl_options = {"DEFAULT_CLOSED"}
 
