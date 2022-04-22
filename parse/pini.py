@@ -124,8 +124,11 @@ class PathEntry:
 		self.py = float(sy)
 		self.pz = float(sz)
 
-		zrot = int(rotation, 16)
-		self.ZRotation = common.BAMSToRad(zrot)
+		if rotation != "":
+			zrot = int(rotation, 16)
+			self.ZRotation = common.BAMSToRad(zrot)
+		else:
+			self.ZRotation = 0
 
 		if distance is not "":
 			self.Distance = float(distance)
