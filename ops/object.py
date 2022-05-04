@@ -78,6 +78,7 @@ class ArmatureFromObjects(bpy.types.Operator):		## Creates an armature for model
 		armatureObj = bpy.data.objects.new("ARM_" + active.name, armature)
 		armatureObj.parent = active.parent
 		armatureObj.matrix_local = active.matrix_local
+		armatureObj.saObjflags.fromDictionary(active.saObjflags)
 		globalMatrix = active.matrix_world
 
 		context.scene.collection.objects.link(armatureObj)
@@ -95,6 +96,7 @@ class ArmatureFromObjects(bpy.types.Operator):		## Creates an armature for model
 		for b in bones:
 			boneName = b.name
 			bone = edit_bones.new(b.name)
+			bone.saObjflags.fromDictionary(b.saObjflags)
 			bone.layers[0] = True
 			bone.head = (0,0,0)
 			bone.tail = (1,0,0)

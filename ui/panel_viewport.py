@@ -274,6 +274,19 @@ class SA_LevelInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Level Informati
 
 		box.prop(settings, "doubleSidedCollision")
 
+class SA_CurveInfo_Viewport(SA_UI_Panel, bpy.types.Panel):
+	bl_idname = "SCENE_PT_CurveInfo"
+	bl_label = "Curve Info"
+	bl_options = {'DEFAULT_CLOSED'}
+
+	@classmethod
+	def poll(cls, context):
+		return context.active_object.type == 'CURVE'
+
+	def draw(self, context):
+		layout = self.layout
+		
+
 class SA_AdditionalOperators_Vieport(SA_UI_Panel, bpy.types.Panel):		## Additional Operators (Loading other files, extra functions, etc)
 	bl_idname = "SCENE_PT_saAddOperators"
 	bl_label = "Additional Functions"
