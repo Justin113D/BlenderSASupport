@@ -634,6 +634,7 @@ class Attach:
                 print(" Mesh has no materials")
             else:
                 matName = mesh.materials[mID].name
+                materials = mesh.materials
                 if matName in materials:
                     material = materials[matName]
                 else:

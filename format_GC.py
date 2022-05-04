@@ -836,6 +836,7 @@ class Attach:
             mat = None
             if len(mesh.materials) > 0:
                 matName = mesh.materials[i].name
+                materials = mesh.materials
                 if matName in materials:
                     mat = materials[matName]
                 else:
