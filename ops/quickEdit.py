@@ -103,14 +103,14 @@ def qeUpdate(context, newValue):			## Quick Edit Menu Update Definition.
 
 			objProps = o.saSettings
 			for k, v in SALandEntrySettings.defaultDict().items():
-				if isinstance(v, bool) and getattr(qEditSettings.objQProps, k):
+				if isinstance(v, bool) and getattr(qEditSettings.landQProps, k):
 					setattr(objProps, k, newValue)
 
 			if qEditSettings.obj_apply_userFlags and newValue:
-				objProps.userFlags = qEditSettings.objQProps.userFlags
+				objProps.userFlags = qEditSettings.landQProps.userFlags
 
 			if qEditSettings.obj_apply_blockbit and newValue:
-				objProps.blockbit = qEditSettings.objQProps.blockbit
+				objProps.blockbit = qEditSettings.landQProps.blockbit
 
 	# If the user specified to change meshes...
 	if context.scene.saSettings.useMeshEdit:
@@ -178,7 +178,7 @@ class qeReset(bpy.types.Operator):			## Resets the Quick Edit Menu to default se
 					setattr(menuProps, p, False)
 
 		if menuProps.useObjEdit:
-			objProps = context.scene.saSettings.objQProps
+			objProps = context.scene.saSettings.landQProps
 			for k, v in SALandEntrySettings.defaultDict().items():
 				if isinstance(v, bool):
 					setattr(objProps, k, False)
@@ -221,7 +221,7 @@ class qeInvert(bpy.types.Operator):			## Inverts current Quick Edit Menu selecti
 					setattr(menuProps, p, not a)
 
 		if menuProps.useObjEdit:
-			objProps = context.scene.saSettings.objQProps
+			objProps = context.scene.saSettings.landQProps
 			for k, v in SALandEntrySettings.defaultDict().items():
 				if isinstance(v, bool):
 					setattr(objProps, k, not getattr(objProps, k))

@@ -77,12 +77,13 @@ from .prop.properties import(
     SALandEntrySettings,
     SAMaterialSettings,
     SAMeshSettings,
-    SATexture
+    SATexture,
+	SAObjectSettings
 )
 from .ui.panel_draw import(
 	propAdv,
 	drawMaterialPanel,
-	drawLandEntryPanel,
+	drawObjPanel,
 	drawMeshPanel,
 	drawScenePanel,
 	SCENE_UL_SATexList,
@@ -92,7 +93,7 @@ from .ui.panel_draw import(
 )
 from .ui.panel_viewport import(
 	SA_SceneInfo_Viewport,
-	SA_LandEntryProperties_Viewport,
+	SA_ObjProperties_Viewport,
 	SA_ModelProps_Viewport,
 	SA_MaterialProps_Viewport,
 	SA_QuickEditMenu_Viewport,
@@ -254,6 +255,7 @@ classes = (
 	SAEditPanelSettings,
 	SAMeshSettings,
 	SATexture,
+	SAObjectSettings,
 
 	SCENE_UL_SATexList,
 	SCENE_MT_Texture_Context_Menu,
@@ -262,7 +264,7 @@ classes = (
 	SA_SceneInfo_Viewport,
 	SA_MaterialProps_Viewport,
 	SA_ModelProps_Viewport,
-	SA_LandEntryProperties_Viewport,
+	SA_ObjProperties_Viewport,
 	SA_LevelInfo_Viewport,
 	SA_QuickEditMenu_Viewport,
 	SA_AdditionalOperators_Vieport,
@@ -285,7 +287,7 @@ def register():
 	SASettings.editorSettings = bpy.props.PointerProperty(type=SAEditPanelSettings)
 	SASettings.qEditorSettings = bpy.props.PointerProperty(type=SAEditPanelSettings)
 	SASettings.matQProps = bpy.props.PointerProperty(type=SAMaterialSettings)
-	SASettings.objQProps = bpy.props.PointerProperty(type=SALandEntrySettings)
+	SASettings.landQProps = bpy.props.PointerProperty(type=SALandEntrySettings)
 	SASettings.meshQProps = bpy.props.PointerProperty(type=SAMeshSettings)
 	SASettings.textureList = bpy.props.CollectionProperty(
 		type=SATexture,
@@ -295,6 +297,10 @@ def register():
 
 	bpy.types.Scene.saSettings = bpy.props.PointerProperty(type=SASettings)
 	bpy.types.Object.saSettings = bpy.props.PointerProperty(type=SALandEntrySettings)
+	bpy.types.Object.saObjflags = bpy.props.PointerProperty(type=SAObjectSettings)
+	bpy.types.Bone.saObjflags = bpy.props.PointerProperty(type=SAObjectSettings)
+	bpy.types.EditBone.saObjflags = bpy.props.PointerProperty(type=SAObjectSettings)
+	bpy.types.Armature.saObjectflags = bpy.props.PointerProperty(type=SAObjectSettings)
 	bpy.types.Material.saSettings = bpy.props.PointerProperty(type=SAMaterialSettings)
 	bpy.types.Mesh.saSettings = bpy.props.PointerProperty(type=SAMeshSettings)
 

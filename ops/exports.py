@@ -477,3 +477,21 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 		from .. import file_SAANIM
 		file_SAANIM.write(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
 		return {'FINISHED'}
+
+class ExportCurve(bpy.types.Operator, ExportHelper):
+	bl_idname = "object.export_curve"
+	bl_label = "Export Path Data"
+	bl_description = "Currently non-functional."
+
+	filename_ext = ".ini"
+
+	@classmethod
+	def poll(cls, context):
+		active = context.active_object
+		if active is None:
+			return False
+		if active.type != 'CURVE':
+			return False
+
+	def execute(self, context):
+		return {'FINISHED'}

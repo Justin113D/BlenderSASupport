@@ -177,7 +177,6 @@ def CreatePath(name: str, points: list()):
 		spline = crv.splines.new(type='POLY')
 		for po in points:
 			spline.points[-1].co = [po.px, po.pz*-1, po.py, 1]
-			spline.points[-1].tilt = po.ZRotation
 			if po != points[-1]:
 				spline.points.add(1)
 

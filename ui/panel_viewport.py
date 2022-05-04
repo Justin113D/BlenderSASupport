@@ -27,7 +27,7 @@ from ..prop.properties import(
 from .panel_draw import(
 	propAdv,
 	drawMaterialPanel,
-	drawLandEntryPanel,
+	drawObjPanel,
 	drawMeshPanel,
 	drawScenePanel,
 	SCENE_UL_SATexList,
@@ -89,25 +89,36 @@ class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Informati
 
 		drawScenePanel(layout, settings)
 
-class SA_LandEntryProperties_Viewport(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJECT Information Panel
+class SA_ObjProperties_Viewport(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJECT Information Panel
 	bl_idname = "SCENE_PT_lvlProperties"
-	bl_label = "Landtable Entry Properties"
+	bl_label = "Object Properties"
 	bl_options = {"DEFAULT_CLOSED"}
 
 	@classmethod
 	def poll(cls, context):
-		return context.active_object.type == 'MESH'
+		if (context.active_object.type == 'MESH') or (context.active_object.type == 'NONE') or (context.active_object.type == 'ARMATURE'):	# Mesh Nodes/Empty Nodes
+			return True
+		elif (context.mode == 'POSE') or (context.mode == 'EDIT_ARMATURE'):	# Bones
+			return True
+		else:
+			return False
 
 	def draw(self, context):
 		layout = self.layout
-		objProps = context.active_object.saSettings
+		if context.mode == 'POSE':
+			objProps = context.active_object.data.bones.active.saObjflags
+		elif context.mode == 'EDIT_ARMATURE':
+			objProps = context.active_object.data.edit_bones.active.saObjflags
+		else:	
+			objProps = context.active_object.saObjflags
+		lvlProps = context.active_object.saSettings
 		menuProps = context.scene.saSettings.editorSettings
 
-		drawLandEntryPanel(layout, menuProps, objProps)
+		drawObjPanel(layout, menuProps, objProps, lvlProps)
 
 class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## NJS_MODEL Information Panel
 	bl_idname = "SCENE_PT_mdlProperties"
-	bl_label = "Model Properties"
+	bl_label = "Mesh Properties"
 	bl_options = {"DEFAULT_CLOSED"}
 
 	@classmethod
@@ -213,7 +224,7 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit M
 
 		if settings.expandedLandEntryEdit:
 			box.separator()
-			drawLandEntryPanel(box, settings.qEditorSettings, settings.objQProps, qe=True)
+			drawObjPanel(box, settings.qEditorSettings, settings.landQProps, qe=True)
 			box.separator()
 
 		box = outerBox.box()
@@ -234,6 +245,10 @@ class SA_LevelInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Level Informati
 	bl_idname = "SCENE_PT_saLevelInfo"
 	bl_label = "Level Properties"
 	bl_options = {"DEFAULT_CLOSED"}
+
+	@classmethod
+	def poll(cls, context):
+		return context.scene.saSettings.sceneIsLevel
 
 	def draw(self, context):
 		layout = self.layout

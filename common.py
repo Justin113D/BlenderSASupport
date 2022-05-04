@@ -304,6 +304,7 @@ class ModelData:
 	scale: Vector3
 	bounds: BoundingBox
 
+	objFlags: dict
 	saProps: dict
 
 	unknown1: int  # sa1 COL
@@ -344,6 +345,7 @@ class ModelData:
 			self.saProps = None
 
 		self.origObject = bObject
+		self.objFlags = bObject.saObjflags.toDictionary()
 
 		if bObject is None:
 			self.worldMatrix = mathutils.Matrix.Identity(4)
@@ -420,25 +422,37 @@ class ModelData:
 					s = o.scale[2]
 				o.bounds.radius = s * bounds.radius * 1.01
 
-	def getObjectFlags(self, lvl) -> enums.ObjectFlags:
+	def getObjectFlags(self) -> enums.ObjectFlags:
 		"""Calculates the Objectflags"""
 		from .enums import ObjectFlags
 		flags = ObjectFlags.null
+		if self.objFlags is None:
+			return flags
+		p = self.objFlags
 
-		flags |= ObjectFlags.NoMorph  # default
-
-		if lvl:
-			flags |= ObjectFlags.NoAnimate  # default
-			if self.position == Vector3((0, 0, 0)):
-				flags |= ObjectFlags.NoPosition
-			if self.rotation == BAMSRotation((0, 0, 0)):
-				flags |= ObjectFlags.NoRotate
-			if self.scale == Vector3((1, 1, 1)):
-				flags |= ObjectFlags.NoScale
-		if self.meshPtr == 0:
+		if p["ignorePosition"]:
+			flags |= ObjectFlags.NoPosition
+		if p["ignoreRotation"]:
+			flags |= ObjectFlags.NoRotate
+		if p["ignoreScale"]:
+			flags |= ObjectFlags.NoScale
+		if p["rotateZYX"]:
+			flags |= ObjectFlags.RotateZYX
+		if p["skipDraw"]:
 			flags |= ObjectFlags.NoDisplay
-		if len(self.children) == 0:
+		if p["skipChildren"]:
 			flags |= ObjectFlags.NoChildren
+		if p["flagAnimate"]:
+			flags |= ObjectFlags.NoAnimate
+		if p["flagMorph"]:
+			flags |= ObjectFlags.NoMorph
+
+		# Checks for NONE object type or if no children for an object to auto-set those flags in the event the user did not set them.
+		if (flags & ObjectFlags.NoDisplay) or (flags & ObjectFlags.NoChildren):
+			if self.origObject.type == 'NONE':
+				flags |= ObjectFlags.NoDisplay
+			if len(self.origObject.children) == 0:
+				flags |= ObjectFlags.NoChildren
 
 		return flags
 
@@ -572,7 +586,7 @@ class ModelData:
 		self.objectPtr = fileW.tell()
 		labels[self.objectPtr] = name
 
-		fileW.wUInt(self.getObjectFlags(lvl).value)
+		fileW.wUInt(self.getObjectFlags().value)
 		fileW.wUInt(self.meshPtr)
 		self.position.write(fileW)
 		self.rotation.write(fileW)
@@ -626,6 +640,7 @@ class Bone:
 
 	name: str
 	hierarchyDepth: int
+	objFlags: dict
 
 	matrix_world: mathutils.Matrix  # in the world
 	matrix_local: mathutils.Matrix  # relative to parent bone
@@ -649,7 +664,8 @@ class Bone:
 				 armatureMatrix: mathutils.Matrix,
 				 localMatrix: mathutils.Matrix,
 				 exportMatrix: mathutils.Matrix,
-				 parentBone):
+				 parentBone,
+				 objFlags: dict):
 		self.name = name
 		self.hierarchyDepth = hierarchyDepth
 
@@ -676,6 +692,8 @@ class Bone:
 		if parentBone is not None:
 			parentBone.children.append(self)
 
+		self.objFlags = objFlags
+
 	@classmethod
 	def getBones(cls,
 				 bBone: bpy.types.Bone,
@@ -689,7 +707,8 @@ class Bone:
 					hierarchyDepth,
 					armatureMatrix,
 					bBone.matrix_local,
-					export_matrix, parent)
+					export_matrix, parent,
+					bBone.saObjflags.toDictionary())
 		result.append(bone)
 		lastSibling = None
 
@@ -725,11 +744,31 @@ class Bone:
 		self.objectPtr = fileW.tell()
 		labels[self.objectPtr] = name
 
-		objFlags = enums.ObjectFlags.NoMorph
-		if self.meshPtr == 0:
+		p = self.objFlags
+		objFlags = enums.ObjectFlags.null
+		if p["ignorePosition"]:
+			objFlags |= enums.ObjectFlags.NoPosition
+		if p["ignoreRotation"]:
+			objFlags |= enums.ObjectFlags.NoRotate
+		if p["ignoreScale"]:
+			objFlags |= enums.ObjectFlags.NoScale
+		if p["rotateZYX"]:
+			objFlags |= enums.ObjectFlags.RotateZYX
+		if p["skipDraw"]:
 			objFlags |= enums.ObjectFlags.NoDisplay
-		if len(self.children) == 0:
+		if p["skipChildren"]:
 			objFlags |= enums.ObjectFlags.NoChildren
+		if p["flagAnimate"]:
+			objFlags |= enums.ObjectFlags.NoAnimate
+		if p["flagMorph"]:
+			objFlags |= enums.ObjectFlags.NoMorph
+
+		# Checking if NoDisplay or NoChildren is set and auto-setting them if not to prevent potential error in-game.
+		if (objFlags & enums.ObjectFlags.NoDisplay) or (objFlags & enums.ObjectFlags.NoChildren):
+			if self.meshPtr == 0:
+				objFlags |= enums.ObjectFlags.NoDisplay
+			if len(self.children) == 0:
+				objFlags |= enums.ObjectFlags.NoChildren
 
 		fileW.wUInt(objFlags.value)
 		fileW.wUInt(self.meshPtr)
@@ -756,7 +795,8 @@ class Armature(ModelData):
 					0,
 					self.origObject.matrix_world,
 					mathutils.Matrix.Identity(4),
-					export_matrix, None)
+					export_matrix, None,
+					self.objFlags)
 		bones.append(root)
 
 		# starting with the parentless bones
@@ -1501,7 +1541,7 @@ def polyToTris(p: list) -> list:
 class Model:
 
 	name: str
-	objFlags: enums.ObjectFlags
+	objFlags: dict
 	meshPtr: int
 
 	matrix_world: mathutils.Matrix
@@ -1516,7 +1556,7 @@ class Model:
 
 	def __init__(self,
 				 name: str,
-				 objFlags: enums.ObjectFlags,
+				 objFlags: dict,
 				 meshPtr: int,
 				 matrix_world: mathutils.Matrix,
 				 matrix_local: mathutils.Matrix,
@@ -1556,24 +1596,44 @@ def readObjects(fileR:
 	else:
 		name = "node_" + hex4(address)
 
-	objFlags = enums.ObjectFlags(fileR.rUInt(address))
-	meshPtr = fileR.rUInt(address + 4)
+	from .__init__ import SAObjectSettings
+	from .enums import ObjectFlags
+	objFlags = SAObjectSettings.defaultDict()
+	f = fileR.rUInt(address)
+	
+	objFlags["ignorePosition"]\
+		= bool(f & ObjectFlags.NoPosition.value)
+	objFlags["ignoreRotation"]\
+		= bool(f & ObjectFlags.NoRotate.value)
+	objFlags["ignoreScale"]\
+		= bool(f & ObjectFlags.NoScale.value)
+	objFlags["rotateZYX"]\
+		= bool(f & ObjectFlags.RotateZYX.value)
+	objFlags["skipDraw"]\
+		= bool(f & ObjectFlags.NoDisplay.value)
+	objFlags["skipChildren"]\
+		= bool(f & ObjectFlags.NoChildren.value)
+	objFlags["flagAnimate"]\
+		= bool(f & ObjectFlags.NoAnimate.value)
+	objFlags["flagMorph"]\
+		= bool(f & ObjectFlags.NoMorph.value)
 
+	meshPtr = fileR.rUInt(address + 4)
 	# getting the rotation is a bit more difficult
 	xRot = BAMSToRad(fileR.rInt(address + 20))
 	yRot = BAMSToRad(fileR.rInt(address + 24))
 	zRot = BAMSToRad(fileR.rInt(address + 28))
 
 	pos = (fileR.rFloat(address + 8),
-		   -fileR.rFloat(address + 16),
-		   fileR.rFloat(address + 12))
+		-fileR.rFloat(address + 16),
+		fileR.rFloat(address + 12))
 
 	posMtx = mathutils.Matrix.Translation(pos)
 	rotMtx = mathutils.Euler((xRot, -zRot, yRot), 'XZY').to_matrix().to_4x4()
 	scaleMtx = matrixFromScale(
 		(fileR.rFloat(address + 32),
-		 fileR.rFloat(address + 40),
-		 fileR.rFloat(address + 36)))
+		fileR.rFloat(address + 40),
+		fileR.rFloat(address + 36)))
 
 	matrix_local = posMtx @ rotMtx @ scaleMtx
 
@@ -1583,11 +1643,11 @@ def readObjects(fileR:
 		matrix_world = matrix_local.copy()
 
 	model = Model(name,
-				  objFlags,
-				  meshPtr,
-				  matrix_world,
-				  matrix_local,
-				  parent)
+				objFlags,
+				meshPtr,
+				matrix_world,
+				matrix_local,
+				parent)
 	if result is not None:
 		result.append(model)
 
@@ -1604,11 +1664,11 @@ def readObjects(fileR:
 	siblingPtr = fileR.rUInt(address + 48)
 	if siblingPtr > 0:
 		sibling = readObjects(fileR,
-							  siblingPtr,
-							  hierarchyDepth,
-							  parent,
-							  labels,
-							  result)
+							siblingPtr,
+							hierarchyDepth,
+							parent,
+							labels,
+							result)
 		model.sibling = sibling
 
 	return model
@@ -1774,6 +1834,7 @@ class Col:
 		obj = bpy.data.objects.new(self.model.name, data)
 		obj.matrix_world = self.model.matrix_world
 		obj.saSettings.fromDictionary(self.saProps)
+		obj.saObjflags.fromDictionary(self.model.objFlags)
 
 		return obj
 

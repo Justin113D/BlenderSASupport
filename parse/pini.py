@@ -101,6 +101,8 @@ class ModFile:
 				self.Version = ""
 
 class PathEntry:
+	XRotation: float
+	YRotation: float
 	ZRotation: float
 	Distance: float
 	px: float
@@ -109,14 +111,11 @@ class PathEntry:
 
 	def __init__(self, 
 				coords: str,
-				rotation: str,
+				xrot: str,
+				yrot: str,
+				zrot: str,
 				distance: float
 				):
-
-		print(coords)
-		print(rotation)
-		print(distance)
-
 		sx = coords.split(', ')[0]
 		sy = coords.split(', ')[1]
 		sz = coords.split(', ')[2]
@@ -124,9 +123,21 @@ class PathEntry:
 		self.py = float(sy)
 		self.pz = float(sz)
 
-		if rotation != "":
-			zrot = int(rotation, 16)
-			self.ZRotation = common.BAMSToRad(zrot)
+		if xrot != "":
+			nxrot = int(xrot, 16)
+			self.XRotation = common.BAMSToRad(nxrot)
+		else:
+			self.XRotation = 0
+
+		if yrot != "":
+			nyrot = int(yrot, 16)
+			self.YRotation = common.BAMSToRad(nyrot)
+		else:
+			self.YRotation = 0
+
+		if zrot != "":
+			nzrot = int(zrot, 16)
+			self.ZRotation = common.BAMSToRad(nzrot)
 		else:
 			self.ZRotation = 0
 
@@ -163,14 +174,20 @@ class PathData:
 					coords = ""
 					if cp.has_option(section, "Position"):
 						coords = cp.get(section, "Position")
-					rotation = ""
+					xrot = ""
+					if cp.has_option(section, "XRotation"):
+						xrot = cp.get(section, "XRotation")
+					yrot = ""
+					if cp.has_option(section, "YRotation"):
+						yrot = cp.get(section, "YRotation")
+					zrot = ""
 					if cp.has_option(section, "ZRotation"):
-						rotation = cp.get(section, "ZRotation")
+						zrot = cp.get(section, "ZRotation")
 					distance = 0
 					if cp.has_option(section, "Distance"):
 						distance = cp.getfloat(section, "Distance")
 
-					entry = PathEntry(coords, rotation, distance)
+					entry = PathEntry(coords, xrot, yrot, zrot, distance)
 					entries.append(entry)
 
 			self.Entries = entries

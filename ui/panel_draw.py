@@ -20,10 +20,12 @@ from ..prop.properties import(
 	SALandEntrySettings,
 	SAMaterialSettings,
 	SAMeshSettings,
-	SATexture
+	SATexture,
+	SAObjectSettings
 )
 from ..ops.materials import(
-	UpdateMaterials
+	UpdateMaterials,
+	MatToAssetLibrary
 )
 from ..ops.textures import(
 	AddTextureSlot,
@@ -54,7 +56,7 @@ from ..parse.pini import(
 def getIniFilesList(self, settings: SASettings, itemsToAdd: list()):
 	settings.iniFiles = itemsToAdd
 
-def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):		## Advanced Properties draw definition.
+def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):	## Advanced Properties draw definition.
 	'''For quick edit properties, to put simply'''
 
 	if not autoScale:
@@ -75,7 +77,7 @@ def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False
 		row.alignment='EXPAND'
 		row.prop(prop1, prop1Name, text="")
 
-def drawMaterialPanel(layout, menuProps, matProps, qe = False):										## Draws the Material Properties Panel.
+def drawMaterialPanel(layout, menuProps, matProps, qe = False):									## Draws the Material Properties Panel.
 
 	sProps = bpy.context.scene.saSettings
 
@@ -183,86 +185,101 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):										## Draw
 			else: #SRTG
 				propAdv(box, "Source:", matProps, "gc_texGenSourceSRTG", sProps, "gc_apply_src", qe = qe)
 
-def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = False):				## Draws the Land Entry Properties Panel.
-
+def drawObjPanel(layout: bpy.types.UILayout, menuProps, objProps, lvlProps, qe = False):					## Draws the Land Entry Properties Panel.
 	sProps = bpy.context.scene.saSettings
 
-	# sa1 flags
+	# obj flags
 	box = layout.box()
-	box.prop(menuProps, "expandedSA1obj",
-		icon="TRIA_DOWN" if menuProps.expandedSA1obj else "TRIA_RIGHT",
+	box.prop(menuProps, "expandedObjFlags",
+		icon="TRIA_DOWN" if menuProps.expandedObjFlags else "TRIA_RIGHT",
 		emboss = False
 		)
 
-	if menuProps.expandedSA1obj:
-		box.prop(objProps, "solid")
-		box.prop(objProps, "sa1_water")
-		box.prop(objProps, "sa1_noFriction")
-		box.prop(objProps, "sa1_noAcceleration")
-		box.prop(objProps, "sa1_lowAcceleration")
-		box.prop(objProps, "sa1_useSkyDrawDistance")
-		box.prop(objProps, "sa1_cannotLand")
-		box.prop(objProps, "sa1_increasedAcceleration")
-		box.prop(objProps, "sa1_diggable")
-		box.prop(objProps, "sa1_waterfall")
-		box.prop(objProps, "sa1_unclimbable")
-		box.prop(objProps, "sa1_chaos0Land")
-		box.prop(objProps, "sa1_stairs")
-		box.prop(objProps, "sa1_hurt")
-		box.prop(objProps, "sa1_lowDepth")
-		box.prop(objProps, "sa1_footprints")
-		box.prop(objProps, "sa1_accelerate")
-		box.prop(objProps, "sa1_colWater")
-		box.prop(objProps, "sa1_rotByGravity")
-		box.prop(objProps, "sa1_noZWrite")
-		box.prop(objProps, "sa1_drawByMesh")
-		box.prop(objProps, "sa1_eneableManipulation")
-		box.prop(objProps, "sa1_dynCollision")
-		box.prop(objProps, "sa1_useRotation")
-		box.prop(objProps, "isVisible")
+	if menuProps.expandedObjFlags:
+		box.prop(objProps, "ignorePosition")
+		box.prop(objProps, "ignoreRotation")
+		box.prop(objProps, "ignoreScale")
+		box.prop(objProps, "rotateZYX")
+		box.prop(objProps, "skipDraw")
+		box.prop(objProps, "skipChildren")
+		box.prop(objProps, "flagAnimate")
+		box.prop(objProps, "flagMorph")
 
-	# sa2 flags
-	box = layout.box()
-	box.prop(menuProps, "expandedSA2obj",
-		icon="TRIA_DOWN" if menuProps.expandedSA2obj else "TRIA_RIGHT",
-		emboss = False
-		)
+	if sProps.sceneIsLevel:
+		# sa1 flags
+		box = layout.box()
+		box.prop(menuProps, "expandedSA1obj",
+			icon="TRIA_DOWN" if menuProps.expandedSA1obj else "TRIA_RIGHT",
+			emboss = False
+			)
 
-	if menuProps.expandedSA2obj:
-		box.prop(objProps, "solid")
-		box.prop(objProps, "sa2_water")
-		box.prop(objProps, "sa2_diggable")
-		box.prop(objProps, "sa2_unclimbable")
-		box.prop(objProps, "sa2_standOnSlope")
-		box.prop(objProps, "sa2_hurt")
-		box.prop(objProps, "sa2_footprints")
-		box.prop(objProps, "sa2_cannotLand")
-		box.prop(objProps, "sa2_water2")
-		box.prop(objProps, "sa2_noShadows")
-		box.prop(objProps, "sa2_noFog")
-		box.prop(objProps, "sa2_unknown24")
-		box.prop(objProps, "sa2_unknown29")
-		box.prop(objProps, "sa2_unknown30")
-		box.prop(objProps, "isVisible")
+		if menuProps.expandedSA1obj:
+			box.prop(lvlProps, "solid")
+			box.prop(lvlProps, "sa1_water")
+			box.prop(lvlProps, "sa1_noFriction")
+			box.prop(lvlProps, "sa1_noAcceleration")
+			box.prop(lvlProps, "sa1_lowAcceleration")
+			box.prop(lvlProps, "sa1_useSkyDrawDistance")
+			box.prop(lvlProps, "sa1_cannotLand")
+			box.prop(lvlProps, "sa1_increasedAcceleration")
+			box.prop(lvlProps, "sa1_diggable")
+			box.prop(lvlProps, "sa1_waterfall")
+			box.prop(lvlProps, "sa1_unclimbable")
+			box.prop(lvlProps, "sa1_chaos0Land")
+			box.prop(lvlProps, "sa1_stairs")
+			box.prop(lvlProps, "sa1_hurt")
+			box.prop(lvlProps, "sa1_lowDepth")
+			box.prop(lvlProps, "sa1_footprints")
+			box.prop(lvlProps, "sa1_accelerate")
+			box.prop(lvlProps, "sa1_colWater")
+			box.prop(lvlProps, "sa1_rotByGravity")
+			box.prop(lvlProps, "sa1_noZWrite")
+			box.prop(lvlProps, "sa1_drawByMesh")
+			box.prop(lvlProps, "sa1_eneableManipulation")
+			box.prop(lvlProps, "sa1_dynCollision")
+			box.prop(lvlProps, "sa1_useRotation")
+			box.prop(lvlProps, "isVisible")
 
-	propAdv(layout, "Custom (hex):  0x", objProps, "userFlags", sProps, "obj_apply_userFlags", qe = qe)
+		# sa2 flags
+		box = layout.box()
+		box.prop(menuProps, "expandedSA2obj",
+			icon="TRIA_DOWN" if menuProps.expandedSA2obj else "TRIA_RIGHT",
+			emboss = False
+			)
 
-	propAdv(layout, "Blockbit (hex):  0x", objProps, "blockbit", sProps, "obj_apply_blockbit", qe = qe)
+		if menuProps.expandedSA2obj:
+			box.prop(lvlProps, "solid")
+			box.prop(lvlProps, "sa2_water")
+			box.prop(lvlProps, "sa2_diggable")
+			box.prop(lvlProps, "sa2_unclimbable")
+			box.prop(lvlProps, "sa2_standOnSlope")
+			box.prop(lvlProps, "sa2_hurt")
+			box.prop(lvlProps, "sa2_footprints")
+			box.prop(lvlProps, "sa2_cannotLand")
+			box.prop(lvlProps, "sa2_water2")
+			box.prop(lvlProps, "sa2_noShadows")
+			box.prop(lvlProps, "sa2_noFog")
+			box.prop(lvlProps, "sa2_unknown24")
+			box.prop(lvlProps, "sa2_unknown29")
+			box.prop(lvlProps, "sa2_unknown30")
+			box.prop(lvlProps, "isVisible")
 
-def drawMeshPanel(layout: bpy.types.UILayout, meshProps, qe = False):								## Draws the Mesh Properties Panel.
+		propAdv(layout, "Custom (hex):  0x", lvlProps, "userFlags", sProps, "obj_apply_userFlags", qe = qe)
+
+		propAdv(layout, "Blockbit (hex):  0x", lvlProps, "blockbit", sProps, "obj_apply_blockbit", qe = qe)
+
+def drawMeshPanel(layout: bpy.types.UILayout, meshProps, qe = False):							## Draws the Mesh Properties Panel.
 	sProps = bpy.context.scene.saSettings
 	propAdv(layout, "Export Type (SA2)", meshProps, "sa2ExportType", sProps, "me_apply_ExportType", qe = qe)
 	propAdv(layout, "+ Vertex Offset (SA2)", meshProps, "sa2IndexOffset", sProps, "me_apply_addVO", qe = qe)
 
-def drawScenePanel(layout: bpy.types.UILayout, settings, qe = False):								## Draws the Scene Properties Panel.
+def drawScenePanel(layout: bpy.types.UILayout, settings, qe = False):							## Draws the Scene Properties Panel.
 	layout.prop(settings, "author")
 	layout.prop(settings, "description")
-	layout.separator()
-	layout.alignment = 'CENTER'
-	layout.label(text="Scene Update Functions")
-	layout.alignment = 'EXPAND'
-	layout.operator(UpdateMaterials.bl_idname)
+	layout.prop(settings, "sceneIsLevel")
 	layout.separator(factor=2)
+	layout.operator(UpdateMaterials.bl_idname)
+	layout.operator(MatToAssetLibrary.bl_idname)
 
 	# Scene Texlist
 	box = layout.box()
@@ -317,14 +334,14 @@ def drawScenePanel(layout: bpy.types.UILayout, settings, qe = False):								## 
 		if settings.viewportAlphaType == 'CUT':
 			box.prop(settings, "viewportAlphaCutoff")
 
-class SCENE_UL_SATexList(bpy.types.UIList):															## UI List draw for Scene Texture List items.
+class SCENE_UL_SATexList(bpy.types.UIList):														## UI List draw for Scene Texture List items.
 
 	def draw_item(self, context, layout: bpy.types.UILayout, data, item, icon, active_data, active_propname, index, flt_flag):
 		split = layout.split(factor=0.6)
 		split.prop(item, "name", text="", emboss=False, icon_value=icon, icon= 'X' if item.image == None else 'CHECKMARK')
 		split.prop(item, "globalID", text=str(index), emboss=False, icon_value=icon)
 
-class SCENE_MT_Texture_Context_Menu(bpy.types.Menu):												## Scene Texture List Specials Menu.
+class SCENE_MT_Texture_Context_Menu(bpy.types.Menu):											## Scene Texture List Specials Menu.
 	bl_label = "Texture list specials"
 
 	def draw(self, context):
@@ -340,7 +357,7 @@ class SCENE_MT_Texture_Context_Menu(bpy.types.Menu):												## Scene Texture
 		layout.operator(ExportPVMX.bl_idname)
 		layout.operator(ExportPAK.bl_idname)
 
-class MATERIAL_UL_saMaterialSlots(bpy.types.UIList):												## UI List draw for Viewport Material List.
+class MATERIAL_UL_saMaterialSlots(bpy.types.UIList):											## UI List draw for Viewport Material List.
 	# Draws a secondary Material Slots Viewer in the SA Materials Properties Panel
 	def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
 		ob = data

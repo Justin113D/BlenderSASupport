@@ -54,6 +54,12 @@ class SASettings(bpy.types.PropertyGroup):				## Property Groups used across the
 		default=3000
 		)
 
+	sceneIsLevel: BoolProperty(
+		name="Enable Level Tools",
+		description="Enables the LandTable/Level Tools for the scene.",
+		default=False
+		)
+
 	doubleSidedCollision: BoolProperty(
 		name="Double-Sided Collision",
 		description="Enables double sided collision detection. This is supposed to be used as a failsafe for people unexperienced with how normals work",
@@ -158,7 +164,7 @@ class SASettings(bpy.types.PropertyGroup):				## Property Groups used across the
 
 	useLandEntryEdit: BoolProperty(
 		name ="Activate Quick LandEntry Edit",
-		description="When active, the Buttons will use and apply the object properties",
+		description="When active, the Buttons will use and apply the ladntable properties",
 		default=False
 		)
 	expandedLandEntryEdit: BoolProperty(
@@ -167,13 +173,23 @@ class SASettings(bpy.types.PropertyGroup):				## Property Groups used across the
 		default=False)
 
 	useMeshEdit: BoolProperty(
-		name ="Activate Quick Object Edit",
+		name ="Activate Quick Mesh Edit",
 		description="When active, the Buttons will use and apply the mesh properties",
 		default=False
 		)
 	expandedMeshEdit: BoolProperty(
 		name ="Mesh Quick Edit",
 		description="A menu for quickly assigning mesh properties to mutliple objects",
+		default=False)
+
+	useObjEdit: BoolProperty(
+		name = "Activate Quick Object Edit",
+		description="When ctive, the buttons will use and apply the object properties.",
+		default=False
+		)
+	expandedObjEdit: BoolProperty(
+		name = "Object Quick Edit",
+		description="A menu for quickly assigning object flags to multiple objects.",
 		default=False)
 
 	# Quick material edit properties
@@ -279,8 +295,10 @@ class SAEditPanelSettings(bpy.types.PropertyGroup):		## Property Group for manag
 	expandedGC: BoolProperty( name="SA2B specific", default=False )
 	expandedGCTexGen: BoolProperty( name = "Generate texture coords", default=False )
 
-	expandedSA1obj: BoolProperty( name ="Object SA1 Properties", default=False)
-	expandedSA2obj: BoolProperty( name ="Object SA2 Properties", default=False)
+	expandedSA1obj: BoolProperty( name ="SA1 Landtable Flags", default=False)
+	expandedSA2obj: BoolProperty( name ="SA2 Landtable Flags", default=False)
+
+	expandedObjFlags: BoolProperty( name ="Object Flags", default=False)
 
 class SALandEntrySettings(bpy.types.PropertyGroup):		## Property Group for managing Land Entry surface flags.
 	"""hosts all properties to edit the surface flags of a COL"""
@@ -1114,6 +1132,96 @@ class SAMeshSettings(bpy.types.PropertyGroup):			## Property Group for managing 
 		min=0, max = 32767,
 		default = 0
 	)
+
+class SAObjectSettings(bpy.types.PropertyGroup):
+	"""NJS_OBJECT Flag Settings"""
+
+	ignorePosition: BoolProperty(
+		name="Ignore Position",
+		description="Ignores object position.",
+		default=False
+		)
+
+	ignoreRotation: BoolProperty(
+		name="Ignore Rotation",
+		description="Ignores object rotation.",
+		default=False
+		)
+
+	ignoreScale: BoolProperty(
+		name="Ignore Scale",
+		description="Ignores object scale.",
+		default=False
+		)
+
+	rotateZYX: BoolProperty(
+		name="Rotate ZYX",
+		description="Sets rotation mode to ZYX order.",
+		default=False
+		)
+
+	skipDraw: BoolProperty(
+		name="Skip Draw",
+		description="Skips drawing the model.",
+		default=False
+		)
+
+	skipChildren: BoolProperty(
+		name="Skip Children",
+		description="Skips any child nodes of the current node.",
+		default=False
+		)
+
+	flagAnimate: BoolProperty(
+		name="Not Animated",
+		description="Sets if the node is counted in the hierarchy for animations.",
+		default=False
+		)
+
+	flagMorph: BoolProperty(
+		name="No Morph",
+		description="Sets if the node can have morph effect applied.",
+		default=False
+		)
+
+	@classmethod
+	def defaultDict(cls) -> dict:
+		d = dict()
+
+		d["ignorePosition"] = False
+		d["ignoreRotation"] = False
+		d["ignoreScale"] 	= False
+		d["rotateZYX"] 		= False
+		d["skipDraw"] 		= False
+		d["skipChildren"] 	= False
+		d["flagAnimate"] 	= False
+		d["flagMorph"] 		= False
+
+		return d
+
+	def toDictionary(self) -> dict:
+		d = dict()
+
+		d["ignorePosition"] = self.ignorePosition
+		d["ignoreRotation"] = self.ignoreRotation
+		d["ignoreScale"] 	= self.ignoreScale
+		d["rotateZYX"] 		= self.rotateZYX
+		d["skipDraw"] 		= self.skipDraw
+		d["skipChildren"] 	= self.skipChildren
+		d["flagAnimate"] 	= self.flagAnimate
+		d["flagMorph"] 		= self.flagMorph
+
+		return d
+
+	def fromDictionary(self, d: dict):
+		self.ignorePosition = d["ignorePosition"]
+		self.ignoreRotation = d["ignoreRotation"]
+		self.ignoreScale 	= d["ignoreScale"]
+		self.rotateZYX 		= d["rotateZYX"]
+		self.skipDraw 		= d["skipDraw"]
+		self.skipChildren 	= d["skipChildren"]
+		self.flagAnimate 	= d["flagAnimate"]
+		self.flagMorph 		= d["flagMorph"]
 
 def texUpdate(self, context):							## Definitions for handling texture updates.
 	settings = context.scene.saSettings
