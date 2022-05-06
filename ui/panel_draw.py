@@ -25,7 +25,8 @@ from ..prop.properties import(
 )
 from ..ops.materials import(
 	UpdateMaterials,
-	MatToAssetLibrary
+	MatToAssetLibrary,
+	ToPrincipledBsdf
 )
 from ..ops.textures import(
 	AddTextureSlot,
@@ -185,26 +186,9 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):									## Draws
 			else: #SRTG
 				propAdv(box, "Source:", matProps, "gc_texGenSourceSRTG", sProps, "gc_apply_src", qe = qe)
 
-def drawObjPanel(layout: bpy.types.UILayout, menuProps, objProps, lvlProps, qe = False):					## Draws the Land Entry Properties Panel.
+def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, lvlProps, qe=False):				## Draws the Land Entry Properties Panel.
 	sProps = bpy.context.scene.saSettings
-
-	# obj flags
-	box = layout.box()
-	box.prop(menuProps, "expandedObjFlags",
-		icon="TRIA_DOWN" if menuProps.expandedObjFlags else "TRIA_RIGHT",
-		emboss = False
-		)
-
-	if menuProps.expandedObjFlags:
-		box.prop(objProps, "ignorePosition")
-		box.prop(objProps, "ignoreRotation")
-		box.prop(objProps, "ignoreScale")
-		box.prop(objProps, "rotateZYX")
-		box.prop(objProps, "skipDraw")
-		box.prop(objProps, "skipChildren")
-		box.prop(objProps, "flagAnimate")
-		box.prop(objProps, "flagMorph")
-
+	
 	if sProps.sceneIsLevel:
 		# sa1 flags
 		box = layout.box()
@@ -268,18 +252,37 @@ def drawObjPanel(layout: bpy.types.UILayout, menuProps, objProps, lvlProps, qe =
 
 		propAdv(layout, "Blockbit (hex):  0x", lvlProps, "blockbit", sProps, "obj_apply_blockbit", qe = qe)
 
-def drawMeshPanel(layout: bpy.types.UILayout, meshProps, qe = False):							## Draws the Mesh Properties Panel.
+def drawMeshPanel(layout: bpy.types.UILayout, menuProps, meshProps, objProps, qe = False):		## Draws the Mesh and Object Properties Panel.
 	sProps = bpy.context.scene.saSettings
-	propAdv(layout, "Export Type (SA2)", meshProps, "sa2ExportType", sProps, "me_apply_ExportType", qe = qe)
-	propAdv(layout, "+ Vertex Offset (SA2)", meshProps, "sa2IndexOffset", sProps, "me_apply_addVO", qe = qe)
+
+	if menuProps is not None:
+		# mesh properties
+		if meshProps is not None:
+			propAdv(layout, "Export Type (SA2)", meshProps, "sa2ExportType", sProps, "me_apply_ExportType", qe = qe)
+			propAdv(layout, "+ Vertex Offset (SA2)", meshProps, "sa2IndexOffset", sProps, "me_apply_addVO", qe = qe)
+
+		# obj flags
+		if objProps is not None:
+			box = layout.box()
+			box.prop(menuProps, "expandedObjFlags",
+				icon="TRIA_DOWN" if menuProps.expandedObjFlags else "TRIA_RIGHT",
+				emboss = False
+				)
+
+			if menuProps.expandedObjFlags:
+				box.prop(objProps, "ignorePosition")
+				box.prop(objProps, "ignoreRotation")
+				box.prop(objProps, "ignoreScale")
+				box.prop(objProps, "rotateZYX")
+				box.prop(objProps, "skipDraw")
+				box.prop(objProps, "skipChildren")
+				box.prop(objProps, "flagAnimate")
+				box.prop(objProps, "flagMorph")
 
 def drawScenePanel(layout: bpy.types.UILayout, settings, qe = False):							## Draws the Scene Properties Panel.
 	layout.prop(settings, "author")
 	layout.prop(settings, "description")
 	layout.prop(settings, "sceneIsLevel")
-	layout.separator(factor=2)
-	layout.operator(UpdateMaterials.bl_idname)
-	layout.operator(MatToAssetLibrary.bl_idname)
 
 	# Scene Texlist
 	box = layout.box()
@@ -334,6 +337,10 @@ def drawScenePanel(layout: bpy.types.UILayout, settings, qe = False):							## D
 		if settings.viewportAlphaType == 'CUT':
 			box.prop(settings, "viewportAlphaCutoff")
 
+	layout.operator(UpdateMaterials.bl_idname)
+	layout.operator(ToPrincipledBsdf.bl_idname)
+	layout.operator(MatToAssetLibrary.bl_idname)
+
 class SCENE_UL_SATexList(bpy.types.UIList):														## UI List draw for Scene Texture List items.
 
 	def draw_item(self, context, layout: bpy.types.UILayout, data, item, icon, active_data, active_propname, index, flt_flag):
@@ -386,7 +393,7 @@ def drawSAMDLPanel(layout: bpy.types.UILayout, settings: SASettings, iniFiles: l
 	layout.prop(LoadDataFiles, "iniFilesList")
 
 def drawProjectData(layout: bpy.types.UILayout, filepath, settings: SASettings):
-	if filepath is not "":
+	if filepath != "":
 		project = ProjectFile(filepath)
 		if project.GameInfo:
 			projPath = project.GameInfo.ProjectFolder
@@ -399,7 +406,7 @@ def drawProjectData(layout: bpy.types.UILayout, filepath, settings: SASettings):
 			col = layout.column()
 			col.label(text="Project Information")
 			col.label(text="Mod Name: " + modfile.Name)
-			if modfile.Author is not "":
+			if modfile.Author != "":
 				col.label(text="Author: " + modfile.Author)
 			col.label(text="Game: " + project.GameInfo.GameName)
 

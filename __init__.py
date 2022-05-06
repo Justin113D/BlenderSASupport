@@ -83,7 +83,7 @@ from .prop.properties import(
 from .ui.panel_draw import(
 	propAdv,
 	drawMaterialPanel,
-	drawObjPanel,
+	drawLandEntryPanel,
 	drawMeshPanel,
 	drawScenePanel,
 	SCENE_UL_SATexList,
@@ -92,13 +92,13 @@ from .ui.panel_draw import(
 	LoadDataFiles
 )
 from .ui.panel_viewport import(
+	SA_ImportExport_Viewport,
 	SA_SceneInfo_Viewport,
-	SA_ObjProperties_Viewport,
+	SA_LandProperties_Viewport,
 	SA_ModelProps_Viewport,
 	SA_MaterialProps_Viewport,
 	SA_QuickEditMenu_Viewport,
 	SA_LevelInfo_Viewport,
-	SA_AdditionalOperators_Vieport,
 	SA_ProjectManagement_Viewport,
 	SA_AddonInfo_Viewport
 )
@@ -261,13 +261,13 @@ classes = (
 	SCENE_MT_Texture_Context_Menu,
 	MATERIAL_UL_saMaterialSlots,
 	#LoadDataFiles,
+	SA_ImportExport_Viewport,
 	SA_SceneInfo_Viewport,
 	SA_MaterialProps_Viewport,
 	SA_ModelProps_Viewport,
-	SA_ObjProperties_Viewport,
+	SA_LandProperties_Viewport,
 	SA_LevelInfo_Viewport,
 	SA_QuickEditMenu_Viewport,
-	SA_AdditionalOperators_Vieport,
 	SA_ProjectManagement_Viewport,
 	SA_AddonInfo_Viewport,
 

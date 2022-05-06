@@ -27,7 +27,7 @@ from ..prop.properties import(
 from .panel_draw import(
 	propAdv,
 	drawMaterialPanel,
-	drawObjPanel,
+	drawLandEntryPanel,
 	drawMeshPanel,
 	drawScenePanel,
 	SCENE_UL_SATexList,
@@ -45,18 +45,30 @@ from ..ops.quickEdit import(
 	qeReset,
 	qeInvert
 )
+from ..ops.exports import (
+	ExportSA1MDL,
+	ExportSA2MDL,
+	ExportSA2BMDL,
+	ExportSA1LVL,
+	ExportSA2LVL,
+	ExportSA2BLVL,
+	ExportPAK,
+	ExportPVMX,
+	ExportAnim
+)
 from ..ops.imports import(
+	ImportMDL,
+	ImportLVL,
+	ImportTexFile,
 	LoadSetFile,
 	LoadAnimFile,
 	LoadPathFile
 )
-from ..ops.exports import(
-	ExportAnim
-)
 from ..ops.materials import(
 	AutoAssignTextures,
 	ToPrincipledBsdf,
-	MatToAssetLibrary
+	MatToAssetLibrary,
+	UpdateMaterials
 )
 from ..ops.object import(
 	ArmatureFromObjects
@@ -78,6 +90,59 @@ addonVersion = [addon.bl_info.get('version') for addon in addon_utils.modules()
 
 verNum = str(addonVersion).split('(')[1].split(')')[0].replace(',', '.').replace(' ', '')
 
+class SA_ImportExport_Viewport(SA_UI_Panel, bpy.types.Panel):
+	bl_idname = "SCENE_PT_saImportExport"
+	bl_label = "Tools"
+
+	def draw(self, context):
+		layout = self.layout
+
+		# Model Import
+		row = layout.row()
+		row.alignment = 'CENTER'
+		row.label(text="Model Import Tools")
+		row.scale_x = 1.0
+		split = layout.split()
+		split.operator(ImportMDL.bl_idname, text="Import *MDL")
+		split.operator(ImportLVL.bl_idname, text="Import *LVL")
+		layout.separator()
+
+		# Model Export
+		row = layout.row()
+		row.alignment = 'CENTER'
+		row.label(text="Model Export Tools")
+		row.scale_x = 1.0
+		split = layout.split()
+		split.operator(ExportSA1MDL.bl_idname, text="Export SA1MDL")
+		split.operator(ExportSA1LVL.bl_idname, text="Export SA1LVL")
+		split = layout.split()
+		split.operator(ExportSA2MDL.bl_idname, text="Export SA2MDL")
+		split.operator(ExportSA2LVL.bl_idname, text="Export SA2LVL")
+		split = layout.split()
+		split.operator(ExportSA2BMDL.bl_idname, text="Export SA2BMDL")
+		split.operator(ExportSA2BLVL.bl_idname, text="Export SA2BLVL")
+		layout.separator()
+
+		# Animation
+		row = layout.row()
+		row.alignment = 'CENTER'
+		row.label(text="Animation Tools")
+		row.scale_x = 1.0
+		layout.operator(ArmatureFromObjects.bl_idname)
+		split = layout.split()
+		split.operator(LoadAnimFile.bl_idname, text="Import Anim")
+		split.operator(ExportAnim.bl_idname, text="Export Anim")
+		layout.separator()
+
+		# Extra Tools
+		row = layout.row()
+		row.alignment = 'CENTER'
+		row.label(text="Extra Tools")
+		row.scale_x = 1.0
+		layout.operator(LoadSetFile.bl_idname)
+		layout.operator(LoadPathFile.bl_idname)
+		layout.operator(StrippifyTest.bl_idname)
+
 class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Information Panel (Author, Texlist, etc)
 	bl_idname = "SCENE_PT_infoPanel"
 	bl_label = "Scene Information"
@@ -89,9 +154,32 @@ class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Informati
 
 		drawScenePanel(layout, settings)
 
-class SA_ObjProperties_Viewport(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJECT Information Panel
+class SA_LandProperties_Viewport(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJECT Information Panel
 	bl_idname = "SCENE_PT_lvlProperties"
-	bl_label = "Object Properties"
+	bl_label = "LandEntry Properties"
+	bl_options = {"DEFAULT_CLOSED"}
+
+	@classmethod
+	def poll(cls, context):
+		if context.scene.saSettings.sceneIsLevel:
+			if context.active_object.type == 'MESH':	# Mesh Nodes/Empty Nodes
+				return True
+			else:
+				return False
+		else:
+			return False
+
+	def draw(self, context):
+		layout = self.layout
+
+		lvlProps = context.active_object.saSettings
+		menuProps = context.scene.saSettings.editorSettings
+
+		drawLandEntryPanel(layout, menuProps, lvlProps)
+
+class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## NJS_MODEL Information Panel
+	bl_idname = "SCENE_PT_mdlProperties"
+	bl_label = "Object & Mesh Properties"
 	bl_options = {"DEFAULT_CLOSED"}
 
 	@classmethod
@@ -105,31 +193,18 @@ class SA_ObjProperties_Viewport(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJECT Inf
 
 	def draw(self, context):
 		layout = self.layout
+		menuProps = context.scene.saSettings.editorSettings
+		meshprops = None
+		if context.active_object.type == 'MESH':
+			meshprops = context.active_object.data.saSettings
 		if context.mode == 'POSE':
 			objProps = context.active_object.data.bones.active.saObjflags
 		elif context.mode == 'EDIT_ARMATURE':
 			objProps = context.active_object.data.edit_bones.active.saObjflags
 		else:	
 			objProps = context.active_object.saObjflags
-		lvlProps = context.active_object.saSettings
-		menuProps = context.scene.saSettings.editorSettings
 
-		drawObjPanel(layout, menuProps, objProps, lvlProps)
-
-class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## NJS_MODEL Information Panel
-	bl_idname = "SCENE_PT_mdlProperties"
-	bl_label = "Mesh Properties"
-	bl_options = {"DEFAULT_CLOSED"}
-
-	@classmethod
-	def poll(cls, context):
-		return context.active_object.type == 'MESH'
-
-	def draw(self, context):
-		layout = self.layout
-		meshprops = context.active_object.data.saSettings
-
-		drawMeshPanel(layout, meshprops)
+		drawMeshPanel(layout, menuProps, meshprops, objProps)
 
 class SA_MaterialProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_MATERIAL Panel
 	bl_idname = "SCENE_PT_matProperties"
@@ -224,7 +299,7 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit M
 
 		if settings.expandedLandEntryEdit:
 			box.separator()
-			drawObjPanel(box, settings.qEditorSettings, settings.landQProps, qe=True)
+			drawLandEntryPanel(box, settings.qEditorSettings, settings.landQProps, qe=True)
 			box.separator()
 
 		box = outerBox.box()
@@ -238,12 +313,12 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit M
 
 		if settings.expandedMeshEdit:
 			box.separator()
-			drawMeshPanel(box, settings.meshQProps, qe=True)
+			drawMeshPanel(box, None, settings.meshQProps, None, qe=True)
 			box.separator()
 
 class SA_LevelInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Level Information (landtable name, texlist pointer, texture name, etc)
 	bl_idname = "SCENE_PT_saLevelInfo"
-	bl_label = "Level Properties"
+	bl_label = "Level Info"
 	bl_options = {"DEFAULT_CLOSED"}
 
 	@classmethod
@@ -286,33 +361,6 @@ class SA_CurveInfo_Viewport(SA_UI_Panel, bpy.types.Panel):
 	def draw(self, context):
 		layout = self.layout
 		
-
-class SA_AdditionalOperators_Vieport(SA_UI_Panel, bpy.types.Panel):		## Additional Operators (Loading other files, extra functions, etc)
-	bl_idname = "SCENE_PT_saAddOperators"
-	bl_label = "Additional Functions"
-	bl_options = {"DEFAULT_CLOSED"}
-
-	def draw(self, context):
-		layout = self.layout
-
-		layout.label(text="Import/Export")
-		layout.operator(LoadSetFile.bl_idname)
-		layout.operator(LoadPathFile.bl_idname)
-		split = layout.split()
-		split.operator(LoadAnimFile.bl_idname)
-		split.operator(ExportAnim.bl_idname)
-
-		layout.separator()
-		layout.label(text="Material Helpers")
-		layout.operator(AutoAssignTextures.bl_idname)
-		layout.operator(ToPrincipledBsdf.bl_idname)
-		layout.operator(MatToAssetLibrary.bl_idname)
-
-		layout.separator()
-		layout.label(text="Other Helpers")
-		layout.operator(ArmatureFromObjects.bl_idname)
-		layout.operator(StrippifyTest.bl_idname)
-
 class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project Support Panel
 	bl_idname = "SCENE_PT_saProjectManagement"
 	bl_label = "Project Management"

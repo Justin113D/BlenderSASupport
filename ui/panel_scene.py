@@ -25,7 +25,7 @@ from ..prop.properties import(
 from .panel_draw import(
 	propAdv,
 	drawMaterialPanel,
-	drawObjPanel,
+	drawLandEntryPanel,
 	drawMeshPanel,
 	drawScenePanel,
 	SCENE_UL_SATexList,

@@ -63,7 +63,7 @@ class StrippifyTest(bpy.types.Operator):		## Tests strippifying models for expor
 				indexList[i * 3 + j] = me.loops[li].vertex_index
 
 		# strippifying it
-		from . import strippifier
+		from .. import strippifier
 		try:
 			indexStrips = strippifier.Strippify(indexList, doSwaps = self.doSwaps, concat = self.doConcat, raiseTopoError=self.raiseTopoError)
 		except strippifier.TopologyError as e:
