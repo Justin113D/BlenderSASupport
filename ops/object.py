@@ -172,6 +172,41 @@ class ArmatureFromObjects(bpy.types.Operator):		## Creates an armature for model
 
 		return {'FINISHED'}
 
+class ModifyBoneShape(bpy.types.Operator):
+	bl_idname="object.modifyboneshape"
+	bl_label="Bone Shapes to Empties"
+	bl_description="Converts bone shapes to a selected empty type."
+
+	emptySelection: EnumProperty(
+		name="Empty Type",
+		description="Empties for custom bone shapes.",
+		items=( ('SPHERE', "Sphere", "Sphere Empty"),
+				('CUBE', "Cube", "Cube Empty"),
+				('PLAIN_AXIS', "Plain Axis", "Plain Axis Empty"),
+				('ARROWS', "Arrows", "Arrows Empty") ),
+		default='SPHERE'
+	)
+
+	def invoke(self, context, event):
+		wm = context.window_manager
+		return wm.invoke_props_dialog(self)
+
+	@classmethod
+	def poll(cls, context):
+		return context.active_object.type == 'ARMATURE'
+
+	def execute(self, context):
+		shape = bpy.data.objects.new("boneShape", None)
+		shape.empty_display_size = 0.25
+		shape.empty_display_type = self.emptySelection
+		
+		armature = context.active_object
+		bones = armature.pose.bones
+		for b in bones:
+			b.custom_shape = shape
+
+		return {'FINISHED'}
+
 def CreatePath(name: str, points: list()):
 	if points.count is not 0:
 		crv = bpy.data.curves.new("curve" + name, 'CURVE')

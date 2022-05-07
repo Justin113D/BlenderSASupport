@@ -51,7 +51,8 @@ from .ops.mesh import(
 	StrippifyTest
 )
 from .ops.object import(
-	ArmatureFromObjects
+	ArmatureFromObjects,
+	ModifyBoneShape
 )
 from .ops.textures import(
 	AddTextureSlot,
@@ -258,6 +259,7 @@ classes = (
 
 	StrippifyTest,
 	ArmatureFromObjects,
+	ModifyBoneShape,
 	AddTextureSlot,
 	RemoveTextureSlot,
 	MoveTextureSlot,

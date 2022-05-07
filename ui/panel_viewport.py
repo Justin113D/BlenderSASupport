@@ -74,7 +74,8 @@ from ..ops.materials import(
 	UpdateMaterials
 )
 from ..ops.object import(
-	ArmatureFromObjects
+	ArmatureFromObjects,
+	ModifyBoneShape
 )
 from ..ops.projects import(
 	openToolsHub,
@@ -132,6 +133,7 @@ class SA_ImportExport_Viewport(SA_UI_Panel, bpy.types.Panel):
 		split = layout.split()
 		split.operator(LoadAnimFile.bl_idname, text="Import Anim")
 		split.operator(ExportAnim.bl_idname, text="Export Anim")
+		layout.operator(ModifyBoneShape.bl_idname)
 		layout.separator()
 
 		# Extra Tools
