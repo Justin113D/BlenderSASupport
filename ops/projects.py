@@ -30,13 +30,13 @@ tools = [
 ]
 
 def openTool(idx, useArgs: bool):
-	settings = bpy.context.scene.saSettings
+	settings = bpy.context.scene.saProjInfo
 	
 	path = common.get_prefs().toolspath
 	toolpath = path + tools[idx]
 
 	if useArgs:
-		if settings.ProjectFilePath is not None:
+		if (settings.ProjectFilePath != "") and (idx != 3):
 			args = "\"" + settings.ProjectFilePath + "\""
 			executePath = toolpath + " " + args
 			subprocess.Popen(executePath)
