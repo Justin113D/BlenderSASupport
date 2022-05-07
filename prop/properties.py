@@ -12,6 +12,7 @@ from bpy.props import (
 	StringProperty,
 	CollectionProperty
 	)
+from ..parse.pxml import ProjectFile
 
 from .. import common
 
@@ -129,19 +130,6 @@ class SASettings(bpy.types.PropertyGroup):				## Property Groups used across the
 		min = 0,
 		max = 1,
 		default=0.5
-		)
-
-	ProjectFilePath: StringProperty(
-		name="SA Project File: ",
-		description="Sets a Project File (*.sap) file.",
-		default="",
-		subtype='FILE_PATH'
-		)
-
-	ProjectFolder: StringProperty(
-		name="SA Project Folder",
-		description="Project Path",
-		default=""
 		)
 
 	#panel stuff
@@ -1222,6 +1210,39 @@ class SAObjectSettings(bpy.types.PropertyGroup):
 		self.skipChildren 	= d["skipChildren"]
 		self.flagAnimate 	= d["flagAnimate"]
 		self.flagMorph 		= d["flagMorph"]
+
+class SAProjectSettings(bpy.types.PropertyGroup):
+	"""Stores info related to SA Project Files"""
+
+	ProjectFilePath: StringProperty(
+		name="SA Project File: ",
+		default=""
+	)
+
+	ProjectFolder: StringProperty(
+		name="SA Project Folder",
+		default=""
+	)
+
+	ModName: StringProperty(
+		name="Mod name",
+		default=""
+	)
+
+	ModAuthor: StringProperty(
+		name="Mod Author",
+		default=""
+	)
+
+	ModDescription: StringProperty(
+		name="Mod Description",
+		default=""
+	)
+
+	ModVersion: StringProperty(
+		name="Mod Version",
+		default=""
+	)
 
 def texUpdate(self, context):							## Definitions for handling texture updates.
 	settings = context.scene.saSettings

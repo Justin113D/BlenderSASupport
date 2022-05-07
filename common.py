@@ -1862,3 +1862,13 @@ def fixMaterialNames(objects: List[bpy.types.Object]):
 		m.name = "material_" + str(i).zfill(zfillLengthM)
 	for i, m in enumerate(collisionMats):
 		m.name = "collision_" + str(i).zfill(zfillLengthC)
+
+def getDefaultPath():
+	settings = bpy.context.scene.saProjInfo
+	path = ""
+	if (get_prefs().useProjectPath) and (settings.ProjectFolder != ""):
+		path = settings.ProjectFolder
+	else:
+		path = get_prefs().defaultPath
+
+	return path

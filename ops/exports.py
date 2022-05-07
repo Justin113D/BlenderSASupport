@@ -134,6 +134,11 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):		## Exports an SA1MDL file
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
 
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
 class ExportSA2MDL(bpy.types.Operator, ExportHelper):		## Exports an SA2MDL file.
 	"""Export objects into an SA2 model file"""
 	bl_idname = "export_scene.sa2mdl"
@@ -194,6 +199,11 @@ class ExportSA2MDL(bpy.types.Operator, ExportHelper):		## Exports an SA2MDL file
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
 
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
 class ExportSA2BMDL(bpy.types.Operator, ExportHelper):		## Exports an SA2BMDL file.
 	"""Export objects into an SA2B model file"""
 	bl_idname = "export_scene.sa2bmdl"
@@ -248,6 +258,11 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):		## Exports an SA2BMDL fi
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
 
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
 class ExportSA1LVL(bpy.types.Operator, ExportHelper):		## Exports an SA1LVL file.
 	"""Export scene into an SA1 level file"""
 	bl_idname = "export_scene.sa1lvl"
@@ -301,6 +316,11 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):		## Exports an SA1LVL file
 		layout.separator()
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
+
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
 
 class ExportSA2LVL(bpy.types.Operator, ExportHelper):		## Exports an SA2LVL file.
 	"""Export scene into an SA2 level file"""
@@ -362,6 +382,11 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):		## Exports an SA2LVL file
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
 
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
 class ExportSA2BLVL(bpy.types.Operator, ExportHelper):		## Exports an SA2BLVL file.
 	"""Export scene into an SA2B level file"""
 	bl_idname = "export_scene.sa2blvl"
@@ -417,6 +442,11 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):		## Exports an SA2BLVL fi
 		layout.prop(self, "console_debug_output")
 		layout.prop(self, "profile_output")
 
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
 class ExportPAK(bpy.types.Operator, ExportHelper):			## Non-functional. Planned to export PAK texture archives.
 	bl_idname = "export_texture.pak"
 	bl_label = "Export as PAK (SA2)"
@@ -424,12 +454,22 @@ class ExportPAK(bpy.types.Operator, ExportHelper):			## Non-functional. Planned 
 	def execute(self, context):
 		return {'FINISHED'}
 
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
 class ExportPVMX(bpy.types.Operator, ExportHelper):			## Non-functional. Planned to export PVMX texture archives.
 	bl_idname = "export_texture.pvmx"
 	bl_label = "Export as PVMX (SADX)"
 
 	def execute(self, context):
 		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
 
 class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 	bl_idname = "object.export_anim"
@@ -478,6 +518,11 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 		file_SAANIM.write(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
 		return {'FINISHED'}
 
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
 class ExportCurve(bpy.types.Operator, ExportHelper):
 	bl_idname = "object.export_curve"
 	bl_label = "Export Path Data"
@@ -495,3 +540,8 @@ class ExportCurve(bpy.types.Operator, ExportHelper):
 
 	def execute(self, context):
 		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}

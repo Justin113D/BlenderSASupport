@@ -73,7 +73,19 @@ class ModFile:
 	Author: str
 	Version: str
 
-	def __init__(self, path):
+	def __init__(self,
+				name: str,
+				desc: str,
+				auth: str,
+				vers: str):
+		self.Name = name
+		self.Description = desc
+		self.Author = auth
+		self.Version = vers
+
+
+	def ReadFile(path):
+		modFile = None
 		config = io.StringIO()
 		filepath = os.path.abspath(path)
 		print(filepath)
@@ -83,22 +95,22 @@ class ModFile:
 			config.seek(0, os.SEEK_SET)
 			cp = configparser.ConfigParser()
 			cp.read_file(config)
+			name = ""
+			desc = ""
+			auth = ""
+			vers = ""
 			if cp.has_option('mod', 'Name'):
-				self.Name = cp.get('mod', 'Name')
-			else:
-				self.Name = ""
+				name = cp.get('mod', 'Name')
 			if cp.has_option('mod', 'Description'):
-				self.Description = cp.get('mod', 'Description')
-			else:
-				self.Description = ""
+				desc = cp.get('mod', 'Description')
 			if cp.has_option('mod', 'Author'):
-				self.Author = cp.get('mod', 'Author')
-			else:
-				self.Author = ""
+				auth = cp.get('mod', 'Author')
 			if cp.has_option('mod', 'Version'):
-				self.Version = cp.get('mod', 'Version')
-			else:
-				self.Version = ""
+				vers = cp.get('mod', 'Version')
+
+			modFile = ModFile(name, desc, auth, vers)
+
+		return modFile
 
 class PathEntry:
 	XRotation: float

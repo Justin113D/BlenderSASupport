@@ -17,7 +17,7 @@ class ProjectInfo:
 		self.CheckFile = info.get('checkFile')
 		self.GameDataFolder = info.get('gameDataFolder')
 		self.ProjectFolder = info.get('projectFolder')
-		if info.get('canBuild') is "true":
+		if info.get('canBuild') == "true":
 			self.CanBuild = True
 		else:
 			self.CanBuild = False
@@ -42,7 +42,7 @@ class SplitEntryMdl:
 	MotionFiles: List[str]
 
 	def __init__(self, root: ET.Element):
-		if root.get('BigEndian') is "true":
+		if root.get('BigEndian') == "true":
 			self.BigEndian = True
 		else:
 			self.BigEndian = False
@@ -54,12 +54,22 @@ class ProjectFile:
 	"""Sonic Adventure Project File Class.
 	Ported from the SA Tools C# code."""
 
+	Filepath: str
 	GameInfo: ProjectInfo
 	SplitEntries: List[SplitEntry]
 	SplitMDLEntries: List[SplitEntryMdl]
 
-	def __init__(self, path):
-		print(path)
+	def __init__(self, 
+				filepath: str,
+				gameInfo: ProjectInfo,
+				splitEntries: list(),
+				splitMdlEntries: list()):
+		self.Filepath = filepath
+		self.GameInfo = gameInfo
+		self.SplitEntries = splitEntries
+		self.SplitMDLEntries = splitMdlEntries
+
+	def ReadProjectFile(path):
 		if os.path.isfile(path):
 			file = ET.parse(path)
 			root = file.getroot()
@@ -70,8 +80,20 @@ class ProjectFile:
 			for entry in root.findall('SplitEntry'):
 				t_splitEntries.append(SplitEntry(entry))
 			for mdl in root.findall('SplitEntryMDL'):
-				t_splitMDLEntries.append(SplitEntryMDL(mdl))
+				t_splitMDLEntries.append(SplitEntryMdl(mdl))
 
-			self.GameInfo = t_info
-			self.SplitEntries = t_splitEntries
-			self.SplitMDLEntries = t_splitMDLEntries
+			projFile = ProjectFile(path, t_info, t_splitEntries, t_splitMDLEntries)
+
+			return projFile
+
+	def GetProjectFolder(file):
+		projPath = ""
+		if file.GameInfo:
+			projPath = file.GameInfo.ProjectFolder
+			print(projPath)
+			if projPath.__contains__("\"") is False:
+				path = file.Filepath.split(".")
+				projPath = path[0] + "\\"
+				print(projPath)
+
+		return projPath

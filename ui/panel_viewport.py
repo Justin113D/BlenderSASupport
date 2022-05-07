@@ -29,6 +29,7 @@ from .panel_draw import(
 	drawMaterialPanel,
 	drawLandEntryPanel,
 	drawMeshPanel,
+	drawObjPanel,
 	drawScenePanel,
 	SCENE_UL_SATexList,
 	SCENE_MT_Texture_Context_Menu,
@@ -60,9 +61,11 @@ from ..ops.imports import(
 	ImportMDL,
 	ImportLVL,
 	ImportTexFile,
+	LoadProjectFile,
 	LoadSetFile,
 	LoadAnimFile,
-	LoadPathFile
+	LoadPathFile,
+	LoadProjectFile
 )
 from ..ops.materials import(
 	AutoAssignTextures,
@@ -82,6 +85,9 @@ from ..ops.projects import(
 from ..ops.mesh import(
 	StrippifyTest
 )
+from ..parse.pxml import(
+	ProjectFile
+)
 from .. import addon_updater_ops
 #endregion
 
@@ -97,21 +103,15 @@ class SA_ImportExport_Viewport(SA_UI_Panel, bpy.types.Panel):
 	def draw(self, context):
 		layout = self.layout
 
-		# Model Import
+		# Model Tools
 		row = layout.row()
 		row.alignment = 'CENTER'
-		row.label(text="Model Import Tools")
+		row.label(text="Model Tools")
 		row.scale_x = 1.0
 		split = layout.split()
 		split.operator(ImportMDL.bl_idname, text="Import *MDL")
 		split.operator(ImportLVL.bl_idname, text="Import *LVL")
 		layout.separator()
-
-		# Model Export
-		row = layout.row()
-		row.alignment = 'CENTER'
-		row.label(text="Model Export Tools")
-		row.scale_x = 1.0
 		split = layout.split()
 		split.operator(ExportSA1MDL.bl_idname, text="Export SA1MDL")
 		split.operator(ExportSA1LVL.bl_idname, text="Export SA1LVL")
@@ -123,7 +123,7 @@ class SA_ImportExport_Viewport(SA_UI_Panel, bpy.types.Panel):
 		split.operator(ExportSA2BLVL.bl_idname, text="Export SA2BLVL")
 		layout.separator()
 
-		# Animation
+		# Animation Tools
 		row = layout.row()
 		row.alignment = 'CENTER'
 		row.label(text="Animation Tools")
@@ -197,6 +197,7 @@ class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## NJS_MODEL Info
 		meshprops = None
 		if context.active_object.type == 'MESH':
 			meshprops = context.active_object.data.saSettings
+		
 		if context.mode == 'POSE':
 			objProps = context.active_object.data.bones.active.saObjflags
 		elif context.mode == 'EDIT_ARMATURE':
@@ -204,7 +205,10 @@ class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## NJS_MODEL Info
 		else:	
 			objProps = context.active_object.saObjflags
 
-		drawMeshPanel(layout, menuProps, meshprops, objProps)
+		if meshprops is not None:
+			drawMeshPanel(layout, meshprops)
+
+		drawObjPanel(layout, menuProps, objProps)
 
 class SA_MaterialProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_MATERIAL Panel
 	bl_idname = "SCENE_PT_matProperties"
@@ -313,7 +317,7 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit M
 
 		if settings.expandedMeshEdit:
 			box.separator()
-			drawMeshPanel(box, None, settings.meshQProps, None, qe=True)
+			drawMeshPanel(box, settings.meshQProps, qe=True)
 			box.separator()
 
 class SA_LevelInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Level Information (landtable name, texlist pointer, texture name, etc)
@@ -368,15 +372,18 @@ class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project S
 
 	def draw(self, context):
 		layout = self.layout
-		settings = context.scene.saSettings
+		settings = context.scene.saProjInfo
 
-		layout.prop(settings, "ProjectFilePath")
-		layout.separator()
 		layout.operator(openToolsHub.bl_idname)
 		layout.operator(openSALVL.bl_idname)
 		layout.operator(openSAMDL.bl_idname)
 		layout.operator(openTexEdit.bl_idname)
-		drawProjectData(layout, settings.ProjectFilePath, settings)
+		layout.separator()
+		layout.operator(LoadProjectFile.bl_idname)
+
+		if settings.ProjectFilePath != "":
+			projFile = ProjectFile.ReadProjectFile(settings.ProjectFilePath)
+			drawProjectData(layout, projFile, settings)
 	
 class SA_AddonInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Addon Information
 	bl_idname = "SCENE_PT_saAddonInfo"

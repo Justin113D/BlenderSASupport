@@ -38,7 +38,8 @@ from .ops.imports import(
 	ImportTexFile,
 	LoadSetFile,
 	LoadAnimFile,
-	LoadPathFile
+	LoadPathFile,
+	LoadProjectFile
 )
 from .ops.materials import(
 	AutoAssignTextures,
@@ -78,7 +79,8 @@ from .prop.properties import(
     SAMaterialSettings,
     SAMeshSettings,
     SATexture,
-	SAObjectSettings
+	SAObjectSettings,
+	SAProjectSettings
 )
 from .ui.panel_draw import(
 	propAdv,
@@ -173,14 +175,39 @@ class AddonPreferences(bpy.types.AddonPreferences):
 		min=0,
 		max=59)
 
+	printDebug: BoolProperty(
+		name="Print Debug",
+		description="Prints debug info to output window, will slow down exports.",
+		default=False,
+	)
+
+	useProjectPath: BoolProperty(
+		name="Use Project Folder",
+		description="Overrides the set Default Path if a Project File has been loaded.",
+		default=True
+	)
+
+	defaultPath: StringProperty(
+		name="Default Path",
+		description="Sets the default path used when importing/exporting files. Defaults to user's documents folder if not set.",
+		default="",
+		subtype='FILE_PATH'
+	)
+
 	toolspath: StringProperty(
         name="SA Tools Path",
+		description="Path to your SA Tools install.",
         subtype='FILE_PATH',
-    )	
+    )
 
 	def draw(self, context):
 		layout = self.layout
-		layout.prop(self, "toolspath")
+		split = layout.split()
+		split.prop(self, "printDebug")
+		split.prop(self, "useProjectPath")
+		split = layout.split()
+		split.prop(self, "toolspath")
+		split.prop(self, "defaultPath")
 		mainrow = layout.row()
 		col = mainrow.column()
 		addon_updater_ops.update_settings_ui(self, context)
@@ -227,6 +254,7 @@ classes = (
 	LoadSetFile,
 	LoadAnimFile,
 	LoadPathFile,
+	LoadProjectFile,
 
 	StrippifyTest,
 	ArmatureFromObjects,
@@ -256,6 +284,7 @@ classes = (
 	SAMeshSettings,
 	SATexture,
 	SAObjectSettings,
+	SAProjectSettings,
 
 	SCENE_UL_SATexList,
 	SCENE_MT_Texture_Context_Menu,
@@ -296,11 +325,12 @@ def register():
 		)
 
 	bpy.types.Scene.saSettings = bpy.props.PointerProperty(type=SASettings)
+	bpy.types.Scene.saProjInfo = bpy.props.PointerProperty(type=SAProjectSettings)
 	bpy.types.Object.saSettings = bpy.props.PointerProperty(type=SALandEntrySettings)
 	bpy.types.Object.saObjflags = bpy.props.PointerProperty(type=SAObjectSettings)
 	bpy.types.Bone.saObjflags = bpy.props.PointerProperty(type=SAObjectSettings)
 	bpy.types.EditBone.saObjflags = bpy.props.PointerProperty(type=SAObjectSettings)
-	bpy.types.Armature.saObjectflags = bpy.props.PointerProperty(type=SAObjectSettings)
+	bpy.types.Armature.saObjflags = bpy.props.PointerProperty(type=SAObjectSettings)
 	bpy.types.Material.saSettings = bpy.props.PointerProperty(type=SAMaterialSettings)
 	bpy.types.Mesh.saSettings = bpy.props.PointerProperty(type=SAMeshSettings)
 

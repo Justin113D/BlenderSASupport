@@ -1,6 +1,7 @@
 import bpy
 import os
 import shutil
+
 from .. import common, setReader
 from bpy.props import (
 	BoolProperty,
@@ -13,7 +14,9 @@ from bpy.props import (
 	)
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 from typing import List, Dict, Union, Tuple
+from ..parse.pxml import ProjectFile
 from ..parse.pini import (
+	ModFile,
 	PathEntry,
 	PathData
 )
@@ -58,6 +61,11 @@ class ImportMDL(bpy.types.Operator, ImportHelper):			## Imports *MDL files made 
 
 		return {'FINISHED'}
 
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
 class ImportLVL(bpy.types.Operator, ImportHelper):			## Imports *LVL files made with the SA Tools.
 	"""Imports any sonic adventure lvl file"""
 	bl_idname = "import_scene.lvl"
@@ -93,6 +101,11 @@ class ImportLVL(bpy.types.Operator, ImportHelper):			## Imports *LVL files made 
 		for f in self.files:
 			file_LVL.read(context, path + "\\" + f.name, self.noDoubleVerts, self.console_debug_output)
 		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
 
 class ImportTexFile(bpy.types.Operator, ImportHelper):		## Imports texture archives. Only texture packs supported currently.
 	"""Imports any sonic adventure texture file"""
@@ -179,6 +192,11 @@ class ImportTexFile(bpy.types.Operator, ImportHelper):		## Imports texture archi
 				tex.image = img
 		return {'FINISHED'}
 
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
 class LoadSetFile(bpy.types.Operator, ImportHelper):		## Imports a set file to empties with generic position, rotation, and scaling applie.
 	"""Loads a Set file and places objects at the correct locations"""
 	bl_idname = "object.load_set"
@@ -198,6 +216,11 @@ class LoadSetFile(bpy.types.Operator, ImportHelper):		## Imports a set file to e
 	def execute(self, context):
 		setReader.ReadFile(self.filepath, context, self.bigEndian)
 		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
 
 class LoadAnimFile(bpy.types.Operator, ImportHelper):		## Imports a SAANIM file made with the SA Tools.
 	"""Loads animations from saanim files to a selected armature"""
@@ -246,6 +269,11 @@ class LoadAnimFile(bpy.types.Operator, ImportHelper):		## Imports a SAANIM file 
 				continue
 		return {'FINISHED'}
 
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
 class LoadPathFile(bpy.types.Operator, ImportHelper):
 	bl_idname = "object.load_pathini"
 	bl_label = "Import Path INI Files"
@@ -260,3 +288,37 @@ class LoadPathFile(bpy.types.Operator, ImportHelper):
 		path = PathData(self.filepath)
 		CreatePath(path.Name, path.Entries)
 		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
+class LoadProjectFile(bpy.types.Operator, ImportHelper):
+	bl_idname = "object.load_project"
+	bl_label = "Open SA Project File"
+	bl_description = "Opens an SA Project (*.sap) file and loads some data into Blender."
+
+	filter_glob: StringProperty(
+		default="*.sap",
+		options={'HIDDEN'}
+	)
+
+	def execute(self, context):
+		ProjInfo = context.scene.saProjInfo
+		ProjInfo.ProjectFilePath = self.filepath
+		projFile = ProjectFile.ReadProjectFile(self.filepath)
+		ProjInfo.ProjectFolder = ProjectFile.GetProjectFolder(projFile)
+		modFilePath = ProjInfo.ProjectFolder + "mod.ini"
+		if os.path.isfile(modFilePath):
+			modFile = ModFile.ReadFile(modFilePath)
+			ProjInfo.ModName = modFile.Name
+			ProjInfo.ModAuthor = modFile.Author
+			ProjInfo.ModDescription = modFile.Description
+			ProjInfo.ModVersion = modFile.Description
+		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}

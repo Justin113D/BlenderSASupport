@@ -21,7 +21,8 @@ from ..prop.properties import(
 	SAMaterialSettings,
 	SAMeshSettings,
 	SATexture,
-	SAObjectSettings
+	SAObjectSettings,
+	SAProjectSettings
 )
 from ..ops.materials import(
 	UpdateMaterials,
@@ -252,32 +253,29 @@ def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, lvlProps, qe=False
 
 		propAdv(layout, "Blockbit (hex):  0x", lvlProps, "blockbit", sProps, "obj_apply_blockbit", qe = qe)
 
-def drawMeshPanel(layout: bpy.types.UILayout, menuProps, meshProps, objProps, qe = False):		## Draws the Mesh and Object Properties Panel.
+def drawMeshPanel(layout: bpy.types.UILayout, meshProps, qe = False):		## Draws the Mesh and Object Properties Panel.
 	sProps = bpy.context.scene.saSettings
 
-	if menuProps is not None:
-		# mesh properties
-		if meshProps is not None:
-			propAdv(layout, "Export Type (SA2)", meshProps, "sa2ExportType", sProps, "me_apply_ExportType", qe = qe)
-			propAdv(layout, "+ Vertex Offset (SA2)", meshProps, "sa2IndexOffset", sProps, "me_apply_addVO", qe = qe)
+	propAdv(layout, "Export Type (SA2)", meshProps, "sa2ExportType", sProps, "me_apply_ExportType", qe = qe)
+	propAdv(layout, "+ Vertex Offset (SA2)", meshProps, "sa2IndexOffset", sProps, "me_apply_addVO", qe = qe)
 
-		# obj flags
-		if objProps is not None:
-			box = layout.box()
-			box.prop(menuProps, "expandedObjFlags",
-				icon="TRIA_DOWN" if menuProps.expandedObjFlags else "TRIA_RIGHT",
-				emboss = False
-				)
+def drawObjPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = False):
+	sProps = bpy.context.scene.saSettings
+	box = layout.box()
+	box.prop(menuProps, "expandedObjFlags",
+		icon="TRIA_DOWN" if menuProps.expandedObjFlags else "TRIA_RIGHT",
+		emboss = False
+		)
 
-			if menuProps.expandedObjFlags:
-				box.prop(objProps, "ignorePosition")
-				box.prop(objProps, "ignoreRotation")
-				box.prop(objProps, "ignoreScale")
-				box.prop(objProps, "rotateZYX")
-				box.prop(objProps, "skipDraw")
-				box.prop(objProps, "skipChildren")
-				box.prop(objProps, "flagAnimate")
-				box.prop(objProps, "flagMorph")
+	if menuProps.expandedObjFlags:
+		box.prop(objProps, "ignorePosition")
+		box.prop(objProps, "ignoreRotation")
+		box.prop(objProps, "ignoreScale")
+		box.prop(objProps, "rotateZYX")
+		box.prop(objProps, "skipDraw")
+		box.prop(objProps, "skipChildren")
+		box.prop(objProps, "flagAnimate")
+		box.prop(objProps, "flagMorph")
 
 def drawScenePanel(layout: bpy.types.UILayout, settings, qe = False):							## Draws the Scene Properties Panel.
 	layout.prop(settings, "author")
@@ -392,25 +390,18 @@ def drawSAMDLPanel(layout: bpy.types.UILayout, settings: SASettings, iniFiles: l
 	LoadDataFiles.loadIniFiles(iniFiles)
 	layout.prop(LoadDataFiles, "iniFilesList")
 
-def drawProjectData(layout: bpy.types.UILayout, filepath, settings: SASettings):
-	if filepath != "":
-		project = ProjectFile(filepath)
-		if project.GameInfo:
-			projPath = project.GameInfo.ProjectFolder
-			if projPath.__contains__("\"") is False:
-				path = settings.ProjectFilePath.split(".")
-				projPath = path[0]
+def drawProjectData(layout: bpy.types.UILayout, file: ProjectFile, projInfo: SAProjectSettings):
+	row = layout.row()
+	row.alignment = 'CENTER'
+	row.label(text="Project Info")
+	row.scale_x = 1.0
 
-			modfile = ModFile(projPath + "\\mod.ini")
-			#settings.ProjectFolder = projPath
-			col = layout.column()
-			col.label(text="Project Information")
-			col.label(text="Mod Name: " + modfile.Name)
-			if modfile.Author != "":
-				col.label(text="Author: " + modfile.Author)
-			col.label(text="Game: " + project.GameInfo.GameName)
+	layout.label(text="Name: " + projInfo.ModName)
+	layout.label(text="Description: " + projInfo.ModDescription)
+	layout.label(text="Author: " + projInfo.ModAuthor)
+	layout.label(text="Version: " + projInfo.ModVersion)
 
-			drawSAMDLPanel(layout, settings, project.SplitEntries)
+	#drawSAMDLPanel(layout, settings, project.SplitEntries)
 			
 
 
