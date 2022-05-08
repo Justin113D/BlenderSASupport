@@ -15,7 +15,7 @@ from typing import List, Dict, Union, Tuple
 
 from .. import common
 
-def autotexUpdate(context, newValue):			## Definition for the auto-assign texture operator.
+def autotexUpdate(context, newValue, DO):			## Definition for the auto-assign texture operator.
 	# variables
 	mats = []
 	copyTex = []
@@ -28,7 +28,8 @@ def autotexUpdate(context, newValue):			## Definition for the auto-assign textur
 
 	# place texList into array for ease of reference
 	for t in texList:
-		#print("Process Texlist")
+		if DO:
+			print("Process Texlist")
 		if t.image is not None:
 			copyTex.append(t.name)
 
@@ -46,12 +47,14 @@ def autotexUpdate(context, newValue):			## Definition for the auto-assign textur
 						if n.type == 'TEX_IMAGE':
 							matname = os.path.splitext(str(n.image.name))[0]
 							if matname in texList:
-								#print("Found, " + matname)
+								if DO:
+									print("Found, " + matname)
 								index = copyTex.index(matname)
 								if index > -1:
 									# if updated index is > -1, update SA Material Texture ID
 									matProps.b_TextureID = index
-									#print("Texture updated!")
+									if DO:
+										print("Texture updated!")
 									found = True
 			
 			# if Texture Image input cannot be found, check material name as backup.
@@ -60,12 +63,14 @@ def autotexUpdate(context, newValue):			## Definition for the auto-assign textur
 					if matslot.material:
 						matname = matslot.material.name
 						if matname in texList:
-							#print("Found, " + matname)
+							if DO:
+								print("Found, " + matname)
 							index = copyTex.index(matname)
 							if index > -1:
 								# if updated index > -1, update SA Material Texture ID
 								matProps.b_TextureID = index
-								#print("Texture updated!")
+								if DO:
+									print("Texture updated!")
 						else:
 							print("Error! No matching texture for " + matname + "in object " + o.name)
 
@@ -75,7 +80,8 @@ class AutoAssignTextures(bpy.types.Operator):	## Auto-Assign texture IDs based o
 	bl_description = "Attempts to match texture or material names to an imported texlist. Only checks visible objects, may not work."
 
 	def execute(self, context):
-		autotexUpdate(context, True)
+		DO = common.get_prefs().printDebug
+		autotexUpdate(context, True, DO)
 		return {'FINISHED'}
 
 class ToPrincipledBsdf(bpy.types.Operator):		## Converts all materials in a scene to Principled BSDF for export.
@@ -271,8 +277,8 @@ class MatToAssetLibrary(bpy.types.Operator):	## Creates Asset Library Material e
 	bl_label="Materials to Asset Library"
 	bl_description="Generates new materials from an imported texlist and automatically marks them for the Asset Library."
 
-	# uncomment print commands in case of debugging.
 	def execute(self, context):
+		DO = common.get_prefs().printDebug
 		texList = context.scene.saSettings.textureList
 		arr_tls = []
 		genmats = []
@@ -291,10 +297,12 @@ class MatToAssetLibrary(bpy.types.Operator):	## Creates Asset Library Material e
 				matname = "material_" + str(arr_tls.index(texname))
 
 			if matname not in bpy.data.materials:
-				#print("Material Name Not Found, Creating new material.")
+				if DO: 
+					print("Material Name Not Found, Creating new material.")
 				mat = bpy.data.materials.new(name=matname)
 			else:
-				#print("Material Name Found, Updating exisitng material.")
+				if DO:
+					print("Material Name Found, Updating exisitng material.")
 				mat = bpy.data.materials[matname]
 
 			matProps : SAMaterialSettings = mat.saSettings

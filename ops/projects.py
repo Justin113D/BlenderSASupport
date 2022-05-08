@@ -16,10 +16,6 @@ from bpy.props import (
 	)
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 from typing import List, Dict, Union, Tuple
-
-from ..prop.properties import (
-	SAEditPanelSettings
-)
 #endregion
 
 tools = [
@@ -82,3 +78,12 @@ class openTexEdit(bpy.types.Operator):
 		openTool(3, False)
 		return {'FINISHED'}
 
+def GetDataFiles(file, context):
+	dataFiles = []
+	
+	return dataFiles
+
+def GetMdlFiles(file, context):
+	mdlFiles = []
+
+	return mdlFiles

@@ -27,7 +27,8 @@ from ..prop.properties import(
 from ..ops.materials import(
 	UpdateMaterials,
 	MatToAssetLibrary,
-	ToPrincipledBsdf
+	ToPrincipledBsdf,
+	AutoAssignTextures
 )
 from ..ops.textures import(
 	AddTextureSlot,
@@ -338,6 +339,7 @@ def drawScenePanel(layout: bpy.types.UILayout, settings, qe = False):							## D
 	layout.operator(UpdateMaterials.bl_idname)
 	layout.operator(ToPrincipledBsdf.bl_idname)
 	layout.operator(MatToAssetLibrary.bl_idname)
+	layout.operator(AutoAssignTextures.bl_idname)
 
 class SCENE_UL_SATexList(bpy.types.UIList):														## UI List draw for Scene Texture List items.
 

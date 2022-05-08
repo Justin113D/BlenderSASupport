@@ -13,7 +13,7 @@ from bpy.props import (
 	CollectionProperty
 	)
 from ..parse.pxml import ProjectFile
-
+from ..ops import projects
 from .. import common
 
 class SASettings(bpy.types.PropertyGroup):				## Property Groups used across the Addon.
@@ -1222,6 +1222,16 @@ class SAProjectSettings(bpy.types.PropertyGroup):
 	ProjectFolder: StringProperty(
 		name="SA Project Folder",
 		default=""
+	)
+
+	DataFiles: EnumProperty(
+		name="Data Files",
+		items=()
+	)
+
+	MdlFiles: EnumProperty(
+		name="Mdl Files",
+		items=()
 	)
 
 	ModName: StringProperty(
