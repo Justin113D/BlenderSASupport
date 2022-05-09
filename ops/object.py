@@ -193,7 +193,10 @@ class ModifyBoneShape(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		return context.active_object.type == 'ARMATURE'
+		if (context.active_object != None) and (context.active_object.type == 'ARMATURE'):
+			return True
+		else:
+			return False 
 
 	def execute(self, context):
 		shape = bpy.data.objects.new("boneShape", None)

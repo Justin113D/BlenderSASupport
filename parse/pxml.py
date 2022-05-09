@@ -77,10 +77,10 @@ class ProjectFile:
 			t_splitEntries = []
 			t_splitMDLEntries = []
 			t_info = ProjectInfo(root)
-			for entry in root.findall('SplitEntry'):
-				t_splitEntries.append(SplitEntry(entry))
-			for mdl in root.findall('SplitEntryMDL'):
-				t_splitMDLEntries.append(SplitEntryMdl(mdl))
+			#for entry in root.findall('SplitEntry'):
+			#	t_splitEntries.append(SplitEntry(entry))
+			#for mdl in root.findall('SplitEntryMDL'):
+			#	t_splitMDLEntries.append(SplitEntryMdl(mdl))
 
 			projFile = ProjectFile(path, t_info, t_splitEntries, t_splitMDLEntries)
 
