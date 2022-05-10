@@ -198,7 +198,8 @@ class AddonPreferences(bpy.types.AddonPreferences):
 	toolspath: StringProperty(
         name="SA Tools Path",
 		description="Path to your SA Tools install.",
-        subtype='FILE_PATH',
+		default="",
+        subtype='FILE_PATH'
     )
 
 	def draw(self, context):

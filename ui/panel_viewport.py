@@ -97,7 +97,7 @@ addonVersion = [addon.bl_info.get('version') for addon in addon_utils.modules()
 
 verNum = str(addonVersion).split('(')[1].split(')')[0].replace(',', '.').replace(' ', '')
 
-class SA_ImportExport_Viewport(SA_UI_Panel, bpy.types.Panel):
+class SA_ImportExport_Viewport(SA_UI_Panel, bpy.types.Panel):			## Import/Export: MDL and LVL Import/Export, Animation Import/Export and Tools, 
 	bl_idname = "SCENE_PT_saImportExport"
 	bl_label = "Tools"
 
@@ -145,7 +145,7 @@ class SA_ImportExport_Viewport(SA_UI_Panel, bpy.types.Panel):
 		layout.operator(LoadPathFile.bl_idname)
 		layout.operator(StrippifyTest.bl_idname)
 
-class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Information Panel (Author, Texlist, etc)
+class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Info: Author, Description, Texlist, Scene Lighting, Material Operators
 	bl_idname = "SCENE_PT_infoPanel"
 	bl_label = "Scene Information"
 	bl_options = {"DEFAULT_CLOSED"}
@@ -156,7 +156,7 @@ class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Informati
 
 		drawScenePanel(layout, settings)
 
-class SA_LandProperties_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_OBJECT Information Panel
+class SA_LandProperties_Viewport(SA_UI_Panel, bpy.types.Panel):			## LandEntry Info: Landtable Flags
 	bl_idname = "SCENE_PT_lvlProperties"
 	bl_label = "LandEntry Properties"
 	bl_options = {"DEFAULT_CLOSED"}
@@ -179,7 +179,7 @@ class SA_LandProperties_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_OBJECT 
 
 		drawLandEntryPanel(layout, menuProps, lvlProps)
 
-class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## NJS_MODEL Information Panel
+class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## Object/Model Info: Object Flags, Mesh Types
 	bl_idname = "SCENE_PT_mdlProperties"
 	bl_label = "Object & Mesh Properties"
 	bl_options = {"DEFAULT_CLOSED"}
@@ -212,7 +212,7 @@ class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## NJS_MODEL Info
 
 		drawObjPanel(layout, menuProps, objProps)
 
-class SA_MaterialProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_MATERIAL Panel
+class SA_MaterialProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## Material: Materials on object, SA Material Properties
 	bl_idname = "SCENE_PT_matProperties"
 	bl_label = "Material Properties"
 	bl_options = {"DEFAULT_CLOSED"}
@@ -256,7 +256,7 @@ class SA_MaterialProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_MATERIAL
 			matProps = context.active_object.active_material.saSettings
 			drawMaterialPanel(layout, menuProps, matProps)
 
-class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit Menu + Update Material Button, etc
+class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit: All Quick Edit Items
 	bl_idname = 'SCENE_PT_satools'
 	bl_label = 'Quick Edit Menu'
 	bl_options = {"DEFAULT_CLOSED"}
@@ -363,7 +363,7 @@ class SA_LevelInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Level Informati
 
 		box.prop(settings, "doubleSidedCollision")
 
-class SA_CurveInfo_Viewport(SA_UI_Panel, bpy.types.Panel):
+class SA_CurveInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Curve Info: Currently Inoperable
 	bl_idname = "SCENE_PT_CurveInfo"
 	bl_label = "Curve Info"
 	bl_options = {'DEFAULT_CLOSED'}
@@ -375,10 +375,15 @@ class SA_CurveInfo_Viewport(SA_UI_Panel, bpy.types.Panel):
 	def draw(self, context):
 		layout = self.layout
 		
-class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project Support Panel
+class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project Info: Project 
 	bl_idname = "SCENE_PT_saProjectManagement"
 	bl_label = "Project Management"
 	bl_options = {"DEFAULT_CLOSED"}
+
+	@classmethod
+	def poll(cls, context):
+		if common.get_prefs().toolspath != "":
+			return True
 
 	def draw(self, context):
 		layout = self.layout
