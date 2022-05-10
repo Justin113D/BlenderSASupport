@@ -156,7 +156,7 @@ class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Informati
 
 		drawScenePanel(layout, settings)
 
-class SA_LandProperties_Viewport(SA_UI_Panel, bpy.types.Panel):	## NJS_OBJECT Information Panel
+class SA_LandProperties_Viewport(SA_UI_Panel, bpy.types.Panel):			## NJS_OBJECT Information Panel
 	bl_idname = "SCENE_PT_lvlProperties"
 	bl_label = "LandEntry Properties"
 	bl_options = {"DEFAULT_CLOSED"}
@@ -260,6 +260,15 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit M
 	bl_idname = 'SCENE_PT_satools'
 	bl_label = 'Quick Edit Menu'
 	bl_options = {"DEFAULT_CLOSED"}
+
+	@classmethod
+	def poll(cls, context):
+		if (context.active_object.type == 'MESH') or (context.active_object.type == 'EMPTY') or (context.active_object.type == 'ARMATURE'):	# Mesh Nodes/Empty Nodes
+			return True
+		elif (context.mode == 'POSE') or (context.mode == 'EDIT_ARMATURE'):	# Bones
+			return True
+		else:
+			return False
 
 	def draw(self, context):
 		layout: bpy.types.UILayout = self.layout
