@@ -56,9 +56,6 @@ from ..parse.pini import(
 	DataFile
 )
 
-def getIniFilesList(self, settings: SASettings, itemsToAdd: list()):
-	settings.iniFiles = itemsToAdd
-
 def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):	## Advanced Properties draw definition.
 	'''For quick edit properties, to put simply'''
 
@@ -199,7 +196,7 @@ def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, lvlProps, qe=False
 			emboss = False
 			)
 
-		if menuProps.expandedSA1obj:
+		if menuProps.expandedSA1obj or qe:
 			box.prop(lvlProps, "solid")
 			box.prop(lvlProps, "sa1_water")
 			box.prop(lvlProps, "sa1_noFriction")
@@ -233,7 +230,7 @@ def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, lvlProps, qe=False
 			emboss = False
 			)
 
-		if menuProps.expandedSA2obj:
+		if menuProps.expandedSA2obj or qe:
 			box.prop(lvlProps, "solid")
 			box.prop(lvlProps, "sa2_water")
 			box.prop(lvlProps, "sa2_diggable")
@@ -268,7 +265,7 @@ def drawObjPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = False):
 		emboss = False
 		)
 
-	if menuProps.expandedObjFlags:
+	if menuProps.expandedObjFlags or qe:
 		box.prop(objProps, "ignorePosition")
 		box.prop(objProps, "ignoreRotation")
 		box.prop(objProps, "ignoreScale")

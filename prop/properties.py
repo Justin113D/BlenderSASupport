@@ -271,6 +271,12 @@ class SASettings(bpy.types.PropertyGroup):				## Property Groups used across the
 		description="Sets the additional vertex offset of all selected objects when pressing 'Set'",
 		default=False
 		)
+	
+	me_apply_objflags: BoolProperty(
+		name = "Apply Object Flags",
+		description="Sets object flags for all selected objects when pressing 'Set'",
+		default=False
+	)
 
 class SAEditPanelSettings(bpy.types.PropertyGroup):		## Property Group for managing expanded Material Properties menus.
 	"""Menu settings for the material edit menus determining which menu should be visible"""

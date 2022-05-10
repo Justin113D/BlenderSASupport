@@ -261,10 +261,6 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit M
 	bl_label = 'Quick Edit Menu'
 	bl_options = {"DEFAULT_CLOSED"}
 
-	@classmethod
-	def poll(cls, context):
-		return context.mode == 'OBJECT'
-
 	def draw(self, context):
 		layout: bpy.types.UILayout = self.layout
 
@@ -297,20 +293,6 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit M
 		box = outerBox.box()
 
 		row = box.row()
-		row.prop(settings, "useLandEntryEdit", text="")
-		row.prop(settings, "expandedLandEntryEdit",
-			icon="TRIA_DOWN" if settings.expandedLandEntryEdit else "TRIA_RIGHT",
-			emboss = False
-			)
-
-		if settings.expandedLandEntryEdit:
-			box.separator()
-			drawLandEntryPanel(box, settings.qEditorSettings, settings.landQProps, qe=True)
-			box.separator()
-
-		box = outerBox.box()
-
-		row = box.row()
 		row.prop(settings, "useMeshEdit", text="")
 		row.prop(settings, "expandedMeshEdit",
 			icon="TRIA_DOWN" if settings.expandedMeshEdit else "TRIA_RIGHT",
@@ -319,8 +301,25 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit M
 
 		if settings.expandedMeshEdit:
 			box.separator()
-			drawMeshPanel(box, settings.meshQProps, qe=True)
+			if (context.mode == 'OBJECT'): 
+				drawMeshPanel(box, settings.meshQProps, qe=True)
+			drawObjPanel(box, settings.qEditorSettings, settings.objQProps, qe=True)
 			box.separator()
+
+		if settings.sceneIsLevel:
+			box = outerBox.box()
+
+			row = box.row()
+			row.prop(settings, "useLandEntryEdit", text="")
+			row.prop(settings, "expandedLandEntryEdit",
+				icon="TRIA_DOWN" if settings.expandedLandEntryEdit else "TRIA_RIGHT",
+				emboss = False
+				)
+
+			if settings.expandedLandEntryEdit:
+				box.separator()
+				drawLandEntryPanel(box, settings.qEditorSettings, settings.landQProps, qe=True)
+				box.separator()
 
 class SA_LevelInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Level Information (landtable name, texlist pointer, texture name, etc)
 	bl_idname = "SCENE_PT_saLevelInfo"

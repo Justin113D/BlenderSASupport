@@ -319,6 +319,7 @@ def register():
 	SASettings.qEditorSettings = bpy.props.PointerProperty(type=SAEditPanelSettings)
 	SASettings.matQProps = bpy.props.PointerProperty(type=SAMaterialSettings)
 	SASettings.landQProps = bpy.props.PointerProperty(type=SALandEntrySettings)
+	SASettings.objQProps = bpy.props.PointerProperty(type=SAObjectSettings)
 	SASettings.meshQProps = bpy.props.PointerProperty(type=SAMeshSettings)
 	SASettings.textureList = bpy.props.CollectionProperty(
 		type=SATexture,

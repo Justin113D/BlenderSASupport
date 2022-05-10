@@ -20,6 +20,7 @@ from ..prop.properties import(
 	SALandEntrySettings,
 	SAMaterialSettings,
 	SAMeshSettings,
+	SAObjectSettings,
 	SATexture
 )
 
@@ -116,7 +117,24 @@ def qeUpdate(context, newValue):			## Quick Edit Menu Update Definition.
 	if context.scene.saSettings.useMeshEdit:
 
 		meshes = list()
+		bones = list()
+		if context.mode == 'POSE':
+			bones = context.selected_pose_bones
+		elif context.mode == 'EDIT_ARMATURE':
+			bones = context.selected_bones
+
+		for b in bones:
+			objProps = b.bone.saObjflags
+			for k, v in SAObjectSettings.defaultDict().items():
+				if isinstance(v, bool) and getattr(qEditSettings.objQProps, k):
+					setattr(objProps, k, newValue)
+
 		for o in objects:
+			objProps = o.saObjflags
+			for k, v in SAObjectSettings.defaultDict().items():
+				if isinstance(v, bool) and getattr(qEditSettings.objQProps, k):
+					setattr(objProps, k, newValue)
+
 			if o.type == 'MESH' and o.data not in meshes:
 				meshes.append(o.data)
 
