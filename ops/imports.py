@@ -77,6 +77,12 @@ class ImportLVL(bpy.types.Operator, ImportHelper):			## Imports *LVL files made 
 		options={'HIDDEN'},
 		)
 
+	fixView: BoolProperty(
+		name="Adjust Clip Distance",
+		description="Adjusts viewport clipping values.",
+		default=False
+	)
+
 	noDoubleVerts: BoolProperty(
 		name = "Merge double vertices",
 		description = "Merge the doubled vertices after importing",
@@ -96,6 +102,10 @@ class ImportLVL(bpy.types.Operator, ImportHelper):			## Imports *LVL files made 
 
 	def execute(self, context):
 		from .. import file_LVL
+
+		if self.fixView == True:
+			context.space_data.clip_start = 1.0
+			context.space_data.clip_end = 10000.0
 
 		path = os.path.dirname(self.filepath)
 		for f in self.files:
