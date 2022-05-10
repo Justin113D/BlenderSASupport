@@ -186,7 +186,7 @@ class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## NJS_MODEL Info
 
 	@classmethod
 	def poll(cls, context):
-		if (context.active_object.type == 'MESH') or (context.active_object.type == 'NONE') or (context.active_object.type == 'ARMATURE'):	# Mesh Nodes/Empty Nodes
+		if (context.active_object.type == 'MESH') or (context.active_object.type == 'EMPTY') or (context.active_object.type == 'ARMATURE'):	# Mesh Nodes/Empty Nodes
 			return True
 		elif (context.mode == 'POSE') or (context.mode == 'EDIT_ARMATURE'):	# Bones
 			return True
