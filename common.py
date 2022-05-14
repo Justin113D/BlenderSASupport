@@ -527,8 +527,8 @@ class ModelData:
 			flags |= SA2SurfaceFlags.Solid
 		if p["sa2_water"]:
 			flags |= SA2SurfaceFlags.Water
-		if p["sa2_standOnSlope"]:
-			flags |= SA2SurfaceFlags.StandOnSlope
+		if p["sa2_stairs"]:
+			flags |= SA2SurfaceFlags.Stairs
 		if p["sa2_diggable"]:
 			flags |= SA2SurfaceFlags.Diggable
 		if p["sa2_unclimbable"]:
