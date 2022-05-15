@@ -9,11 +9,10 @@ import collections
 
 from . import enums, fileHelper, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox
-from .__init__ import SAMaterialSettings
+from .prop.properties import SAMaterialSettings
 
 DO = False
 writeSpecular = True
-
 
 class Vertex:
     """A single vertex in the model, stored in vertex chunksd"""
@@ -74,7 +73,6 @@ class Vertex:
         self.nrm.write(fileW)
         fileW.wUInt(self.ninjaFlags)
 
-
 class VertexChunk:
     """One vertex data set"""
 
@@ -127,7 +125,6 @@ class VertexChunk:
             for v in self.vertices:
                 v.writeNRMW(fileW)
 
-
 class PolyVert:
     """A single polygon corner of a mesh"""
 
@@ -150,7 +147,6 @@ class PolyVert:
         fileW.wUShort(self.index)
         self.uv.write(fileW)
 
-
 class PolyChunk:
     """Base polychunk"""
 
@@ -161,7 +157,6 @@ class PolyChunk:
 
     def write(self, fileW: fileHelper.FileWriter):
         fileW.wByte(self.chunkType.value)
-
 
 class PolyChunk_Bit(PolyChunk):
     """Base class for one byte Poly chunks"""
@@ -175,7 +170,6 @@ class PolyChunk_Bit(PolyChunk):
     def write(self, fileW: fileHelper.FileWriter):
         super(PolyChunk_Bit, self).write(fileW)
         fileW.wByte(self.data)
-
 
 class PolyChunk_BlendAlpha(PolyChunk_Bit):
     """Holds alpha instructions for the mesh"""
@@ -193,7 +187,6 @@ class PolyChunk_BlendAlpha(PolyChunk_Bit):
     def alphaInstruction(self, val: enums.SA2AlphaInstructions):
         self.data = val.value
 
-
 class PolyChunk_MipmapDAdjust(PolyChunk_Bit):
     """Mipmap distance multiplicator"""
 
@@ -209,7 +202,6 @@ class PolyChunk_MipmapDAdjust(PolyChunk_Bit):
     @value.setter
     def value(self, val: enums.MipMapDistanceAdjust):
         self.data = val.value
-
 
 class PolyChunk_SpecularExponent(PolyChunk_Bit):
     """Specular exponent of the mesh material (unused tho? eh, who cares)"""
@@ -228,7 +220,6 @@ class PolyChunk_SpecularExponent(PolyChunk_Bit):
         self.data &= ~0x1F
         self.data |= min(16, round(val * 16))
 
-
 class PolyChunk_CachePolygonList(PolyChunk_Bit):
 
     def __init__(self, index: int):
@@ -244,7 +235,6 @@ class PolyChunk_CachePolygonList(PolyChunk_Bit):
     def index(self, val: int):
         self.data = min(0xFF, val)
 
-
 class PolyChunk_DrawpolygonList(PolyChunk_Bit):
 
     def __init__(self, index: int):
@@ -259,7 +249,6 @@ class PolyChunk_DrawpolygonList(PolyChunk_Bit):
     @index.setter
     def index(self, val: int):
         self.data = min(0xFF, val)
-
 
 class PolyChunk_Texture(PolyChunk):
     """Texture info of the mesh"""
@@ -297,7 +286,6 @@ class PolyChunk_Texture(PolyChunk):
             value |= 0x2000
         value |= (self.filtering.value << 14)
         fileW.wUShort(value)
-
 
 class PolyChunk_Material(PolyChunk):
     """The material chunk with all 3 colors"""
@@ -367,7 +355,6 @@ class PolyChunk_Material(PolyChunk):
         if writeSpecular:
             self.specular.writeRGB(fileW)
             fileW.wByte(self.specularity)
-
 
 class PolyChunk_Strip(PolyChunk):
 
@@ -487,10 +474,8 @@ class PolyChunk_Strip(PolyChunk):
                 for p in s:
                     p.write(fileW)
 
-
 class Container(object):
     pass
-
 
 class Attach:
     """Chunk mesh data"""
@@ -649,6 +634,7 @@ class Attach:
                 print(" Mesh has no materials")
             else:
                 matName = mesh.materials[mID].name
+                materials = mesh.materials
                 if matName in materials:
                     material = materials[matName]
                 else:
@@ -1069,8 +1055,6 @@ class Attach:
         print("    Poly chunks:", len(self.polyChunks))
 
 # stuff for weighted exporting and importing
-
-
 def fromWeightData(boneMap: Dict[str, mathutils.Matrix],
                    meshData: List[common.ArmatureMesh],
                    export_matrix: mathutils.Matrix,
@@ -1216,7 +1200,6 @@ def fromWeightData(boneMap: Dict[str, mathutils.Matrix],
 
     return boneAttaches
 
-
 class ProcessedVert:
 
     model: common.Model
@@ -1233,7 +1216,6 @@ class ProcessedVert:
         self.normal = vert.nrm
         self.color = vert.col
         self.weight = vert.weight
-
 
 class BufferedVertex:
 
@@ -1298,7 +1280,6 @@ class BufferedVertex:
 
         return mathutils.Vector(self.vertices[-1].color.toBlenderTuple())
 
-
 class processedAttach:
     attachID: int
     attachName: str
@@ -1332,7 +1313,6 @@ class processedAttach:
             return "Mesh_" + str(self.attachID).zfill(2)
         else:
             return self.attachName
-
 
 def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> Dict[int, processedAttach]:
 
@@ -1447,7 +1427,6 @@ def OrderChunks(models: List[common.Model], attaches: Dict[int, Attach]) -> Dict
                                                    hasColor)
 
     return pAttaches
-
 
 def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAttach], noDoubleVerts: bool, armatureRoot: common.Model):
 

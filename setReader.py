@@ -41,7 +41,6 @@ class ObjEntry:
 	#def __str__(self):
 	#    return str(self.index) + " : " + str(self.clippingLvl) + ", " + str(self.rotation) + ", " + str(self.pos) + ", " + str(self.var) + ";"
 
-
 def ReadFile(path: str, context, bigEndian: bool):
 	fileR = fileHelper.FileReader(path)
 	fileR.setBigEndian(bigEndian)
@@ -78,5 +77,3 @@ def ReadFile(path: str, context, bigEndian: bool):
 		obj.matrix_world = o.worldMtx
 
 		col.objects.link(obj)
-
-

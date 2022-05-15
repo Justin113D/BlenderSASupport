@@ -11,12 +11,10 @@ raiseTopoErrorG = True
 
 arrayBuffer = (c_int * 1)()
 
-
 class TopologyError(Exception):
 
     def __init__(self, message):
         super().__init__(message)
-
 
 class Vertex:
     """A single point in the Mesh."""
@@ -56,7 +54,6 @@ class Vertex:
     def __str__(self):
         return str(self.index)
 
-
 class Edge:
     """An Edge/Adjacency in between two vertices"""
     # The two vertices that this adjacency consists of
@@ -78,7 +75,6 @@ class Edge:
 
     def __str__(self):
         return "(" + str(self.vertices[0]) + ", " + str(self.vertices[1]) + ")"
-
 
 class Triangle:
 
@@ -220,7 +216,6 @@ class Triangle:
         return (f"{self.index}: {self.used}"
                 f" ({self.vertices[0]},{self.vertices[1]},{self.vertices[2]})")
 
-
 class Mesh:
     """contains all vertices, faces and edges from a tri list"""
     triangles = list()  # triangles of the mesh
@@ -248,7 +243,6 @@ class Mesh:
 
         if triEdgeCount > 0:
             print("There are", triEdgeCount, "edges with more than two faces")
-
 
 class Strippifier:
     # based on the paper written by David Kronmann:
@@ -497,7 +491,6 @@ class Strippifier:
             result = self.strips
 
         return result
-
 
 def Strippify(indexList: List[int],
               doSwaps=False,

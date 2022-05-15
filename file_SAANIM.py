@@ -7,12 +7,9 @@ from typing import Dict, List, Tuple
 
 # Big thanks to @SageOfMirrors, without whom
 # this would have taken at least 10 times longer to make!
-
-
 class ArmatureInvalidException(Exception):
     def __init__(self, message):
         super().__init__(message)
-
 
 def read(
         filepath: str,
@@ -185,7 +182,6 @@ def read(
 
                     scaleFrameID += 1
 
-
 def jsonEmptyModel():
     model = dict()
     model["Position"] = dict()
@@ -202,7 +198,6 @@ def jsonEmptyModel():
     model["Spot"] = dict()
     model["Point"] = dict()
     return model
-
 
 # this method is generally usable for every addon btw :3
 # It's always nice to only export the necessary frames :P
@@ -279,7 +274,6 @@ def getFramesToCalc(
 
     return sorted(set(output))
 
-
 def setFrameValues(
         curve: bpy.data.curves,
         default: int,
@@ -292,7 +286,6 @@ def setFrameValues(
     else:
         for k, v in outList.items():
             v[channel] = curve.evaluate(k)
-
 
 # cT = Use the current pose transform as default value for nonexistent channels
 def write(

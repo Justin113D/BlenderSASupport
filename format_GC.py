@@ -6,10 +6,9 @@ import copy
 
 from . import fileHelper, enums, strippifier, common
 from .common import Vector3, ColorARGB, UV, BoundingBox
-from .__init__ import SAMaterialSettings
+from .prop.properties import SAMaterialSettings
 
 DO = False
-
 
 def debug(*string):
     global DO
@@ -17,8 +16,6 @@ def debug(*string):
         print(*string)
 
 # == Geometry parameters ==
-
-
 class Parameter:
 
     pType: enums.ParameterType
@@ -63,7 +60,6 @@ class Parameter:
 
         return param
 
-
 class VtxAttrFmt(Parameter):
     """We dont know what this does but we know that we
     need one for each vertex data set"""
@@ -100,7 +96,6 @@ class VtxAttrFmt(Parameter):
         self.data &= ~0xFFFF0000
         self.data |= val.value << 16
 
-
 class IndexAttributes(Parameter):
     """Which data the polygon corners hold"""
 
@@ -116,7 +111,6 @@ class IndexAttributes(Parameter):
     @indexAttributes.setter
     def indexAttributes(self, val: enums.IndexAttributeFlags):
         self.data = val.value
-
 
 class Lighting(Parameter):
     """Holds lighting data for the mesh"""
@@ -166,7 +160,6 @@ class Lighting(Parameter):
         self.data &= (~0xFF000000)
         self.data |= min(0xFF, val) << 24
 
-
 class AlphaBlend(Parameter):
     """How the alpha is rendered on top of the opaque geometry"""
 
@@ -208,7 +201,6 @@ class AlphaBlend(Parameter):
         else:
             self.data &= ~0x4000
 
-
 class AmbientColor(Parameter):
     """Ambient color of the mesh"""
 
@@ -227,7 +219,6 @@ class AmbientColor(Parameter):
     @color.setter
     def color(self, val: ColorARGB):
         self.data = min(val.a, 0xFF) | min(val.b, 0xFF) << 8 | min(val.g, 0xFF) << 16 | min(val.r, 0xFF) << 24
-
 
 class Texture(Parameter):
     """Holds texture info"""
@@ -255,7 +246,6 @@ class Texture(Parameter):
         self.data &= ~0xFFFF0000
         self.data |= val.value << 16
 
-
 class unknown_9(Parameter):
     """We have absolutely no clue what this is for, but we need it"""
 
@@ -281,7 +271,6 @@ class unknown_9(Parameter):
     def unknown2(self, val: int):
         self.data &= ~0xFFFF0000
         self.data |= min(0xFFFF, val) << 16
-
 
 class TexCoordGen(Parameter):
     """Determines how the uv data should be used"""
@@ -333,7 +322,6 @@ class TexCoordGen(Parameter):
         self.data &= ~0xFF0000
         self.data |= val.value << 16
 
-
 class PolyVert:
     """Indices of a single polygon corner"""
 
@@ -353,7 +341,6 @@ class PolyVert:
 
     def __str__(self):
         return "(" + str(self.posID).zfill(3) + ", " + str(self.nrmID).zfill(3) + ", " + str(self.vcID).zfill(3) + ", " + str(self.uvID).zfill(3) + ")"
-
 
 class Geometry:
     """Holds a single polygon data set"""
@@ -542,7 +529,6 @@ class Geometry:
 
         return Geometry(params, polygons)
 
-
 class Vertices:
     """One vertex data array"""
 
@@ -668,7 +654,6 @@ class Vertices:
             data.append(t)
 
         return Vertices(vType, fracBitCount, compCount, dataType, data)
-
 
 class Attach:
     """Gamecube format attach"""
@@ -851,6 +836,7 @@ class Attach:
             mat = None
             if len(mesh.materials) > 0:
                 matName = mesh.materials[i].name
+                materials = mesh.materials
                 if matName in materials:
                     mat = materials[matName]
                 else:
@@ -1184,7 +1170,6 @@ class Attach:
 
 
         return Attach(name, vertices, opaqueGeom, transparentGeom, None)
-
 
 def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
 
