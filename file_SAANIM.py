@@ -581,12 +581,14 @@ def readShape(filepath: str,
 			mdl = anim["Models"][m]
 			shapeKeys = list()
 			if len(mdl["Vertex"]) > 0:
+				nameIdx = 0
 				for v in mdl["Vertex"]:
 					shapeKeys.append(ShapeKey(
-						mdl["VertexItemName"][int(v)],
+						mdl["VertexItemName"][nameIdx],
 						v,
 						mdl["Vertex"][v]
 					))
+					nameIdx += 1
 				if (len(objArr[int(m)].data.vertices) == len(shapeKeys[0].vMorphs)):
 					obj = objArr[int(m)]
 					obj.shape_key_add(from_mix=False) # Adding basis key
