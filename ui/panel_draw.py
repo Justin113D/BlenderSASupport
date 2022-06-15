@@ -196,7 +196,7 @@ def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, lvlProps, qe=False
 			emboss = False
 			)
 
-		if menuProps.expandedSA1obj or qe:
+		if menuProps.expandedSA1obj:
 			box.prop(lvlProps, "solid")
 			box.prop(lvlProps, "sa1_water")
 			box.prop(lvlProps, "sa1_noFriction")
@@ -218,7 +218,7 @@ def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, lvlProps, qe=False
 			box.prop(lvlProps, "sa1_rotByGravity")
 			box.prop(lvlProps, "sa1_noZWrite")
 			box.prop(lvlProps, "sa1_drawByMesh")
-			box.prop(lvlProps, "sa1_eneableManipulation")
+			box.prop(lvlProps, "sa1_enableManipulation")
 			box.prop(lvlProps, "sa1_dynCollision")
 			box.prop(lvlProps, "sa1_useRotation")
 			box.prop(lvlProps, "isVisible")
@@ -230,12 +230,12 @@ def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, lvlProps, qe=False
 			emboss = False
 			)
 
-		if menuProps.expandedSA2obj or qe:
+		if menuProps.expandedSA2obj:
 			box.prop(lvlProps, "solid")
 			box.prop(lvlProps, "sa2_water")
 			box.prop(lvlProps, "sa2_diggable")
 			box.prop(lvlProps, "sa2_unclimbable")
-			box.prop(lvlProps, "sa2_standOnSlope")
+			box.prop(lvlProps, "sa2_stairs")
 			box.prop(lvlProps, "sa2_hurt")
 			box.prop(lvlProps, "sa2_footprints")
 			box.prop(lvlProps, "sa2_cannotLand")
@@ -265,7 +265,7 @@ def drawObjPanel(layout: bpy.types.UILayout, menuProps, objProps, qe = False):
 		emboss = False
 		)
 
-	if menuProps.expandedObjFlags or qe:
+	if menuProps.expandedObjFlags:
 		box.prop(objProps, "ignorePosition")
 		box.prop(objProps, "ignoreRotation")
 		box.prop(objProps, "ignoreScale")
@@ -399,8 +399,4 @@ def drawProjectData(layout: bpy.types.UILayout, file: ProjectFile, projInfo: SAP
 	layout.label(text="Description: " + projInfo.ModDescription)
 	layout.label(text="Author: " + projInfo.ModAuthor)
 	layout.label(text="Version: " + projInfo.ModVersion)
-
-	#drawSAMDLPanel(layout, settings, project.SplitEntries)
-			
-
 

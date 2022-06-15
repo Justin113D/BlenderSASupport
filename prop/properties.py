@@ -330,7 +330,7 @@ class SALandEntrySettings(bpy.types.PropertyGroup):		## Property Group for manag
 	isVisible: BoolProperty(
 		name="Visible",
 		description="Sets visbility of the object.",
-		default=False
+		default=True
 		)
 
 	# sa1 only

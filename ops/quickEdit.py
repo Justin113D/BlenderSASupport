@@ -98,10 +98,9 @@ def qeUpdate(context, newValue):			## Quick Edit Menu Update Definition.
 				if qEditSettings.gc_apply_src and newValue:
 					matProps.gc_texGenSourceSRTG = matQProps.gc_texGenSourceSRTG
 
-	# If the user specified to change objects...
-	if context.scene.saSettings.useObjEdit:
+	# If the user specified to change land entry flags...
+	if context.scene.saSettings.useLandEntryEdit:
 		for o in objects:
-
 			objProps = o.saSettings
 			for k, v in SALandEntrySettings.defaultDict().items():
 				if isinstance(v, bool) and getattr(qEditSettings.landQProps, k):
@@ -115,7 +114,6 @@ def qeUpdate(context, newValue):			## Quick Edit Menu Update Definition.
 
 	# If the user specified to change meshes...
 	if context.scene.saSettings.useMeshEdit:
-
 		meshes = list()
 		bones = list()
 		if context.mode == 'POSE':

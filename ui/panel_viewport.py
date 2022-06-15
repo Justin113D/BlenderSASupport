@@ -55,7 +55,8 @@ from ..ops.exports import (
 	ExportSA2BLVL,
 	ExportPAK,
 	ExportPVMX,
-	ExportAnim
+	ExportAnim,
+	ExportShapeMotion
 )
 from ..ops.imports import(
 	ImportMDL,
@@ -63,7 +64,9 @@ from ..ops.imports import(
 	ImportTexFile,
 	LoadProjectFile,
 	LoadSetFile,
+	LoadCamFile,
 	LoadAnimFile,
+	LoadShapeMotion,
 	LoadPathFile,
 	LoadProjectFile
 )
@@ -133,6 +136,9 @@ class SA_ImportExport_Viewport(SA_UI_Panel, bpy.types.Panel):			## Import/Export
 		split = layout.split()
 		split.operator(LoadAnimFile.bl_idname, text="Import Anim")
 		split.operator(ExportAnim.bl_idname, text="Export Anim")
+		split = layout.split()
+		split.operator(LoadShapeMotion.bl_idname, text="Import Shape Motion")
+		split.operator(ExportShapeMotion.bl_idname, text="Export Shape Motion")
 		layout.operator(ModifyBoneShape.bl_idname)
 		layout.separator()
 
@@ -142,6 +148,7 @@ class SA_ImportExport_Viewport(SA_UI_Panel, bpy.types.Panel):			## Import/Export
 		row.label(text="Extra Tools")
 		row.scale_x = 1.0
 		layout.operator(LoadSetFile.bl_idname)
+		layout.operator(LoadCamFile.bl_idname)
 		layout.operator(LoadPathFile.bl_idname)
 		layout.operator(StrippifyTest.bl_idname)
 
@@ -186,10 +193,13 @@ class SA_ModelProps_Viewport(SA_UI_Panel, bpy.types.Panel):				## Object/Model I
 
 	@classmethod
 	def poll(cls, context):
-		if (context.active_object.type == 'MESH') or (context.active_object.type == 'EMPTY') or (context.active_object.type == 'ARMATURE'):	# Mesh Nodes/Empty Nodes
-			return True
-		elif (context.mode == 'POSE') or (context.mode == 'EDIT_ARMATURE'):	# Bones
-			return True
+		if (context.active_object != None):
+			if (context.active_object.type == 'MESH') or (context.active_object.type == 'EMPTY') or (context.active_object.type == 'ARMATURE'):	# Mesh Nodes/Empty Nodes
+				return True
+			elif (context.mode == 'POSE') or (context.mode == 'EDIT_ARMATURE'):	# Bones
+				return True
+			else:
+				return False
 		else:
 			return False
 
@@ -219,7 +229,10 @@ class SA_MaterialProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## Material: Ma
 
 	@classmethod
 	def poll(cls, context):
-		return context.active_object.type == 'MESH'
+		if (context.active_object != None):
+			return context.active_object.type == 'MESH'
+		else:
+			return False
 
 	def draw(self, context):
 		layout = self.layout
@@ -263,10 +276,13 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit: 
 
 	@classmethod
 	def poll(cls, context):
-		if (context.active_object.type == 'MESH') or (context.active_object.type == 'EMPTY') or (context.active_object.type == 'ARMATURE'):	# Mesh Nodes/Empty Nodes
-			return True
-		elif (context.mode == 'POSE') or (context.mode == 'EDIT_ARMATURE'):	# Bones
-			return True
+		if (context.active_object != None):
+			if (context.active_object.type == 'MESH') or (context.active_object.type == 'EMPTY') or (context.active_object.type == 'ARMATURE'):	# Mesh Nodes/Empty Nodes
+				return True
+			elif (context.mode == 'POSE') or (context.mode == 'EDIT_ARMATURE'):	# Bones
+				return True
+			else:
+				return False
 		else:
 			return False
 

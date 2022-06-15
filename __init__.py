@@ -30,14 +30,17 @@ from .ops.exports import (
 	ExportSA2BLVL,
 	ExportPAK,
 	ExportPVMX,
-	ExportAnim
+	ExportAnim,
+	ExportShapeMotion
 )
 from .ops.imports import(
 	ImportMDL,
 	ImportLVL,
 	ImportTexFile,
 	LoadSetFile,
+	LoadCamFile,
 	LoadAnimFile,
+	LoadShapeMotion,
 	LoadPathFile,
 	LoadProjectFile
 )
@@ -249,12 +252,15 @@ classes = (
 	ExportPAK,
 	ExportPVMX,
 	ExportAnim,
+	ExportShapeMotion,
 
 	ImportMDL,
 	ImportLVL,
 	ImportTexFile,
 	LoadSetFile,
+	LoadCamFile,
 	LoadAnimFile,
+	LoadShapeMotion,
 	LoadPathFile,
 	LoadProjectFile,
 

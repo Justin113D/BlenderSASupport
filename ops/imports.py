@@ -220,11 +220,54 @@ class LoadSetFile(bpy.types.Operator, ImportHelper):		## Imports a set file to e
 	bigEndian: BoolProperty(
 		name="Big Endian",
 		description="Sets Big Endian for loading Set files (DC Games/SADXPC Disable, GC Games/SA2BPC Enable)",
-		default=True,
+		default=False,
 		)
 
+	useIDFirst: BoolProperty(
+		name="Use Item Index as Prefix",
+		description="Uses the item's index in the set file as the prefix. Setting to false will set the index to be used as a suffix.",
+		default=True,
+	)
+
 	def execute(self, context):
-		setReader.ReadFile(self.filepath, context, self.bigEndian)
+		setReader.ReadFile(self.filepath, context, self.bigEndian, self.useIDFirst)
+		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
+class LoadCamFile(bpy.types.Operator, ImportHelper):		## Imports a set file to empties with generic position, rotation, and scaling applie.
+	"""Loads a Cam file and places Empties at the correct locations"""
+	bl_idname = "object.load_cam"
+	bl_label = "Load CAM file"
+
+	filter_glob: StringProperty(
+		default="*.bin",
+		options={'HIDDEN'},
+		)
+
+	bigEndian: BoolProperty(
+		name="Big Endian",
+		description="Sets Big Endian for loading CAM files (DC Games/SADXPC Disable, GC Games/SA2BPC Enable)",
+		default=False,
+		)
+
+	useIDFirst: BoolProperty(
+		name="Use Camera Index as Prefix",
+		description="Uses the camera's index in the cam file as the prefix. Setting to false will set the index to be used as a suffix.",
+		default=True,
+	)
+
+	isSA2: BoolProperty(
+		name="Is SA2 Cam",
+		description="Toggle for SA2 cam files.",
+		default=False
+	)
+
+	def execute(self, context):
+		setReader.ReadCamFile(self.filepath, context, self.bigEndian, self.useIDFirst, self.isSA2)
 		return {'FINISHED'}
 
 	def invoke(self, context, event):
@@ -274,6 +317,50 @@ class LoadAnimFile(bpy.types.Operator, ImportHelper):		## Imports a SAANIM file 
 		for f in self.files:
 			try:
 				file_SAANIM.read(path + "\\" + f.name, self.naming, context.active_object)
+			except file_SAANIM.ArmatureInvalidException as e:
+				self.report({'WARNING'}, str(e))
+				continue
+		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
+class LoadShapeMotion(bpy.types.Operator, ImportHelper):		## Imports a SAANIM file made with the SA Tools.
+	"""Loads Json formatted Shape Motions to selected objects"""
+	bl_idname = "object.load_shapemotion"
+	bl_label = "Import JSON Shape Motion"
+	bl_description = "Loads a Json formatted Shape Motion"
+
+	filter_glob: StringProperty(
+		default="*.json",
+		options={'HIDDEN'},
+		)
+
+	files: CollectionProperty(
+		name='File paths',
+		type=bpy.types.OperatorFileListElement
+		)
+
+	@classmethod
+	def poll(cls, context):
+		if (context.active_object != None):
+			if (context.active_object.type == 'MESH'):
+				return True
+			else:
+				return False
+		else:
+			return False
+
+
+	def execute(self, context):
+		from .. import file_SAANIM
+		path = os.path.dirname(self.filepath)
+
+		for f in self.files:
+			try:
+				file_SAANIM.readShape(path + "\\" + f.name, context.active_object)
 			except file_SAANIM.ArmatureInvalidException as e:
 				self.report({'WARNING'}, str(e))
 				continue

@@ -84,6 +84,7 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):		## Exports an SA1MDL file
 	"""Export objects into an SA1 model file"""
 	bl_idname = "export_scene.sa1mdl"
 	bl_label = "SA1 model (.sa1mdl)"
+	bl_description = "Exports scene or selected items to an sa1mdl file."
 	bl_options = {'PRESET', 'UNDO'}
 
 	filename_ext = ".sa1mdl"
@@ -142,7 +143,9 @@ class ExportSA1MDL(bpy.types.Operator, ExportHelper):		## Exports an SA1MDL file
 class ExportSA2MDL(bpy.types.Operator, ExportHelper):		## Exports an SA2MDL file.
 	"""Export objects into an SA2 model file"""
 	bl_idname = "export_scene.sa2mdl"
+	bl_description = "Exports scene or selected items to an sa2mdl file."
 	bl_label = "SA2 model (.sa2mdl)"
+	
 	bl_options = {'PRESET', 'UNDO'}
 
 	filename_ext = ".sa2mdl"
@@ -208,6 +211,7 @@ class ExportSA2BMDL(bpy.types.Operator, ExportHelper):		## Exports an SA2BMDL fi
 	"""Export objects into an SA2B model file"""
 	bl_idname = "export_scene.sa2bmdl"
 	bl_label = "SA2B model (.sa2bmdl)"
+	bl_description = "Exports scene or selected items to an sa2bmdl file."
 	bl_options = {'PRESET', 'UNDO'}
 
 	filename_ext = ".sa2bmdl"
@@ -267,6 +271,7 @@ class ExportSA1LVL(bpy.types.Operator, ExportHelper):		## Exports an SA1LVL file
 	"""Export scene into an SA1 level file"""
 	bl_idname = "export_scene.sa1lvl"
 	bl_label = "SA1 level (.sa1lvl)"
+	bl_description = "Exports scene or selected items to an sa1lvl file."
 	bl_options = {'PRESET', 'UNDO'}
 
 	filename_ext = ".sa1lvl"
@@ -326,6 +331,7 @@ class ExportSA2LVL(bpy.types.Operator, ExportHelper):		## Exports an SA2LVL file
 	"""Export scene into an SA2 level file"""
 	bl_idname = "export_scene.sa2lvl"
 	bl_label = "SA2 level (.sa2lvl)"
+	bl_description = "Exports scene or selected items to an sa2lvl file."
 	bl_options = {'PRESET', 'UNDO'}
 
 	filename_ext = ".sa2lvl"
@@ -391,6 +397,7 @@ class ExportSA2BLVL(bpy.types.Operator, ExportHelper):		## Exports an SA2BLVL fi
 	"""Export scene into an SA2B level file"""
 	bl_idname = "export_scene.sa2blvl"
 	bl_label = "SA2B level (.sa2blvl)"
+	bl_description = "Exports scene or selected items to an sa2blvl file."
 	bl_options = {'PRESET', 'UNDO'}
 
 	filename_ext = ".sa2blvl"
@@ -474,8 +481,14 @@ class ExportPVMX(bpy.types.Operator, ExportHelper):			## Non-functional. Planned
 class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 	bl_idname = "object.export_anim"
 	bl_label = "Export JSON Animation"
+	bl_description = "Exports animation data to a valid json file."
 
 	filename_ext = ".json"
+
+	filter_glob: StringProperty(
+		default="*.json;",
+		options={'HIDDEN'},
+		)
 
 	bakeAll: BoolProperty(
 		name = "Bake all keyframes",
@@ -539,6 +552,40 @@ class ExportCurve(bpy.types.Operator, ExportHelper):
 			return False
 
 	def execute(self, context):
+		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
+class ExportShapeMotion(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
+	'''Export Shape Motions'''
+	bl_idname = "object.export_shape"
+	bl_label = "Export Shape Animation"
+	bl_description = "Exports Shape Keys to a valid json file."
+
+	filename_ext = ".json"
+
+	filter_glob: StringProperty(
+		default="*.json;",
+		options={'HIDDEN'},
+		)
+
+	@classmethod
+	def poll(cls, context):
+		obj = context.active_object
+		if (obj != None) and (obj.type == 'MESH'):
+			if ((obj.data.shape_keys != None) and (len(obj.data.shape_keys.key_blocks) > 1)):
+				return True
+			else:
+				return False
+		else:
+			return False
+
+	def execute(self, context):
+		from .. import file_SAANIM
+		file_SAANIM.writeShape(self.filepath, context.active_object)
 		return {'FINISHED'}
 
 	def invoke(self, context, event):
