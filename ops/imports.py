@@ -3,6 +3,7 @@ import os
 import shutil
 
 from .. import common, setReader
+from .. import file_SAANIM
 from bpy.props import (
 	BoolProperty,
 	FloatProperty,
@@ -361,6 +362,38 @@ class LoadShapeMotion(bpy.types.Operator, ImportHelper):		## Imports a SAANIM fi
 		for f in self.files:
 			try:
 				file_SAANIM.readShape(path + "\\" + f.name, context.active_object)
+			except file_SAANIM.ArmatureInvalidException as e:
+				self.report({'WARNING'}, str(e))
+				continue
+		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		self.filepath = common.getDefaultPath()
+		wm = context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
+class LoadCameraMotion(bpy.types.Operator, ImportHelper):		## Imports a SAANIM file made with the SA Tools.
+	"""Loads Json formatted Camera Motions"""
+	bl_idname = "object.load_cammotion"
+	bl_label = "Import Camera Motion"
+	bl_description = "Loads a Json formatted Camera Motion"
+
+	filter_glob: StringProperty(
+		default="*.json",
+		options={'HIDDEN'},
+		)
+
+	files: CollectionProperty(
+		name='File paths',
+		type=bpy.types.OperatorFileListElement
+		)
+
+	def execute(self, context):
+		path = os.path.dirname(self.filepath)
+
+		for f in self.files:
+			try:
+				file_SAANIM.readAnim_Camera(path + "\\" + f.name)
 			except file_SAANIM.ArmatureInvalidException as e:
 				self.report({'WARNING'}, str(e))
 				continue

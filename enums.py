@@ -587,3 +587,8 @@ class StripFlags(Flag):
 	FLAT_SHADING = 0x20
 	ENV_MAPPING = 0x40
 	Unknown = 0x80
+
+class InterpolationModeEnums(Enum):
+	Linear = 0
+	Spline = 1
+	User = 2

@@ -41,6 +41,7 @@ from .ops.imports import(
 	LoadCamFile,
 	LoadAnimFile,
 	LoadShapeMotion,
+	LoadCameraMotion,
 	LoadPathFile,
 	LoadProjectFile
 )
@@ -261,6 +262,7 @@ classes = (
 	LoadCamFile,
 	LoadAnimFile,
 	LoadShapeMotion,
+	LoadCameraMotion,
 	LoadPathFile,
 	LoadProjectFile,
 

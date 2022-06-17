@@ -67,6 +67,7 @@ from ..ops.imports import(
 	LoadCamFile,
 	LoadAnimFile,
 	LoadShapeMotion,
+	LoadCameraMotion,
 	LoadPathFile,
 	LoadProjectFile
 )
@@ -140,6 +141,7 @@ class SA_ImportExport_Viewport(SA_UI_Panel, bpy.types.Panel):			## Import/Export
 		split.operator(LoadShapeMotion.bl_idname, text="Import Shape Motion")
 		split.operator(ExportShapeMotion.bl_idname, text="Export Shape Motion")
 		layout.operator(ModifyBoneShape.bl_idname)
+		layout.operator(LoadCameraMotion.bl_idname)
 		layout.separator()
 
 		# Extra Tools

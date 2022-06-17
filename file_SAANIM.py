@@ -3,8 +3,10 @@ import mathutils
 import os
 import math
 
+from .enums import InterpolationModeEnums
+from .parse.pjson import animJsonFile
 from typing import Dict, List, Tuple
-from .common import Vector3
+from .common import ColorARGB, Vector3
 
 # Big thanks to @SageOfMirrors, without whom
 # this would have taken at least 10 times longer to make!
@@ -277,7 +279,7 @@ def getFramesToCalc(
 	return sorted(set(output))
 
 def setFrameValues(
-		curve: bpy.data.curves,
+		curve: bpy.types.Curve,
 		default: int,
 		channel: int,
 		outList: Dict[int, mathutils.Vector]):
@@ -553,15 +555,11 @@ class ShapeKey:
 
 def readShape(filepath: str,
 		obj: bpy.types.Object):
-
-	print("importing", filepath)
 	if filepath.endswith(".json"):
-		import json
-		f = open(filepath)
-		anim = json.load(f)
-		f.close()
+		anim = animJsonFile()
+		anim.ReadJsonFile(filepath)
 
-		objCount = anim["ModelParts"]
+		objCount = anim.ModelParts
 
 		objArr = list()
 		objArr.append(obj)
@@ -576,21 +574,19 @@ def readShape(filepath: str,
 				f"Object count: {str(objArr.count)}\n"
 				f"Anm Object Count: {str(objCount)}")
 
-		frame_count = anim["Frames"]
-		for m in anim["Models"]:
-			mdl = anim["Models"][m]
+		for mk, mdl in anim.Models.items():
 			shapeKeys = list()
-			if len(mdl["Vertex"]) > 0:
-				nameIdx = 0
-				for v in mdl["Vertex"]:
+			if len(mdl.Vertex) > 0:
+				nidx = 0
+				for k, v in mdl.Vertex.items():
 					shapeKeys.append(ShapeKey(
-						mdl["VertexItemName"][nameIdx],
-						v,
-						mdl["Vertex"][v]
+						mdl.VertexItemName[nidx],
+						k,
+						v
 					))
-					nameIdx += 1
-				if (len(objArr[int(m)].data.vertices) == len(shapeKeys[0].vMorphs)):
-					obj = objArr[int(m)]
+					nidx += 1
+				if (len(objArr[int(mk)].data.vertices) == len(shapeKeys[0].vMorphs)):
+					obj = objArr[int(mk)]
 					obj.shape_key_add(from_mix=False) # Adding basis key
 					for s in shapeKeys:
 						name = s.id + '|' + s.name
@@ -662,3 +658,10 @@ def writeShape(filepath: str,
 	import json
 	with open(filepath, 'w') as outfile:
 		json.dump(jsonF, outfile, indent=2)
+
+def readAnim_Camera(filepath: str):
+	anim = animJsonFile()
+	anim.ReadJsonFile(filepath)
+
+	print(anim.Models["0"].Position)
+	
