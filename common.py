@@ -1106,6 +1106,7 @@ def convertObjectData(context: bpy.types.Context,
 					if fmt == 'SA2B':
 						if len(o.origObject.data.color_attributes) == 0:
 							obj = o.origObject
+							obj.data.saSettings.sa2ExportType = 'VC'
 							bpy.context.view_layer.objects.active = obj
 							bpy.ops.geometry.color_attribute_add(name='COL0', domain='CORNER', data_type='BYTE_COLOR', color=(1.0,1.0,1.0,1.0))
 							bpy.context.view_layer.objects.active = None
