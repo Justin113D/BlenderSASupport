@@ -37,6 +37,9 @@ def qeUpdate(context, newValue):			## Quick Edit Menu Update Definition.
 		mats = []
 		for o in objects:
 			if o.type == 'MESH':
+				if (len(o.data.materials) == 0):
+					newMat = bpy.data.materials.new('material_' + str(len(bpy.data.materials)-1))
+					o.data.materials.append(newMat)
 				for m in o.data.materials:
 					if m not in mats:
 						mats.append(m)
