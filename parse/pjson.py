@@ -13,6 +13,55 @@ from ..common import (
 	RadToBAMS, BAMSToRad
 )
 
+def NewJsonModel():
+	mdl = dict()
+	mdl["Position"] = dict()
+	mdl["Rotation"] = dict()
+	mdl["Scale"] = dict()
+	mdl["Vector"] = dict()
+	mdl["Vertex"] = dict()
+	mdl["Normal"] = dict()
+	mdl["Target"] = dict()
+	mdl["Roll"] = dict()
+	mdl["Angle"] = dict()
+	mdl["Color"] = dict()
+	mdl["Intensity"] = dict()
+	mdl["Spot"] = dict()
+	mdl["Point"] = dict()
+	mdl["Quaternion"] = dict()
+	mdl["PositionName"] = ""
+	mdl["Rotation"] = ""
+	mdl["ScaleName"] = ""
+	mdl["VectorName"] = ""
+	mdl["VertexName"] = ""
+	mdl["VertexItemName"] = list()
+	mdl["NormalItemName"] = list()
+	mdl["NormalName"] = ""
+	mdl["TargetName"] = ""
+	mdl["RollName"] = ""
+	mdl["AngleName"] = ""
+	mdl["ColorName"] = ""
+	mdl["IntensityName"] = ""
+	mdl["SpotName"] = ""
+	mdl["PointName"] = ""
+	mdl["QuaternionName"] = ""
+	mdl["NbKeyframes"] = 0
+	return mdl
+
+def NewJsonFile():
+	file = dict()
+	file["Models"] = dict()
+	file["Frames"] = 0
+	file["Name"] = ""
+	file["Description"] = ""
+	file["MdataName"] = ""
+	file["ModelParts"] = 0
+	file["InterpolationMode"] = InterpolationModeEnums.Linear
+	file["ShortRot"] = False
+	file["ActionName"] = ""
+	file["ObjectName"] = ""
+	return file
+
 class animJsonModel:
 	Position: dict()
 	Rotation: dict()
@@ -206,6 +255,119 @@ class animJsonModel:
 			if (jsonF["NbKeyframes"] != None):
 				self.NbKeyframes = jsonF["NbKeyframes"]
 
+	def toJson(self):
+		outMdl = NewJsonModel()
+
+		outMdl["NbKeyframes"] = self.NbKeyframes
+		outMdl["VertexItemName"] = self.VertexItemName
+		outMdl["NormalItemName"] = self.NormalItemName
+
+		if (len(self.Position) > 0):
+			for k, v in self.Position.items():
+				outMdl["Position"][k] = v
+		if (len(self.Rotation) > 0):
+			for k, v in self.Rotation.items():
+				outMdl["Rotation"][k] = v
+		if (len(self.Scale) > 0):
+			for k, v in self.Scale.items():
+				outMdl["Scale"][k] = v
+		if (len(self.Vector) > 0):
+			for k, v in self.Vector.items():
+				outMdl["Vector"][k] = v
+		if (len(self.Vertex) > 0):
+			for k, v in self.Vertex.items():
+				outMdl["Vertex"][k] = v
+		else:
+			outMdl["Vertex"] = None
+		if (len(self.Normal) > 0):
+			for k, v in self.Normal.items():
+				outMdl["Normal"][k] = v
+		else:
+			outMdl["Normal"] = None
+		if (len(self.Target) > 0):
+			for k, v in self.Target.items():
+				outMdl["Target"][k] = v
+		if (len(self.Roll) > 0):
+			for k, v in self.Roll.items():
+				outMdl["Roll"][k] = v
+		if (len(self.Angle) > 0):
+			for k, v in self.Angle.items():
+				outMdl["Angle"][k] = v
+		if (len(self.Color) > 0):
+			for k, v in self.Color.items():
+				outMdl["Color"][k] = v
+		if (len(self.Intensity) > 0):
+			for k, v in self.Intensity.items():
+				outMdl["Intensity"][k] = v
+		if (len(self.Spot) > 0):
+			for k, v in self.Spot.items():
+				outMdl["Spot"][k] = v
+		if (len(self.Point) > 0):
+			for k, v in self.Point.items():
+				outMdl["Point"][k] = v
+		if (len(self.Quaternion) > 0):
+			for k, v in self.Quaternion.items():
+				outMdl["Quaternion"][k] = v
+
+		if (self.PositionName != ""):
+			outMdl["PositionName"] = self.PositionName
+		else:
+			outMdl["PositionName"] = None
+		if (self.RotationName != ""):
+			outMdl["RotationName"] = self.RotationName
+		else:
+			outMdl["RotationName"] = None
+		if (self.ScaleName != ""):
+			outMdl["ScaleName"] = self.ScaleName
+		else:
+			outMdl["ScaleName"] = None
+		if (self.VectorName != ""):
+			outMdl["VectorName"] = self.VectorName
+		else:
+			outMdl["VectorName"] = None
+		if (self.VertexName != ""):
+			outMdl["VertexName"] = self.VertexName
+		else:
+			outMdl["VertexName"] = None
+		if (self.NormalName != ""):
+			outMdl["NormalName"] = self.NormalName
+		else:
+			outMdl["NormalName"] = None
+		if (self.TargetName != ""):
+			outMdl["TargetName"] = self.TargetName
+		else:
+			outMdl["TargetName"] = None
+		if (self.RollName != ""):
+			outMdl["RollName"] = self.RollName
+		else:
+			outMdl["RollName"] = None
+		if (self.AngleName != ""):
+			outMdl["AngleName"] = self.AngleName
+		else:
+			outMdl["AngleName"] = None
+		if (self.ColorName != ""):
+			outMdl["ColorName"] = self.ColorName
+		else:
+			outMdl["ColorName"] = None
+		if (self.IntensityName != ""):
+			outMdl["IntensityName"] = self.IntensityName
+		else:
+			outMdl["IntensityName"] = None
+		if (self.SpotName != ""):
+			outMdl["SpotName"] = self.SpotName
+		else:
+			outMdl["SpotName"] = None
+		if (self.PointName != ""):
+			outMdl["PointName"] = self.PointName
+		else:
+			outMdl["PointName"] = None
+		if (self.QuaternionName != ""):
+			outMdl["QuaternionName"] = self.QuaternionName
+		else:
+			outMdl["QuaternionName"] = None
+
+		return outMdl
+
 class animJsonFile:
 	Frames: int
 	Name: str
@@ -216,7 +378,7 @@ class animJsonFile:
 	ShortRot: bool
 	ActionName: str
 	ObjectName: str
-	Models: dict()
+	Models: Dict[int, animJsonModel]
 
 	def __init__(self):
 		self.Frames = 0
@@ -270,3 +432,41 @@ class animJsonFile:
 		if (jsonF.get('ObjectName') != None):
 			if (jsonF["ObjectName"] != None):
 				self.ObjectName = jsonF["ObjectName"]
+
+	def toJson(self, file: str):
+		jsonF = NewJsonFile()
+
+		for k, v in self.Models.items():
+			mdlF = v.toJson()
+			jsonMdl = mdlF
+			jsonF["Models"][k] = jsonMdl
+
+		jsonF["Frames"] = self.Frames
+		jsonF["ShortRot"] = self.ShortRot
+		jsonF["InterpolationMode"] = int(self.InterpolationMode.value)
+		jsonF["ModelParts"] = self.ModelParts
+
+		if (self.Name != ""):
+			jsonF["Name"] = self.Name
+		else:
+			jsonF["Name"] = None
+
+		if (self.MdataName != ""):
+			jsonF["MdataName"] = self.MdataName
+		else:
+			jsonF["MdataName"] = None
+		
+		if (self.ActionName != ""):	
+			jsonF["ActionName"] = self.ActionName
+		else:
+			jsonF["ActionName"] = None
+		
+		if (self.ObjectName != ""):
+			jsonF["ObjectName"] = self.ObjectName
+		else:
+			jsonF["ObjectName"] = None
+
+		
+		with open(file, 'w') as outfile:
+			json.dump(jsonF, outfile, indent=2)
+			print(file + " saved successfully!")

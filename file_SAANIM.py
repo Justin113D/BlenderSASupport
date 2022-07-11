@@ -4,7 +4,7 @@ import os
 import math
 
 from .enums import InterpolationModeEnums
-from .parse.pjson import animJsonFile
+from .parse.pjson import animJsonFile, animJsonModel
 from typing import Dict, List, Tuple
 from .common import ColorARGB, Vector3
 
@@ -607,16 +607,14 @@ def writeShape(filepath: str,
 	for c in obj.children:
 		objArr.append(c)
 
-	animModels = dict()
+	animModels = animJsonFile()
 
 	objIdx = 0
 	for o in objArr:
 		shapes = list()
-		animModelEntry = jsonEmptyModel()
 		if len(o.data.shape_keys.key_blocks) > 1:
 			shapeidx = 0
 			for shape in o.data.shape_keys.key_blocks:
-				keyNum = 0
 				if shape != o.data.shape_keys.key_blocks[0]:
 					verts = list()
 					for vt in shape.data:
@@ -634,34 +632,39 @@ def writeShape(filepath: str,
 						vMorphs = verts
 					))
 				shapeidx += 1
+		animModelEntry = animJsonModel()
 		if (len(shapes) > 0):
-			jsonVertex = animModelEntry["Vertex"]
 			vtxItemNames = list()
 			for s in shapes:
-				jsonVertex[s.id] = s.vMorphs
+				animModelEntry.Vertex[str(s.id)] = s.vMorphs
 				vtxItemNames.append(s.name)
-			animModelEntry["VertexName"] = "vtx_motion_" + o.name
-			animModelEntry["VertexItemName"] = vtxItemNames
-			animModelEntry["NbKeyframes"] = int(shapes[-1].id) + 1
+			animModelEntry.VertexName = "vtx_motion_" + o.name
+			animModelEntry.VertexItemName = vtxItemNames
+			animModelEntry.NbKeyframes = int(shapes[-1].id) + 1
 		
-		animModels[str(objIdx)] = animModelEntry
+		animModels.Models[objIdx] = animModelEntry
 		objIdx += 1
 	
-	jsonF = dict()
-	jsonF["Models"] = animModels
-	jsonF["Frames"] = int(shapes[-1].id) + 1
-	jsonF["Name"] = objArr[0].name + ".nas"
-	jsonF["ModelParts"] = len(objArr)
-	jsonF["InteroplationMode"] = 0
-	jsonF["ShortRot"] = False
+	animModels.Frames = int(shapes[-1].id) + 1
+	animModels.Name = objArr[0].name + ".nas"
+	animModels.ModelParts = len(objArr)
+	animModels.InterpolationMode = InterpolationModeEnums.Linear
+	animModels.ShortRot = False
 
-	import json
-	with open(filepath, 'w') as outfile:
-		json.dump(jsonF, outfile, indent=2)
+	animModels.toJson(filepath)
 
 def readAnim_Camera(filepath: str):
 	anim = animJsonFile()
 	anim.ReadJsonFile(filepath)
 
-	print(anim.Models["0"].Position)
-	
+	if (len(anim.Models) == 1):
+		if (len(anim.Models[0].Target) > 0):
+			cName = os.path.splitext(os.path.basename(filepath))[0]
+			col = bpy.data.collections.new("CamAnim_" + cName)
+			context.scene.collection.children.link(col)
+
+			aCam = anim.Models[0]
+			cam = bpy.data.cameras.add(anim.Name)
+			tgt = bpy.data.objects.add(aCam.TargetName, None)
+			tgt.empty_display_type = 'SPHERE'
+			
