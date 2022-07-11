@@ -47,6 +47,7 @@ from ..ops.quickEdit import(
 	qeInvert
 )
 from ..ops.exports import (
+	ExportCurve,
 	ExportSA1MDL,
 	ExportSA2MDL,
 	ExportSA2BMDL,
@@ -79,7 +80,8 @@ from ..ops.materials import(
 )
 from ..ops.object import(
 	ArmatureFromObjects,
-	ModifyBoneShape
+	ModifyBoneShape,
+	GeneratePathFromMesh
 )
 from ..ops.projects import(
 	openToolsHub,
@@ -388,10 +390,24 @@ class SA_CurveInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Curve Info: Cur
 
 	@classmethod
 	def poll(cls, context):
-		return context.active_object.type == 'CURVE'
+		if context.scene.saSettings.sceneIsLevel:
+			return True
+		else:
+			return False
 
 	def draw(self, context):
 		layout = self.layout
+		layout.operator(GeneratePathFromMesh.bl_idname)
+		layout.separator()
+		layout.operator(ExportCurve.bl_idname)
+		layout.separator()
+		if (context.active_object.type == 'CURVE'):
+			spline = context.active_object.data.splines[0]
+			spLength = spline.calc_length()
+			layout.label(text='Path Point Count: ' + str(len(spline.points)))
+			layout.label(text='Path Length: ' + str(spLength))
+		else:
+			layout.label(text='No Spline Selected')
 		
 class SA_ProjectManagement_Viewport(SA_UI_Panel, bpy.types.Panel):		## Project Info: Project 
 	bl_idname = "SCENE_PT_saProjectManagement"

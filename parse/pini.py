@@ -4,6 +4,7 @@ import os
 import io
 import configparser
 from .. import common
+import math
 import mathutils
 
 class DLLMetaData:
@@ -112,19 +113,49 @@ class ModFile:
 
 		return modFile
 
+def GetCurveCodeAddress(type: str):
+	if (type == 'sa1_loop'):
+		return ('4BB1F0')
+	if (type == 'sa2_rail'):
+		return ('4980C0')
+	if (type == 'sa2_loop'):
+		return ('497B50')
+	if (type == 'sa2_hand'):
+		return ('498140')
+	else:
+		return ('0')
+
 class PathEntry:
 	XRotation: float
-	YRotation: float
 	ZRotation: float
 	Distance: float
 	px: float
 	py: float
 	pz: float
 
-	def __init__(self, 
+	def __init__(self):
+		self.px = 0
+		self.py = 0
+		self.pz = 0
+		self.Distance = 0
+		self.XRotation = 0
+		self.ZRotation = 0
+
+	def setPoint(self,
+				rotx: float,
+				rotz: float,
+				dist: float,
+				pos: common.Vector3):
+		self.px = pos[0]
+		self.py = -pos[2]
+		self.pz = pos[1]
+		self.XRotation = rotx
+		self.ZRotation = -rotz
+		self.Distance = dist
+
+	def fromIni(self, 
 				coords: str,
 				xrot: str,
-				yrot: str,
 				zrot: str,
 				distance: float
 				):
@@ -141,12 +172,6 @@ class PathEntry:
 		else:
 			self.XRotation = 0
 
-		if yrot != "":
-			nyrot = int(yrot, 16)
-			self.YRotation = common.BAMSToRad(nyrot)
-		else:
-			self.YRotation = 0
-
 		if zrot != "":
 			nzrot = int(zrot, 16)
 			self.ZRotation = common.BAMSToRad(nzrot)
@@ -158,6 +183,17 @@ class PathEntry:
 		else:
 			self.Distance = 0
 
+	def fromMesh(self,
+				vert: bpy.types.MeshVertex,
+				dist: float):
+		self.px = vert.co[0]
+		self.py = vert.co[1]
+		self.pz = vert.co[2]
+		rotation = common.PGetAngleXZFromNormal(-vert.normal[0], vert.normal[2], -vert.normal[1])
+		self.XRotation = math.radians(rotation[0])
+		self.ZRotation = math.radians(-rotation[1])
+		self.Distance = dist
+		
 class PathData:
 	"""Ini Formatted Path Data from the Adventure Games."""
 
@@ -165,7 +201,12 @@ class PathData:
 	TotalDistance: float
 	Entries: List[PathEntry]
 
-	def __init__(self, path):
+	def __init__(self):
+		self.Name = ""
+		self.TotalDistance = 0
+		self.Entries = list()
+
+	def fromIni(self, path):
 		config = io.StringIO()
 		filepath = os.path.abspath(path)
 		print(filepath)
@@ -189,9 +230,6 @@ class PathData:
 					xrot = ""
 					if cp.has_option(section, "XRotation"):
 						xrot = cp.get(section, "XRotation")
-					yrot = ""
-					if cp.has_option(section, "YRotation"):
-						yrot = cp.get(section, "YRotation")
 					zrot = ""
 					if cp.has_option(section, "ZRotation"):
 						zrot = cp.get(section, "ZRotation")
@@ -199,7 +237,40 @@ class PathData:
 					if cp.has_option(section, "Distance"):
 						distance = cp.getfloat(section, "Distance")
 
-					entry = PathEntry(coords, xrot, yrot, zrot, distance)
+					entry = PathEntry()
+					entry.fromIni(coords, xrot, zrot, distance)
 					entries.append(entry)
 
 			self.Entries = entries
+
+	def toIni(path, curve: bpy.types.Spline, points: List[bpy.types.Object], pathtype: str):
+		filepath = os.path.abspath(path)
+		print(filepath)
+		with open(filepath, 'w') as config:
+			config.write('TotalDistance=' + ("%.6f" % curve.calc_length()) + '\n')
+			config.write('Code=' + GetCurveCodeAddress(pathtype) + '\n\n')
+			idx = 0
+			for p in curve.points:
+				s = str(idx)
+				c = points[idx]
+				config.write('[' + s + ']\n')
+				print('Writing Point: ' + s)
+				if (c.rotation_euler[0] != 0):
+					rx = hex(common.RadToBAMS(c.rotation_euler[0]))[2:]
+					config.write('XRotation=' + rx.upper() + '\n')
+					print('X Rotation: ' + str(c.rotation_euler[0]) + ' -> ' + rx)
+				if (c.rotation_euler[1] != 0):
+					rz = hex(common.RadToBAMS(-c.rotation_euler[1]))[2:]
+					config.write('ZRotation=' + rz.upper() + '\n')
+					print('Z Rotation: ' + str(-c.rotation_euler[1]) + ' -> ' + rz)
+				if (p != curve.points[-1]):
+					dist = (mathutils.Vector((curve.points[idx+1].co - p.co)).length)
+					config.write('Distance=' + ("%.6f" % dist) + '\n')
+					print('Distance: ' + ("%.6f" % dist))
+				sv = (("%.6f" % p.co[0]) + ', ' + ("%.6f" % p.co[2]) + ', ' + ("%.6f" % -p.co[1]))
+				config.write('Position=' + sv + '\n\n')
+				print('Position: ' + sv)
+				idx += 1
+
+			config.close()
+		

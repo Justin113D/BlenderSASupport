@@ -1,5 +1,6 @@
 from struct import error
 import os, os.path
+
 import bpy
 import mathutils
 import math
@@ -1878,3 +1879,32 @@ def getDefaultPath():
 		path = get_prefs().defaultPath
 
 	return path
+
+def PGetAngleXZFromNormal(px: float, py: float, pz: float):
+	# Copied from SA1
+	fpx = math.fabs(px)
+	fpy = math.fabs(py)
+	num = 0.1591549762031479
+	if ((pz > 0.9999) or (fpy < 0.002 and fpx < 0.002 and pz > 0.0)):
+		ax = 90.0
+		az = 0.0
+	elif ((py < -0.9999) or (fpy < 0.002 and fpx < 0.002 and pz < 0.0)):
+		ax = 270.0
+		az = 0.0
+	else:
+		ax = (math.asin(pz) * 65536.0 * num)
+		az = (math.atan2(px, py) * 65536.0 * -num)
+
+	angx = int(ax)
+	angz = int(az)
+
+	if angx < 0:
+		angx += 65536
+	if angz < 0:
+		angz += 65536.0
+
+	retx = float((angx/65535.0)*360.0)
+	retz = float((angz/65535.0)*360.0)
+	print(str(retx))
+	print(str(retz))
+	return [retx, retz]

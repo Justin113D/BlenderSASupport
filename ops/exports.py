@@ -11,6 +11,7 @@ from bpy.props import (
 	StringProperty,
 	CollectionProperty
 	)
+from ..parse import pini
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 from typing import List, Dict, Union, Tuple
 
@@ -543,15 +544,39 @@ class ExportCurve(bpy.types.Operator, ExportHelper):
 
 	filename_ext = ".ini"
 
+	filter_glob: StringProperty(
+		default="*.ini;",
+		options={'HIDDEN'},
+		)
+
+	curveTypes: EnumProperty(
+		name='Curve Code',
+		description='Set Code address for Path to use in-game.',
+		items = (
+			('none', 'No Code', 'Code Address is 0'),
+			('sa1_loop', 'SA1 Loops', 'Used on most paths where the player is moved, ie Loops.'),
+			('sa2_loop', 'SA2 Loops', 'Used on most paths where the player is moved, ie Loops.'),
+			('sa2_rail', 'SA2 Grind Rails', 'Used for most grind rails.'),
+			('sa2_hand', 'SA2 Hand Rails', 'Used for the hand/gravity rails used in Crazy Gadget.')
+		),
+		default='none'
+	)
+
 	@classmethod
 	def poll(cls, context):
 		active = context.active_object
 		if active is None:
 			return False
-		if active.type != 'CURVE':
+		elif active.type != 'CURVE':
 			return False
+		else:
+			return True
 
 	def execute(self, context):
+		obj = context.active_object
+		curve = obj.data.splines[0]
+		points = obj.children
+		pini.PathData.toIni(self.filepath, curve, points, self.curveTypes)
 		return {'FINISHED'}
 
 	def invoke(self, context, event):

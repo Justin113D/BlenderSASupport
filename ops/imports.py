@@ -415,8 +415,11 @@ class LoadPathFile(bpy.types.Operator, ImportHelper):
 		)
 
 	def execute(self, context):
-		path = PathData(self.filepath)
-		CreatePath(path.Name, path.Entries)
+		path = PathData()
+		path.fromIni(self.filepath)
+		newCol = bpy.data.collections.new('ImportPath_' + path.Name)
+		bpy.context.scene.collection.children.link(newCol)
+		CreatePath(path.Name, path.Entries, newCol)
 		return {'FINISHED'}
 
 	def invoke(self, context, event):

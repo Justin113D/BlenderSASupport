@@ -1,6 +1,7 @@
 import bpy
 import os
 import shutil
+import math
 from bpy.props import (
 	BoolProperty,
 	FloatProperty,
@@ -12,8 +13,13 @@ from bpy.props import (
 	)
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 from typing import List, Dict, Union, Tuple
+from mathutils import Vector
 
 from .. import common
+from ..parse.pini import (
+	PathData,
+	PathEntry
+)
 
 class ArmatureFromObjects(bpy.types.Operator):		## Creates an armature for models that do not use armatures.
 	'''Generates an armature based on the selected node and its child hierarchy'''
@@ -210,17 +216,104 @@ class ModifyBoneShape(bpy.types.Operator):
 
 		return {'FINISHED'}
 
-def CreatePath(name: str, points: list()):
+def CreatePathPoints(name: str, points: list(), parent: bpy.types.Object, collection: bpy.types.Collection):
+	idx = 0
+	for p in points:
+		objPoint = bpy.data.objects.new(name + '_point_' + ('{0:04}'.format(idx)), None)
+		collection.objects.link(objPoint)
+		objPoint.empty_display_type = 'SINGLE_ARROW'
+		objPoint.empty_display_size = 5
+		objPoint.parent = parent
+		objPoint.parent_type = 'VERTEX'
+		objPoint.rotation_mode='ZXY'
+		objPoint.parent_vertices = (idx, idx, idx)
+		objPoint.rotation_euler = [p.XRotation, -p.ZRotation, 0]
+		idx += 1
+
+def CreatePath(name: str, points: list(), collection: bpy.types.Collection, fromMesh=False):
 	if points.count is not 0:
-		crv = bpy.data.curves.new("curve" + name, 'CURVE')
+		crv = bpy.data.curves.new("curve_" + name, 'CURVE')
+		curveObj = bpy.data.objects.new('path_' + name, crv)
 		crv.dimensions = '3D'
+		crv.twist_mode = 'Z_UP'
 		spline = crv.splines.new(type='POLY')
 		for po in points:
-			spline.points[-1].co = [po.px, po.pz*-1, po.py, 1]
+			if (fromMesh):
+				spline.points[-1].co = [po.px, po.py, po.pz, 0.0]
+			else:
+				spline.points[-1].co = [po.px, -po.pz, po.py, 0.0]
 			if po != points[-1]:
 				spline.points.add(1)
 
-		obj = bpy.data.objects.new(name, crv)
-		bpy.context.scene.collection.objects.link(obj)
+		collection.objects.link(curveObj)
+		CreatePathPoints(name, points, curveObj, collection)
 	else:
 		print("Points list was 0")
+
+class GeneratePathFromMesh(bpy.types.Operator):
+	bl_idname='object.pathfrommesh'
+	bl_label='Generate Path'
+	bl_description='Generates an Adventure games formatted path from a selected mesh.'
+
+	revOrder: BoolProperty(
+		name='Reverse Order',
+		description='Reverses the order of the vertices for path generation.',
+		default=False
+	)
+
+	delGeom: BoolProperty(
+		name='Delete Geometry',
+		description='Deletes original geometry the path was generated from.',
+		default=False
+	)
+
+	cCollection: BoolProperty(
+		name='Create Unique Collection',
+		description='Creates a new collection based on the filename of the path. Setting this to False will default to a general paths collection.',
+		default=True
+	)
+
+	@classmethod
+	def poll(cls, context):
+		if (context.active_object.type == 'MESH'):
+			return True
+		else:
+			return False
+
+	def invoke(self, context, event):
+		wm = context.window_manager
+		return wm.invoke_props_dialog(self)
+
+	def execute(self, context):
+		obj = context.active_object
+		pointList = list()
+		if (len(obj.vertex_groups) == 0) or (len(obj.vertex_groups) > 1):
+			print('Error, none/more than one vertex groups on object.')
+		else:
+			vertices = [v for v in obj.data.vertices if v.groups]
+			if (self.revOrder):
+				vertices.reverse()
+			vidx = 0
+			for v in vertices:
+				dist = float(0)
+				point = PathEntry()
+				point.fromMesh(v, dist)
+				pointList.append(point)
+				vidx += 1
+			if len(pointList) > 0:
+				pthName = obj.name
+				colName = 'ScenePaths'
+				if (self.cCollection):
+					colName = 'ScenePath_' + pthName
+					newCol = bpy.data.collections.new(colName)
+					bpy.context.scene.collection.children.link(newCol)
+				else:
+					cTest = bpy.data.collections.get(colName)
+					if cTest is None:
+						newCol = bpy.data.collections.new(colName)
+						bpy.context.scene.collection.children.link(newCol)
+				if (self.delGeom):
+					bpy.data.objects.remove(obj)
+				CreatePath(pthName, pointList, newCol, True)
+
+		return {'FINISHED'}

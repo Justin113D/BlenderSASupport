@@ -31,6 +31,7 @@ from .ops.exports import (
 	ExportPAK,
 	ExportPVMX,
 	ExportAnim,
+	ExportCurve,
 	ExportShapeMotion
 )
 from .ops.imports import(
@@ -56,7 +57,8 @@ from .ops.mesh import(
 )
 from .ops.object import(
 	ArmatureFromObjects,
-	ModifyBoneShape
+	ModifyBoneShape,
+	GeneratePathFromMesh
 )
 from .ops.textures import(
 	AddTextureSlot,
@@ -107,6 +109,7 @@ from .ui.panel_viewport import(
 	SA_QuickEditMenu_Viewport,
 	SA_LevelInfo_Viewport,
 	SA_ProjectManagement_Viewport,
+	SA_CurveInfo_Viewport,
 	SA_AddonInfo_Viewport
 )
 from .ui.panel_material import(
@@ -253,6 +256,7 @@ classes = (
 	ExportPAK,
 	ExportPVMX,
 	ExportAnim,
+	ExportCurve,
 	ExportShapeMotion,
 
 	ImportMDL,
@@ -269,6 +273,7 @@ classes = (
 	StrippifyTest,
 	ArmatureFromObjects,
 	ModifyBoneShape,
+	GeneratePathFromMesh,
 	AddTextureSlot,
 	RemoveTextureSlot,
 	MoveTextureSlot,
@@ -307,6 +312,7 @@ classes = (
 	SA_ModelProps_Viewport,
 	SA_LandProperties_Viewport,
 	SA_LevelInfo_Viewport,
+	SA_CurveInfo_Viewport,
 	SA_QuickEditMenu_Viewport,
 	SA_ProjectManagement_Viewport,
 	SA_AddonInfo_Viewport,
