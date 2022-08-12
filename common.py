@@ -226,49 +226,87 @@ class BoundingBox:
 	boundCenter: Vector3
 	radius: float
 
-	def __init__(self, vertices):
-		"""Creates a bounding sphere from a set of vertices"""
+#	def __init__(self, vertices):
+#		"""Creates a bounding sphere from a set of vertices"""
+#
+#		if vertices is None:
+#			self.radius = 0
+#			self.boundCenter = Vector3((0, 0, 0))
+#			return
+#
+#		x = 0
+#		xn = 0
+#		y = 0
+#		yn = 0
+#		z = 0
+#		zn = 0
+#
+#		for v in vertices:
+#			if x < v.co.x:
+#				x = v.co.x
+#			elif xn > v.co.x:
+#				xn = v.co.x
+#
+#			if y < v.co.y:
+#				y = v.co.y
+#			elif yn > v.co.y:
+#				yn = v.co.y
+#
+#			if z < v.co.z:
+#				z = v.co.z
+#			elif zn > v.co.z:
+#				zn = v.co.z
+#
+#		cx = center(x, xn)
+#		cy = center(y, yn)
+#		cz = center(z, zn)
+#
+#		distance = 0
+#		for v in vertices:
+#			tDist = Vector3((cx - v.co.x,  cy - v.co.y, cz - v.co.z)).length()
+#			if tDist > distance:
+#				distance = tDist
+#
+#		self.boundCenter = Vector3((cx, cy, cz))
+#		self.radius = distance
 
+	def vecAdd(self, v1: Vector3, v2: Vector3):
+		return (Vector3(((v1.x + v2.x), (v1.y + v2.y), (v1.z + v2.z))))
+
+	def vecDistSquared(self, v1: Vector3, v2: Vector3):
+		x = (v1.x - v2.x)
+		y = (v1.y - v2.y)
+		z = (v1.z - v2.z)
+		return (float(((x * x) + (y * y) + (z * z))))
+
+	def __init__(self, vertices):
 		if vertices is None:
 			self.radius = 0
 			self.boundCenter = Vector3((0, 0, 0))
 			return
 
-		x = 0
-		xn = 0
-		y = 0
-		yn = 0
-		z = 0
-		zn = 0
-
+		center = Vector3((0,0,0))
 		for v in vertices:
-			if x < v.co.x:
-				x = v.co.x
-			elif xn > v.co.x:
-				xn = v.co.x
-
-			if y < v.co.y:
-				y = v.co.y
-			elif yn > v.co.y:
-				yn = v.co.y
-
-			if z < v.co.z:
-				z = v.co.z
-			elif zn > v.co.z:
-				zn = v.co.z
-
-		cx = center(x, xn)
-		cy = center(y, yn)
-		cz = center(z, zn)
-
-		distance = 0
+			print(v.co)
+			vert = Vector3((v.co[0], v.co[1], v.co[2]))
+			print(vert)
+			print(center)
+			center = self.vecAdd((vert), (center))
+			
+		center /= float(len(vertices))
+		
+		radius = float(0)
 		for v in vertices:
-			tDist = Vector3((cx - v.co.x,  cy - v.co.y, cz - v.co.z)).length()
-			if tDist > distance:
-				distance = tDist
-
-		self.boundCenter = Vector3((cx, cy, cz))
-		self.radius = distance
+			vert = Vector3((v.co[0], v.co[1], v.co[2]))
+			distance = self.vecDistSquared(center, vert)
+			
+			if (distance > radius):
+				radius = distance
+				
+		radius = math.sqrt(radius)
+		
+		self.boundCenter = center
+		self.radius = radius
 
 	def adjust(self, matrix: mathutils.Matrix):
 		self.boundCenter = matrix @ self.boundCenter
