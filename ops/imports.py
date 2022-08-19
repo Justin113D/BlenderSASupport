@@ -19,7 +19,8 @@ from ..parse.pxml import ProjectFile
 from ..parse.pini import (
 	ModFile,
 	PathEntry,
-	PathData
+	PathData,
+	saTexFile
 )
 from .object import(
 	CreatePath
@@ -124,7 +125,7 @@ class ImportTexFile(bpy.types.Operator, ImportHelper):		## Imports texture archi
 	bl_label = "Import SA tex file"
 
 	filter_glob: StringProperty(
-		default="*.pak;*.gvm;*.pvm;*.pvmx;*.txt;*.tls",
+		default="*.pak;*.gvm;*.pvm;*.pvmx;*.txt;*.tls;*.satex",
 		options={'HIDDEN'},
 		)
 
@@ -135,78 +136,74 @@ class ImportTexFile(bpy.types.Operator, ImportHelper):		## Imports texture archi
 	def execute(self, context):
 		import os
 		extension = os.path.splitext(self.filepath)[1]
-		if extension == '.txt':
-			#reading all lines from the index file
+		print(extension)
+		folder = os.path.dirname(self.filepath)
+		textures: List[Tuple[int, str]] = list()
+		loaded = False
+		satexf = saTexFile()
+		if extension == '.txt' or extension == '.tls':
 			content: List[str] = None
 			with open(self.filepath) as f:
 				content = f.readlines()
-			folder = os.path.dirname(self.filepath)
-			textures: List[Tuple[int, str]] = list()
+			loaded = True
+		elif extension == '.satex':
+			satexf.fromIni(self.filepath)
+			loaded = True
+		
+		if loaded:
+			if extension == '.txt':
+				# validating index file
+				for c in content:
+					c = c.strip().split(',')
+					if len(c) < 2:
+						return self.stop()
+					try:
+						gIndex = int(c[0])
+					except:
+						return self.stop()
+					texturePath = folder + "\\" + c[1]
+					if not os.path.isfile(texturePath):
+						return self.stop()
+					textures.append((gIndex, texturePath))
+			elif extension == '.tls':
+				for c in content:
+					c = c.strip().split('.')
+					texturePath = folder + "\\" + c[0] + ".png"
+					if not (os.path.isfile(texturePath)):
+						return self.stop()
+					textures.append((0, texturePath))
+			elif extension == '.satex':
+				for c in satexf.TextureNames:
+					print(c)
+					texturePath = folder + "\\" + c
+					if not (os.path.isfile(texturePath)):
+						return self.stop()
+					textures.append((0, texturePath))
 
-			# validating index file
-			for c in content:
-				c = c.strip().split(',')
-				if len(c) < 2:
-					return self.stop()
-				try:
-					gIndex = int(c[0])
-				except:
-					return self.stop()
-				texturePath = folder + "\\" + c[1]
-				if not os.path.isfile(texturePath):
-					return self.stop()
-				textures.append((gIndex, texturePath))
-
-			bpy.ops.scene.sacleartexturelist()
-			texList = context.scene.saSettings.textureList
-			for i, t in textures:
-				img = None
-				for image in bpy.data.images:
-					if image.filepath == t:
-						img = image
-						break
-				if img is None:
-					img = bpy.data.images.load(t)
-				img.use_fake_user = True
-				tex = texList.add()
-				tex.globalID = i
-				tex.name = os.path.splitext(os.path.basename(t))[0]
-				tex.image = img
-		elif extension == '.tls':
-			content: List[str] = None
-			with open(self.filepath) as f:
-				content = f.readlines()
-			folder = os.path.dirname(self.filepath)
-			textures: List[Tuple[int, str]] = list()
-
-			for c in content:
-				c = c.strip().split('.')
-				texturePath = folder + "\\" + c[0] + ".png"
-				if not (os.path.isfile(texturePath)):
-					return self.stop()
-				textures.append((0, texturePath))
-
-			bpy.ops.scene.sacleartexturelist()
-			texList = context.scene.saSettings.textureList
-			for i, t in textures:
-				img = None 
-				for image in bpy.data.images:
-					if image.filepath == t:
-						img = image
-						break
-				if img is None:
-					img = bpy.data.images.load(t)
-				img.use_fake_user = True
-				tex = texList.add()
-				tex.globalID = i
-				tex.name = os.path.splitext(os.path.basename(t))[0]
-				tex.image = img
+			self.LoadTextures(context, textures)
 		return {'FINISHED'}
 
 	def invoke(self, context, event):
 		self.filepath = common.getDefaultPath()
 		wm = context.window_manager.fileselect_add(self)
 		return {'RUNNING_MODAL'}
+
+	def LoadTextures(self, context, textures):
+		bpy.ops.scene.sacleartexturelist()
+		texList = context.scene.saSettings.textureList
+		for i, t in textures:
+			img = None
+			for image in bpy.data.images:
+				if image.filepath == t:
+					img = image
+					break
+			if img is None:
+				img = bpy.data.images.load(t)
+			img.use_fake_user = True
+			tex = texList.add()
+			tex.globalID = i
+			tex.name = os.path.splitext(os.path.basename(t))[0]
+			tex.image = img
 
 class LoadSetFile(bpy.types.Operator, ImportHelper):		## Imports a set file to empties with generic position, rotation, and scaling applie.
 	"""Loads a Set file and places objects at the correct locations"""
