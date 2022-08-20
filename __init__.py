@@ -127,7 +127,7 @@ bl_info = {
 	"name": "Sonic Adventure Tools",
 	"author": "Justin113D",
 	"description": "Import/Exporter for the SA Models Formats.",
-	"version": (1, 7, 2),
+	"version": (1, 7, 3),
 	"blender": (2, 91, 0),
 	"location": "File > Import/Export",
 	"warning": "",
