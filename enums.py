@@ -402,15 +402,16 @@ class PrimitiveType(Enum):
 class MaterialFlags(Flag):
 	"""BASIC format material flags"""
 	# unused or unknown
-	null = 0x00
-	Bit0 = 0x01
-	Bit1 = 0x02
-	Bit2 = 0x04
-	Bit4 = 0x08
+	null = 0x0
+	Bit0 = 0x1
+	Bit1 = 0x2
+	Bit2 = 0x4
+	Bit4 = 0x8
 	Bit5 = 0x10
 	Bit6 = 0x20
 	# Editor thing - irrelevant
-	FLAG_PICK = 0x40
+	FLAG_PICK 	= 0x40
+	U_80		= 0x80
 	# Mipmap distance multipler
 	# (can be added together, max number is 3.75)
 	D_025 = 0x100
@@ -423,12 +424,12 @@ class MaterialFlags(Flag):
 	FILTER_TRILINEAR 		= 0x4000
 	FILTER_BLEND 			= 0x6000
 	# UV Properties
-	FLAG_CLAMP_V 	= 0x8000
-	FLAG_CLAMP_U 	= 0x10000
-	FLAG_FLIP_V 	= 0x20000
-	FLAG_FLIP_U 	= 0x40000
+	FLAG_CLAMP_V 			= 0x8000
+	FLAG_CLAMP_U 			= 0x10000
+	FLAG_FLIP_V 			= 0x20000
+	FLAG_FLIP_U 			= 0x40000
+	FLAG_IGNORE_SPECULAR 	= 0x80000
 	# General material Properties
-	FLAG_IGNORE_SPECULAR 	= 0x080000
 	FLAG_USE_ALPHA 			= 0x100000
 	FLAG_USE_TEXTURE 		= 0x200000
 	FLAG_USE_ENV 			= 0x400000
@@ -436,6 +437,8 @@ class MaterialFlags(Flag):
 	FLAG_USE_FLAT 			= 0x1000000
 	FLAG_IGNORE_LIGHT 		= 0x2000000
 	# Destination alpha blending
+	U_1000000		= 0x1000000
+	U_2000000		= 0x2000000
 	DA_ONE 			= 0x4000000
 	DA_OTHER 		= 0x8000000
 	DA_SRC 			= 0x10000000
@@ -444,6 +447,7 @@ class MaterialFlags(Flag):
 	DA_DST = DA_OTHER | DA_SRC
 	DA_INV_DST = DA_ONE | DA_OTHER | DA_SRC
 	# Source Alpha Blending
+	U_10000000	= 0x10000000
 	SA_ONE 		= 0x20000000
 	SA_OTHER 	= 0x40000000
 	SA_SRC 		= 0x80000000
