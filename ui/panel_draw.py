@@ -129,8 +129,8 @@ def drawMaterialPanel(layout, menuProps, matProps, qe = False):									## Draws
 	if menuProps.expandedBUV:
 		box.prop(matProps, "b_clampU")
 		box.prop(matProps, "b_clampV")
-		box.prop(matProps, "b_mirrorV")
 		box.prop(matProps, "b_mirrorU")
+		box.prop(matProps, "b_mirrorV")
 
 	box = menu.box()
 	box.prop(menuProps, "expandedBGeneral",

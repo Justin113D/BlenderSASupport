@@ -674,9 +674,9 @@ class Attach:
                 if matProps.b_clampU:
                     textureFlags |= enums.TextureIDFlags.CLAMP_U
                 if matProps.b_mirrorV:
-                    textureFlags |= enums.TextureIDFlags.FLIP_U
-                if matProps.b_mirrorU:
                     textureFlags |= enums.TextureIDFlags.FLIP_V
+                if matProps.b_mirrorU:
+                    textureFlags |= enums.TextureIDFlags.FLIP_U
 
                 filtering = enums.TextureFiltering.Point
 

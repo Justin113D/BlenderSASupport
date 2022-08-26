@@ -74,9 +74,9 @@ class Material:
         if matProps.b_clampU:
             mFlags |= MaterialFlags.FLAG_CLAMP_U
         if matProps.b_mirrorV:
-            mFlags |= MaterialFlags.FLAG_FLIP_U
-        if matProps.b_mirrorU:
             mFlags |= MaterialFlags.FLAG_FLIP_V
+        if matProps.b_mirrorU:
+            mFlags |= MaterialFlags.FLAG_FLIP_U
 
         # general
         if matProps.b_ignoreSpecular:
