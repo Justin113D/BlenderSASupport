@@ -1,3 +1,4 @@
+from operator import ge
 import bpy
 from typing import List, Dict, Tuple
 import os
@@ -6,6 +7,9 @@ import configparser
 from .. import common
 import math
 import mathutils
+from ..common import (
+	Vector3
+)
 
 class DLLMetaData:
 	"""Metadata used in SAMDL."""
@@ -52,6 +56,18 @@ class salvl_char:
 	Height: float
 	StartPos: str
 
+	def __init__(self,
+			chr: str,
+			mdl: str,
+			tex: str,
+			hgt: float,
+			sPos: str):
+		self.Character = chr
+		self.Model = mdl
+		self.Textures = tex
+		self.Height = hgt
+		self.StartPos = sPos
+
 class salvl_level:
 	"""SALVL Level Sections"""
 
@@ -65,6 +81,28 @@ class salvl_level:
 	DeathZones: str
 	Effects: str
 	ObjDefs: str
+
+	def __init__(self,
+			type: str,
+			name: str,
+			geo: str,
+			id: str,
+			tex: str,
+			objList: str,
+			objTList: str,
+			dZones: str,
+			effect: str,
+			objDefs: str):
+		self.LevelType = type
+		self.LevelName = name
+		self.LevelGeometry = geo
+		self.LevelID = id
+		self.Textures = tex
+		self.ObjList = objList
+		self.ObjTexList = objTList
+		self.DeathZones = dZones
+		self.Effects = effect
+		self.ObjDefs = objDefs
 
 class ModFile:
 	"""Partial Mod File class ported from SA Tools."""
@@ -309,3 +347,4 @@ class saTexFile:
 				name = cp.get(s, "TextureNames[" + str(i) + "]") + ".png"
 				print(name)
 				self.TextureNames.append(name)
+
