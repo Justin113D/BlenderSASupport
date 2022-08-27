@@ -286,6 +286,7 @@ class GeneratePathFromMesh(bpy.types.Operator):
 
 	def execute(self, context):
 		obj = context.active_object
+		bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 		pointList = list()
 		if (len(obj.vertex_groups) == 0) or (len(obj.vertex_groups) > 1):
 			print('Error, none/more than one vertex groups on object.')
