@@ -650,7 +650,7 @@ class SALandEntrySettings(bpy.types.PropertyGroup):		## Property Group for manag
 		# SA2
 		d['sfWater2']			= False
 		d['sfNoShadows']		= False
-		d['sfnoFog']			= False
+		d['sfNoFog']			= False
 		d['sfSA2U_40']			= False
 		d['sfSA2U_200']			= False
 		d['sfSA2U_4000']		= False
@@ -710,7 +710,7 @@ class SALandEntrySettings(bpy.types.PropertyGroup):		## Property Group for manag
 		# SA2
 		d['sfWater2']			= self.sfWater2
 		d['sfNoShadows']		= self.sfNoShadows
-		d['sfnoFog']			= self.sfnoFog
+		d['sfNoFog']			= self.sfNoFog
 		d['sfSA2U_40']			= self.sfSA2U_40
 		d['sfSA2U_200']			= self.sfSA2U_200
 		d['sfSA2U_4000']		= self.sfSA2U_4000
@@ -770,7 +770,7 @@ class SALandEntrySettings(bpy.types.PropertyGroup):		## Property Group for manag
 		# SA2
 		self.sfWater2			= d['sfWater2']
 		self.sfNoShadows		= d['sfNoShadows']
-		self.sfnoFog			= d['sfnoFog']
+		self.sfNoFog			= d['sfNoFog']
 		self.sfSA2U_40			= d['sfSA2U_40']
 		self.sfSA2U_200			= d['sfSA2U_200']
 		self.sfSA2U_4000		= d['sfSA2U_4000']

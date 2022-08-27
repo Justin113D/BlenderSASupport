@@ -616,7 +616,7 @@ class ModelData:
 			flags |= SA2SurfaceFlags.Water2
 		if p['sfNoShadows']:
 			flags |= SA2SurfaceFlags.NoShadows
-		if p['sfnoFog']:
+		if p['sfNoFog']:
 			flags |= SA2SurfaceFlags.noFog
 		if p['sfSA2U_40']:
 			flags |= SA2SurfaceFlags.sa2U_40
@@ -1261,8 +1261,8 @@ def sortChildren(cObject: bpy.types.Object,
 	lastSibling = None
 	if cObject.type == 'MESH':
 		if lvl and fmt != 'SA1' \
-				and cObject.saSettings.solid \
-				and cObject.saSettings.isVisible:
+				and cObject.saSettings.sfSolid \
+				and cObject.saSettings.sfVisible:
 			model = ModelData(cObject,
 							  parent,
 							  hierarchyDepth,
@@ -1280,24 +1280,24 @@ def sortChildren(cObject: bpy.types.Object,
 									False)
 			result.append(lastSibling)
 		else:
-			visible = True if not cObject.saSettings.solid \
-						else cObject.saSettings.isVisible
+			visible = True if not cObject.saSettings.sfSolid \
+						else cObject.saSettings.sfVisible
 			model = ModelData(cObject,
 							  parent,
 							  hierarchyDepth,
 							  cObject.name,
 							  export_matrix,
-							  cObject.saSettings.solid,
+							  cObject.saSettings.sfSolid,
 							  visible)
 	elif fmt == 'SA2' and not lvl and cObject.type == 'ARMATURE':
-		visible = True if not cObject.saSettings.solid \
-					else cObject.saSettings.isVisible
+		visible = True if not cObject.saSettings.sfSolid \
+					else cObject.saSettings.sfVisible
 		model = Armature(cObject,
 						 parent,
 						 hierarchyDepth,
 						 cObject.name,
 						 export_matrix,
-						 cObject.saSettings.solid,
+						 cObject.saSettings.sfSolid,
 						 visible)
 	else:
 		# everything that is not a mesh should be written as an empty

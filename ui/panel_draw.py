@@ -243,7 +243,7 @@ def drawLandEntryPanel(layout: bpy.types.UILayout, menuProps, lvlProps, qe=False
 		if menuProps.expandedSA2obj:
 			box.prop(lvlProps, 'sfWater2')
 			box.prop(lvlProps, 'sfNoShadows')
-			box.prop(lvlProps, 'sfnoFog')
+			box.prop(lvlProps, 'sfNoFog')
 			box.prop(lvlProps, 'sfSA2U_40')
 			box.prop(lvlProps, 'sfSA2U_200')
 			box.prop(lvlProps, 'sfSA2U_4000')
