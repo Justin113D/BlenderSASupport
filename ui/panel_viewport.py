@@ -169,7 +169,7 @@ class SA_SceneInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Scene Info: Aut
 
 class SA_LandProperties_Viewport(SA_UI_Panel, bpy.types.Panel):			## LandEntry Info: Landtable Flags
 	bl_idname = "SCENE_PT_lvlProperties"
-	bl_label = "LandEntry Properties"
+	bl_label = "Surface Flags"
 	bl_options = {"DEFAULT_CLOSED"}
 
 	@classmethod

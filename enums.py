@@ -57,24 +57,24 @@ class SA1SurfaceFlags(Flag):
 	IncreasedAcceleration   = 0x80
 		
 	Diggable                = 0x100
-	#0x200
+	sa1U_200				= 0x200
 	Waterfall               = 0x400
-	#0x800
+	sa1U_800				= 0x800
 		
 	Unclimbable             = 0x1000
 	Chaos0Land              = 0x2000 ## Turns off Visible when Chaos 0 jumps up a pole
 	Stairs                  = 0x4000
-	#0x8000
+	sa1U_8000				= 0x8000
 		
 	Hurt                    = 0x10000
-	#0x20000
+	sa1U_20000				= 0x20000
 	LowDepth                = 0x40000
-	#0x80000
+	sa1U_80000				= 0x80000
 		
 	Footprints              = 0x100000
 	Accelerate              = 0x200000
 	WaterCollision          = 0x400000
-	RotateByGravity         = 0x800000
+	Gravity         		= 0x800000
 
 	NoZWrite                = 0x1000000 ## Sets QueuedModelFlagsB_SomeTextureThing when enabled, QueuedModelFlagsB_EnableZWrite otherwise
 	DrawByMesh              = 0x2000000
@@ -82,8 +82,8 @@ class SA1SurfaceFlags(Flag):
 	DynamicCollision        = 0x8000000
 
 	UseRotation             = 0x10000000
-	#0x2000000
-	#0x4000000
+	sa1U_20000000			= 0x20000000
+	sa1U_40000000			= 0x40000000
 	Visible                 = 0x80000000
 
 	collision = (Solid
@@ -106,65 +106,72 @@ class SA1SurfaceFlags(Flag):
 			 | CannotLand
 			 | IncreasedAcceleration
 			 | Diggable
+			 | sa1U_200
 			 | Waterfall
+			 | sa1U_800
 			 | Unclimbable
 			 | Chaos0Land
 			 | Stairs
+			 | sa1U_8000
 			 | Hurt
+			 | sa1U_20000
 			 | LowDepth
+			 | sa1U_80000
 			 | Footprints
 			 | Accelerate
 			 | WaterCollision
-			 | RotateByGravity
+			 | Gravity
 			 | NoZWrite
 			 | DrawByMesh
 			 | EnableManipulation
 			 | DynamicCollision
 			 | UseRotation
+			 | sa1U_20000000
+			 | sa1U_40000000
 			 | Visible)
 
 class SA2SurfaceFlags(Flag):
 	"""Surface interaction Flags for SA2 landtable COL"""
-	null			= 0x0
-	Solid			= 0x1
-	Water			= 0x2
-	#0x4
-	#0x8
+	null					= 0x0
+	Solid					= 0x1
+	Water					= 0x2
+	NoFriction				= 0x4
+	NoAcceleration			= 0x8
 
-	#0x10
-	Diggable		= 0x20
-	#0x40
-	Unclimbable		= 0x80
+	LowAcceleration			= 0x10
+	Diggable				= 0x20
+	sa2U_40					= 0x40
+	Unclimbable				= 0x80
 	
-	Stairs			= 0x100
-	#0x200
-	Hurt			= 0x400
-	Footprints		= 0x800
+	Stairs					= 0x100
+	sa2U_200				= 0x200
+	Hurt					= 0x400
+	Footprints				= 0x800
 	
-	CannotLand		= 0x1000
-	Water2			= 0x2000
-	#0x4000
-	NoShadows		= 0x8000
+	CannotLand				= 0x1000
+	Water2					= 0x2000
+	sa2U_4000				= 0x4000
+	NoShadows				= 0x8000
 	
-	#0x10000
-	#0x20000
-	#0x40000
-	#0x80000
+	sa2U_10000				= 0x10000
+	sa2U_20000				= 0x20000
+	sa2U_40000				= 0x40000
+	Gravity					= 0x80000
 
-	#0x100000
-	#0x200000
-	noFog			= 0x400000
-	#0x800000
+	Accelerate				= 0x100000
+	IncreasedAcceleration	= 0x200000
+	noFog					= 0x400000
+	sa2U_800000				= 0x800000
 	
-	Unknown24		= 0x1000000
-	#0x2000000
-	#0x4000000
-	#0x8000000
+	sa2U_1000000			= 0x1000000
+	sa2U_2000000			= 0x2000000
+	sa2U_4000000			= 0x4000000
+	DynamicCollision		= 0x8000000
 	
-	#0x10000000
-	Unknown29		= 0x20000000
-	Unknown30		= 0x40000000
-	Visible			= 0x80000000
+	UseRotation				= 0x10000000
+	sa2U_20000000			= 0x20000000
+	sa2U_40000000			= 0x40000000
+	Visible					= 0x80000000
 
 	collision = (Solid
 				 | Water
@@ -174,24 +181,42 @@ class SA2SurfaceFlags(Flag):
 				 | Hurt
 				 | CannotLand
 				 | Water2
-				 | Unknown24
-				 | Unknown29
-				 | Unknown30)
+				 | sa2U_1000000
+				 | sa2U_20000000
+				 | sa2U_40000000)
 
 	known = (Solid
-			 | Water
-			 | Stairs
-			 | Diggable
-			 | Unclimbable
-			 | Hurt
-			 | CannotLand
-			 | Water2
-			 | NoShadows
-			 | noFog
-			 | Unknown24
-			 | Unknown29
-			 | Unknown30
-			 | Visible)
+			| Water
+			| NoFriction
+			| NoAcceleration
+			| LowAcceleration
+			| Diggable
+			| sa2U_40
+			| Unclimbable
+			| Stairs
+			| sa2U_200
+			| Hurt
+			| Footprints
+			| CannotLand
+			| Water2
+			| sa2U_4000
+			| NoShadows
+			| sa2U_10000
+			| sa2U_20000
+			| sa2U_40000
+			| Gravity
+			| Accelerate
+			| IncreasedAcceleration
+			| noFog
+			| sa2U_800000
+			| sa2U_1000000
+			| sa2U_2000000
+			| sa2U_4000000
+			| DynamicCollision
+			| UseRotation
+			| sa2U_20000000
+			| sa2U_40000000
+			| Visible)
 
 # GC format Enums and Flags
 class VertexAttribute(Enum):

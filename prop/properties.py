@@ -289,8 +289,8 @@ class SAEditPanelSettings(bpy.types.PropertyGroup):		## Property Group for manag
 	expandedGC: BoolProperty( name="SA2B specific", default=False )
 	expandedGCTexGen: BoolProperty( name = "Generate texture coords", default=False )
 
-	expandedSA1obj: BoolProperty( name ="SA1 Landtable Flags", default=False)
-	expandedSA2obj: BoolProperty( name ="SA2 Landtable Flags", default=False)
+	expandedSA1obj: BoolProperty( name ="SA1 Surface Flags", default=False)
+	expandedSA2obj: BoolProperty( name ="SA2 Surface Flags", default=False)
 
 	expandedObjFlags: BoolProperty( name ="Object Flags", default=False)
 
@@ -321,372 +321,468 @@ class SALandEntrySettings(bpy.types.PropertyGroup):		## Property Group for manag
 		default="0"
 		)
 
-	solid: BoolProperty(
-		name="Solid",
-		description="Sets if the object has collision.",
-		default=True
-		)
-
-	isVisible: BoolProperty(
+	# Surface Flags
+	sfVisible: BoolProperty(
 		name="Visible",
-		description="Sets visbility of the object.",
-		default=True
-		)
-
-	# sa1 only
-	sa1_water: BoolProperty(
-		name="Water",
-		description="Water collision with transparency sorting.",
+		description="Object will be visible in the level.",
 		default=False
-		)
-		
-	sa1_noFriction: BoolProperty(
-		name="No Friction",
-		description="Disable friction on object.",
-		default=False
-		)
+	)
 
-	sa1_noAcceleration: BoolProperty(
+	sfSolid: BoolProperty(
+		name="Solid",
+		description="Enables collision on object.",
+		default=False
+	)
+
+	sfNoAccel: BoolProperty(
 		name="No Acceleration",
-		description="Object will reset character acceleration on contact.",
+		description="Multiplies acceleration by 0.25.",
 		default=False
-		)
-		
-	sa1_lowAcceleration: BoolProperty(
+	)
+
+	sfLowAccel: BoolProperty(
 		name="Low Acceleration",
-		description="Lower Acceleration for character.",
+		description="Multiplies acceleration by 0.50.",
 		default=False
-		)
-		
-	sa1_useSkyDrawDistance: BoolProperty(
-		name="Use Sky Draw Distance",
-		description="Forces the object to use the Sky Draw Distance.",
-		default=False
-		)
+	)
 
-	sa1_increasedAcceleration: BoolProperty(
-		name="Increased acceleration",
-		description="Increases acceleration of the character on interaction.",
+	sfAccel: BoolProperty(
+		name="Normal Acceleration",
+		description="Multiplies acceleration by 1.00.",
 		default=False
-		)
+	)
 
-	sa1_cannotLand: BoolProperty(
-		name="Cannot Land",
-		description="Disables the ability to stand on the object.",
+	sfIncAccel: BoolProperty(
+		name="Increased Acceleration",
+		description="Multiplies acceleration by 1.50.",
 		default=False
-		)
+	)
 
-	sa1_diggable: BoolProperty(
-		name="Diggable",
-		description="Allows Knuckles to dig on the object.",
-		default=False
-		)
-		
-	sa1_waterfall: BoolProperty(
-		name="Waterfall",
-		description="N/A",
-		default=False
-		)
-
-	sa1_unclimbable: BoolProperty(
+	sfUnclimbable: BoolProperty(
 		name="Unclimbable",
-		description="Disables Knuckles ability to climb on the object.",
+		description="Makes surface unclimbable.",
 		default=False
-		)
-		
-	sa1_chaos0Land: BoolProperty(
-		name="Chaos 0 Deload",
-		description="Used to load/deload geometry based on if Chaos 0 is on a flagpole in his boss fight.",
+	)
+
+	sfDiggable: BoolProperty(
+		name="Diggable",
+		description="Makes surface diggable.",
 		default=False
-		)
-	
-	sa1_stairs: BoolProperty(
+	)
+
+	sfNoFriction: BoolProperty(
+		name="No Friction",
+		description="Makes surface slippery.",
+		default=False
+	)
+
+	sfStairs: BoolProperty(
 		name="Stairs",
-		description="Treats a slope as a flat surface to walk up or down on.",
+		description="Makes surfaces act like stairs.",
 		default=False
-		)
-		
-	sa1_hurt: BoolProperty(
-		name="Hurt",
-		description="Damages the player on contact.",
-		default=False
-		)
-		
-	sa1_lowDepth: BoolProperty(
-		name="Low Depth",
-		description="Places the model earlier in the draw queue for transparency sorting.",
-		default=False
-		)
+	)
 
-	sa1_footprints: BoolProperty(
-		name="Footprints",
-		description="Player will leave footprints on the object.",
-		default=False
-		)
-
-	sa1_accelerate: BoolProperty(
-		name="Accelerate",
-		description="N/A",
-		default=False
-		)
-		
-	sa1_colWater: BoolProperty(
-		name="Water Collision",
-		description="Water collision without transparency sorting.",
-		default=False
-		)
-		
-	sa1_rotByGravity: BoolProperty(
-		name="Rotate By Gravity",
-		description="N/A",
-		default=False
-		)
-
-	sa1_noZWrite: BoolProperty(
-		name="No Z Writing",
-		description="Disables Z Writing for rendering the mesh in-game.",
-		default=False
-		)
-		
-	sa1_drawByMesh: BoolProperty(
-		name="Draw By Mesh",
-		description="N/A",
-		default=False
-		)
-		
-	sa1_enableManipulation: BoolProperty(
-		name="Enable Manipulation",
-		description="N/A",
-		default=False
-		)
-		
-	sa1_dynCollision: BoolProperty(
-		name="Dynamic Collision",
-		description="Sets Collision for moving objects.",
-		default=False
-		)
-
-	sa1_useRotation: BoolProperty(
-		name="Use Rotation",
-		description="N/A",
-		default=False
-		)
-		
-	# sa2 only
-	sa2_water: BoolProperty(
+	sfWater: BoolProperty(
 		name="Water",
-		description="Water collision.",
+		description="Sets surface to a water region.",
 		default=False
-		)
-		
-	sa2_diggable: BoolProperty(
-		name="Diggable",
-		description="Allows Treasure Hunting characters to dig on the object.",
-		default=False
-		)
-		
-	sa2_unclimbable: BoolProperty(
-		name="Unclimbable",
-		description="Determines if Treasure Hunting characters can climb on the object.",
-		default=False
-		)
-		
-	sa2_stairs: BoolProperty(
-		name="Stairs",
-		description="Treats a slope as a flat surface to walk up or down on.",
-		default=False
-		)
-		
-	sa2_hurt: BoolProperty(
-		name="Hurt",
-		description="Damages the player on contact.",
-		default=False
-		)
-		
-	sa2_footprints: BoolProperty(
-		name="Footprints",
-		description="Player will leave footprints on the object.",
-		default=False
-		)
+	)
 
-	sa2_cannotLand: BoolProperty(
+	sfCannotLand: BoolProperty(
 		name="Cannot Land",
-		description="Disables the ability to stand on the object.",
+		description="Unable to land on surface.",
 		default=False
-		)
-		
-	sa2_water2: BoolProperty(
-		name="Water 2",
-		description="The same as water, but different!",
-		default=False
-		)
+	)
 
-	sa2_noShadows: BoolProperty(
-		name="No Shadows",
-		description="Shadows will not render on the object.",
+	sfHurt: BoolProperty(
+		name="Hurt",
+		description="Damages the player.",
 		default=False
-		)
+	)
 
-	sa2_noFog: BoolProperty(
-		name="No Fog",
-		description="Disables Fog on the object.",
+	sfFootprints: BoolProperty(
+		name="Footprints",
+		description="Surface will display footprints if players walks on it.",
 		default=False
-		)
+	)
 
-	sa2_unknown24: BoolProperty(
-		name="Unknown 24",
-		description="N/A",
+	sfGravity: BoolProperty(
+		name="Modified Gravity",
+		description="Changes the gravity for the player.",
 		default=False
-		)
+	)
 
-	sa2_unknown29: BoolProperty(
-		name="Unknown 29",
-		description="N/A",
+	sfUseRotation: BoolProperty(
+		name="Enables Rotation",
+		description="Allows rotation (Used for moving objects).",
 		default=False
-		)
+	)
 
-	sa2_unknown30: BoolProperty(
-		name="Unknown 30",
-		description="N/A",
+	sfDynCollision: BoolProperty(
+		name="Dynamic Collision",
+		description="Uses Dynamic Collision buffer (Used for objects).",
 		default=False
-		)
+	)
+
+	# Start SA1 Land Flags
+	sfWaterCollision: BoolProperty(
+		name="Alternate Water",
+		description="Different water flag for SA1.",
+		default=False
+	)
+
+	sfUseSkyDrawDistance: BoolProperty(
+		name="Use Sky Draw Distance",
+		description="Object will use the Skybox Draw Distance rather than the Landtable's Draw Distance (SA1 Only)",
+		default=False
+	)
+
+	sfNoZWrite: BoolProperty(
+		name="No Z-Buffer Writing",
+		description="Object doesn't write to the Z-Buffer (SA1 Only)",
+		default=False
+	)
+
+	sfLowDepth: BoolProperty(
+		name="Low Render Depth",
+		description="Lowers render depth for object (SA1 Only).",
+		default=False
+	)
+
+	sfDrawByMesh: BoolProperty(
+		name="Draw By Mesh",
+		description="Draws the model by each mesh for transparency sorting reasons (SA1 Only)",
+		default=False
+	)
+
+	sfWaterfall: BoolProperty(
+		name="Waterfall",
+		description="Object will function like a waterfall (SA1 Only)",
+		default=False
+	)
+
+	sfChaos0Land: BoolProperty(
+		name="Chaos 0 Land Flag",
+		description="Used for Chaos 0 Boss Fight. ",
+		default=False
+	)
+
+	sfEnableManipulation: BoolProperty(
+		name="Enable Model Modifications",
+		description="Allows the model to be modified via code.",
+		default=False
+	)
+
+	sfSA1U_200: BoolProperty(
+		name="Unknown Flag 1",
+		description="Unknown SA1 Flag",
+		default=False
+	)
+
+	sfSA1U_800: BoolProperty(
+		name="Unknown Flag 2",
+		description="Unknown SA1 Flag",
+		default=False
+	)
+
+	sfSA1U_8000: BoolProperty(
+		name="Unknown Flag 3",
+		description="Unknown SA1 Flag",
+		default=False
+	)
+
+	sfSA1U_20000: BoolProperty(
+		name="Unknown Flag 4",
+		description="Unknown SA1 Flag",
+		default=False
+	)
+
+	sfSA1U_80000: BoolProperty(
+		name="Unknown Flag 5",
+		description="Unknown SA1 Flag",
+		default=False
+	)
+
+	sfSA1U_20000000: BoolProperty(
+		name="Unknown Flag 6",
+		description="Unknown SA1 Flag",
+		default=False
+	)
+
+	sfSA1U_40000000: BoolProperty(
+		name="Unknown Flag 7",
+		description="Unknown SA1 Flag",
+		default=False
+	)
+
+	# Start SA2 Land Flags
+	sfWater2: BoolProperty(
+		name="Alternate Water",
+		description="Alternative Water in SA2.",
+		default=False
+	)
+
+	sfNoShadows: BoolProperty(
+		name="Disable Shadows on Surface",
+		description="Shadows will not render on the surface.",
+		default=False
+	)
+
+	sfNoFog: BoolProperty(
+		name="Disable Fog on Surface",
+		description="Fog will not affect the surface.",
+		default=False
+	)
+
+	sfSA2U_40: BoolProperty(
+		name="Unknown Flag 1",
+		description="Unknown SA2 Flag",
+		default=False
+	)
+
+	sfSA2U_200: BoolProperty(
+		name="Unknown Flag 2",
+		description="Unknown SA2 Flag",
+		default=False
+	)
+
+	sfSA2U_4000: BoolProperty(
+		name="Unknown Flag 3",
+		description="Unknown SA2 Flag",
+		default=False
+	)
+
+	sfSA2U_10000: BoolProperty(
+		name="Unknown Flag 4",
+		description="Unknown SA2 Flag",
+		default=False
+	)
+
+	sfSA2U_20000: BoolProperty(
+		name="Unknown Flag 5",
+		description="Unknown SA2 Flag",
+		default=False
+	)
+	
+	sfSA2U_40000: BoolProperty(
+		name="Unknown Flag 6",
+		description="Unknown SA2 Flag",
+		default=False
+	)
+
+	sfSA2U_800000: BoolProperty(
+		name="Unknown Flag 7",
+		description="Unknown SA2 Flag",
+		default=False
+	)
+
+	sfSA2U_1000000: BoolProperty(
+		name="Unknown Flag 8",
+		description="Unknown SA2 Flag",
+		default=False
+	)
+
+	sfSA2U_2000000: BoolProperty(
+		name="Unknown Flag 9",
+		description="Unknown SA2 Flag",
+		default=False
+	)
+
+	sfSA2U_4000000: BoolProperty(
+		name="Unknown Flag 10",
+		description="Unknown SA2 Flag",
+		default=False
+	)
+
+	sfSA2U_20000000: BoolProperty(
+		name="Unknown Flag 11",
+		description="Unknown SA2 Flag",
+		default=False
+	)
+
+	sfSA2U_40000000: BoolProperty(
+		name="Unknown Flag 12",
+		description="Unknown SA2 Flag",
+		default=False
+	)
 
 	@classmethod
 	def defaultDict(cls) -> dict:
 		d = dict()
-		d["solid"]						= False
-		d["isVisible"]					= False
-		
-		d["sa1_water"]					= False
-		d["sa1_noFriction"]				= False
-		d["sa1_noAcceleration"]			= False
-		d["sa1_lowAcceleration"]		= False
-		d["sa1_useSkyDrawDistance"]		= False
-		d["sa1_increasedAcceleration"]	= False
-		d["sa1_cannotLand"]				= False
-		d["sa1_diggable"]				= False
-		d["sa1_waterfall"]				= False
-		d["sa1_unclimbable"]			= False
-		d["sa1_chaos0Land"]				= False
-		d["sa1_stairs"]					= False
-		d["sa1_hurt"]					= False
-		d["sa1_lowDepth"]				= False
-		d["sa1_footprints"]				= False
-		d["sa1_accelerate"]				= False
-		d["sa1_colWater"]				= False
-		d["sa1_rotByGravity"]			= False
-		d["sa1_noZWrite"]				= False
-		d["sa1_drawByMesh"]				= False
-		d["sa1_enableManipulation"]		= False
-		d["sa1_dynCollision"]			= False
-		d["sa1_useRotation"]			= False
 
-		d["sa2_water"]					= False
-		d["sa2_diggable"]				= False
-		d["sa2_unclimbable"]			= False
-		d["sa2_stairs"]					= False
-		d["sa2_hurt"]					= False
-		d["sa2_footprints"]				= False
-		d["sa2_cannotLand"]				= False
-		d["sa2_water2"]					= False
-		d["sa2_noShadows"]				= False
-		d["sa2_noFog"]					= False
-		d["sa2_unknown24"]				= False
-		d["sa2_unknown29"]				= False
-		d["sa2_unknown30"]				= False
+		d['sfVisible']			= False
+		d['sfSolid']			= False
+		d['sfNoAccel']			= False
+		d['sfLowAccel']			= False
+		d['sfAccel']			= False
+		d['sfIncAccel']			= False
+		d['sfUnclimbable']		= False
+		d['sfDiggable']			= False
+		d['sfNoFriction']		= False
+		d['sfStairs']			= False
+		d['sfWater']			= False
+		d['sfCannotLand']		= False
+		d['sfHurt']				= False
+		d['sfFootprints']		= False
+		d['sfGravity']			= False
+		d['sfUseRotation']		= False
+		d['sfDynCollision']		= False
+
+
+		# SA1
+		d['sfWaterCollision']		= False
+		d['sfUseSkyDrawDistance']	= False
+		d['sfNoZWrite']				= False
+		d['sfLowDepth']				= False
+		d['sfDrawByMesh']			= False
+		d['sfWaterfall']			= False
+		d['sfChaos0Land']			= False
+		d['sfEnableManipulation']	= False
+		d['sfSA1U_200']				= False
+		d['sfSA1U_800']				= False
+		d['sfSA1U_8000']			= False
+		d['sfSA1U_20000']			= False
+		d['sfSA1U_80000']			= False
+		d['sfSA1U_20000000']		= False
+		d['sfSA1U_40000000']		= False
+
+
+		# SA2
+		d['sfWater2']			= False
+		d['sfNoShadows']		= False
+		d['sfnoFog']			= False
+		d['sfSA2U_40']			= False
+		d['sfSA2U_200']			= False
+		d['sfSA2U_4000']		= False
+		d['sfSA2U_10000']		= False
+		d['sfSA2U_20000']		= False
+		d['sfSA2U_40000']		= False
+		d['sfSA2U_800000']		= False
+		d['sfSA2U_1000000']		= False
+		d['sfSA2U_2000000']		= False
+		d['sfSA2U_4000000']		= False
+		d['sfSA2U_20000000']	= False
+		d['sfSA2U_40000000']	= False
 
 		d["userFlags"]					= common.hex4(0)
 		return d
 
 	def toDictionary(self) -> dict:
 		d = dict()
-		d["solid"]						= self.solid
-		d["isVisible"]					= self.isVisible
-		
-		d["sa1_water"]					= self.sa1_water
-		d["sa1_noFriction"]				= self.sa1_noFriction
-		d["sa1_noAcceleration"]			= self.sa1_noAcceleration
-		d["sa1_lowAcceleration"]		= self.sa1_lowAcceleration
-		d["sa1_useSkyDrawDistance"]		= self.sa1_useSkyDrawDistance
-		d["sa1_increasedAcceleration"]	= self.sa1_increasedAcceleration
-		d["sa1_cannotLand"]				= self.sa1_cannotLand
-		d["sa1_diggable"]				= self.sa1_diggable
-		d["sa1_waterfall"]				= self.sa1_waterfall
-		d["sa1_unclimbable"]			= self.sa1_unclimbable
-		d["sa1_chaos0Land"]				= self.sa1_chaos0Land
-		d["sa1_stairs"]					= self.sa1_stairs
-		d["sa1_hurt"]					= self.sa1_hurt
-		d["sa1_lowDepth"]				= self.sa1_lowDepth
-		d["sa1_footprints"]				= self.sa1_footprints
-		d["sa1_accelerate"]				= self.sa1_accelerate
-		d["sa1_colWater"]				= self.sa1_colWater
-		d["sa1_rotByGravity"]			= self.sa1_rotByGravity
-		d["sa1_noZWrite"]				= self.sa1_noZWrite
-		d["sa1_drawByMesh"]				= self.sa1_drawByMesh
-		d["sa1_enableManipulation"]		= self.sa1_enableManipulation
-		d["sa1_dynCollision"]			= self.sa1_dynCollision
-		d["sa1_useRotation"]			= self.sa1_useRotation
 
-		d["sa2_water"]					= self.sa2_water
-		d["sa2_diggable"]				= self.sa2_diggable
-		d["sa2_unclimbable"]			= self.sa2_unclimbable
-		d["sa2_stairs"]					= self.sa2_stairs
-		d["sa2_hurt"]					= self.sa2_hurt
-		d["sa2_footprints"]				= self.sa2_footprints
-		d["sa2_cannotLand"]				= self.sa2_cannotLand
-		d["sa2_water2"]					= self.sa2_water2
-		d["sa2_noShadows"]				= self.sa2_noShadows
-		d["sa2_noFog"]					= self.sa2_noFog
-		d["sa2_unknown24"]				= self.sa2_unknown24
-		d["sa2_unknown29"]				= self.sa2_unknown29
-		d["sa2_unknown30"]				= self.sa2_unknown30
+		d['sfVisible']			= self.sfVisible
+		d['sfSolid']			= self.sfSolid
+		d['sfNoAccel']			= self.sfNoAccel
+		d['sfLowAccel']			= self.sfLowAccel
+		d['sfAccel']			= self.sfAccel
+		d['sfIncAccel']			= self.sfIncAccel
+		d['sfUnclimbable']		= self.sfUnclimbable
+		d['sfDiggable']			= self.sfDiggable
+		d['sfNoFriction']		= self.sfNoFriction
+		d['sfStairs']			= self.sfStairs
+		d['sfWater']			= self.sfWater
+		d['sfCannotLand']		= self.sfCannotLand
+		d['sfHurt']				= self.sfHurt
+		d['sfFootprints']		= self.sfFootprints
+		d['sfGravity']			= self.sfGravity
+		d['sfUseRotation']		= self.sfUseRotation
+		d['sfDynCollision']		= self.sfDynCollision
 
-		d["userFlags"]					= self.userFlags
-		d["blockbit"]					= self.blockbit
+
+		# SA1
+		d['sfWaterCollision']		= self.sfWaterCollision
+		d['sfUseSkyDrawDistance']	= self.sfUseSkyDrawDistance
+		d['sfNoZWrite']				= self.sfNoZWrite
+		d['sfLowDepth']				= self.sfLowDepth
+		d['sfDrawByMesh']			= self.sfDrawByMesh
+		d['sfWaterfall']			= self.sfWaterfall
+		d['sfChaos0Land']			= self.sfChaos0Land
+		d['sfEnableManipulation']	= self.sfEnableManipulation
+		d['sfSA1U_200']				= self.sfSA1U_200
+		d['sfSA1U_800']				= self.sfSA1U_800
+		d['sfSA1U_8000']			= self.sfSA1U_8000
+		d['sfSA1U_20000']			= self.sfSA1U_20000
+		d['sfSA1U_80000']			= self.sfSA1U_80000
+		d['sfSA1U_20000000']		= self.sfSA1U_20000000
+		d['sfSA1U_40000000']		= self.sfSA1U_40000000
+
+
+		# SA2
+		d['sfWater2']			= self.sfWater2
+		d['sfNoShadows']		= self.sfNoShadows
+		d['sfnoFog']			= self.sfnoFog
+		d['sfSA2U_40']			= self.sfSA2U_40
+		d['sfSA2U_200']			= self.sfSA2U_200
+		d['sfSA2U_4000']		= self.sfSA2U_4000
+		d['sfSA2U_10000']		= self.sfSA2U_10000
+		d['sfSA2U_20000']		= self.sfSA2U_20000
+		d['sfSA2U_40000']		= self.sfSA2U_40000
+		d['sfSA2U_800000']		= self.sfSA2U_800000
+		d['sfSA2U_1000000']		= self.sfSA2U_1000000
+		d['sfSA2U_2000000']		= self.sfSA2U_2000000
+		d['sfSA2U_4000000']		= self.sfSA2U_4000000
+		d['sfSA2U_20000000']	= self.sfSA2U_20000000
+		d['sfSA2U_40000000']	= self.sfSA2U_40000000
+
+		d["userFlags"]			= self.userFlags
+		d["blockbit"]			= self.blockbit
 
 		return d
 
 	def fromDictionary(self, d: dict):
-		self.solid						= d["solid"]
-		self.isVisible					= d["isVisible"]
-		
-		self.sa1_water					= d["sa1_water"]
-		self.sa1_noFriction				= d["sa1_noFriction"] 
-		self.sa1_noAcceleration			= d["sa1_noAcceleration"] 
-		self.sa1_lowAcceleration		= d["sa1_lowAcceleration"] 
-		self.sa1_useSkyDrawDistance		= d["sa1_useSkyDrawDistance"] 
-		self.sa1_increasedAcceleration	= d["sa1_increasedAcceleration"] 
-		self.sa1_cannotLand				= d["sa1_cannotLand"] 
-		self.sa1_diggable				= d["sa1_diggable"] 
-		self.sa1_waterfall				= d["sa1_waterfall"] 
-		self.sa1_unclimbable			= d["sa1_unclimbable"] 
-		self.sa1_chaos0Land				= d["sa1_chaos0Land"] 
-		self.sa1_stairs					= d["sa1_stairs"] 
-		self.sa1_hurt					= d["sa1_hurt"] 
-		self.sa1_lowDepth				= d["sa1_lowDepth"] 
-		self.sa1_footprints				= d["sa1_footprints"] 
-		self.sa1_accelerate				= d["sa1_accelerate"] 
-		self.sa1_colWater				= d["sa1_colWater"] 
-		self.sa1_rotByGravity			= d["sa1_rotByGravity"] 
-		self.sa1_noZWrite				= d["sa1_noZWrite"] 
-		self.sa1_drawByMesh				= d["sa1_drawByMesh"] 
-		self.sa1_enableManipulation		= d["sa1_enableManipulation"] 
-		self.sa1_dynCollision			= d["sa1_dynCollision"] 
-		self.sa1_useRotation			= d["sa1_useRotation"] 
+		self.sfVisible		= d['sfVisible']
+		self.sfSolid		= d['sfSolid']
+		self.sfNoAccel		= d['sfNoAccel']
+		self.sfLowAccel		= d['sfLowAccel']
+		self.sfAccel		= d['sfAccel']
+		self.sfIncAccel		= d['sfIncAccel']
+		self.sfUnclimbable	= d['sfUnclimbable']
+		self.sfDiggable		= d['sfDiggable']
+		self.sfNoFriction	= d['sfNoFriction']
+		self.sfStairs		= d['sfStairs']
+		self.sfWater		= d['sfWater']
+		self.sfCannotLand	= d['sfCannotLand']
+		self.sfHurt			= d['sfHurt']
+		self.sfFootprints	= d['sfFootprints']
+		self.sfGravity		= d['sfGravity']
+		self.sfUseRotation	= d['sfUseRotation']
+		self.sfDynCollision	= d['sfDynCollision']
 
-		self.sa2_water					= d["sa2_water"] 
-		self.sa2_diggable				= d["sa2_diggable"] 
-		self.sa2_unclimbable			= d["sa2_unclimbable"] 
-		self.sa2_stairs					= d["sa2_stairs"] 
-		self.sa2_hurt					= d["sa2_hurt"] 
-		self.sa2_footprints				= d["sa2_footprints"] 
-		self.sa2_cannotLand				= d["sa2_cannotLand"] 
-		self.sa2_water2					= d["sa2_water2"] 
-		self.sa2_noShadows				= d["sa2_noShadows"] 
-		self.sa2_noFog					= d["sa2_noFog"] 
-		self.sa2_unknown24				= d["sa2_unknown24"] 
-		self.sa2_unknown29				= d["sa2_unknown29"] 
-		self.sa2_unknown30				= d["sa2_unknown30"] 
+
+		# SA1
+		self.sfWaterCollision		= d['sfWaterCollision']	
+		self.sfUseSkyDrawDistance	= d['sfUseSkyDrawDistance']
+		self.sfNoZWrite				= d['sfNoZWrite']
+		self.sfLowDepth				= d['sfLowDepth']
+		self.sfDrawByMesh			= d['sfDrawByMesh']
+		self.sfWaterfall			= d['sfWaterfall']
+		self.sfChaos0Land			= d['sfChaos0Land']
+		self.sfEnableManipulation	= d['sfEnableManipulation']
+		self.sfSA1U_200				= d['sfSA1U_200']
+		self.sfSA1U_800				= d['sfSA1U_800']
+		self.sfSA1U_8000			= d['sfSA1U_8000']
+		self.sfSA1U_20000			= d['sfSA1U_20000']
+		self.sfSA1U_80000			= d['sfSA1U_80000']
+		self.sfSA1U_20000000		= d['sfSA1U_20000000']
+		self.sfSA1U_40000000		= d['sfSA1U_40000000']
+
+
+		# SA2
+		self.sfWater2			= d['sfWater2']
+		self.sfNoShadows		= d['sfNoShadows']
+		self.sfnoFog			= d['sfnoFog']
+		self.sfSA2U_40			= d['sfSA2U_40']
+		self.sfSA2U_200			= d['sfSA2U_200']
+		self.sfSA2U_4000		= d['sfSA2U_4000']
+		self.sfSA2U_10000		= d['sfSA2U_10000']
+		self.sfSA2U_20000		= d['sfSA2U_20000']
+		self.sfSA2U_40000		= d['sfSA2U_40000']
+		self.sfSA2U_800000		= d['sfSA2U_800000']
+		self.sfSA2U_1000000		= d['sfSA2U_1000000']
+		self.sfSA2U_2000000		= d['sfSA2U_2000000']
+		self.sfSA2U_4000000		= d['sfSA2U_4000000']
+		self.sfSA2U_20000000	= d['sfSA2U_20000000']
+		self.sfSA2U_40000000	= d['sfSA2U_40000000']
 
 		self.userFlags					= d["userFlags"] 
 		self.blockbit					= d["blockbit"]
