@@ -863,7 +863,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):		## Property Group for managi
 	b_use_Anisotropy: BoolProperty(
 		name="Anisotropy",
 		description="Enable Anisotropy for the texture of the material",
-		default=True
+		default=False
 		)
 
 	b_texFilter: EnumProperty(
@@ -961,7 +961,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):		## Property Group for managi
 	b_doubleSided: BoolProperty(
 		name="Disable Backface culling",
 		description="Renders both sides of the mesh",
-		default=True
+		default=False
 		)
 
 	b_flatShading: BoolProperty(
