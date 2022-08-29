@@ -610,8 +610,8 @@ class SALandEntrySettings(bpy.types.PropertyGroup):		## Property Group for manag
 	def defaultDict(cls) -> dict:
 		d = dict()
 
-		d['sfVisible']			= False
-		d['sfSolid']			= False
+		d['sfVisible']			= True
+		d['sfSolid']			= True
 		d['sfNoAccel']			= False
 		d['sfLowAccel']			= False
 		d['sfAccel']			= False

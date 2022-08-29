@@ -1810,34 +1810,76 @@ class Col:
 
 			saProps['sfSolid']\
 				= bool(f & SA2SurfaceFlags.Solid.value)
-			saProps["sa2_water"]\
+			saProps['sfWater']\
 				= bool(f & SA2SurfaceFlags.Water.value)
-			saProps["sa2_diggable"]\
+			saProps['sfNoFriction']\
+				= bool(f & SA2SurfaceFlags.NoFriction.value)
+			saProps['sfNoAccel']\
+				= bool(f & SA2SurfaceFlags.NoAcceleration.value)
+
+			saProps['sfLowAccel']\
+				= bool(f & SA2SurfaceFlags.LowAcceleration.value)
+			saProps['sfDiggable']\
 				= bool(f & SA2SurfaceFlags.Diggable.value)
-			saProps["sa2_unclimbable"]\
+			saProps['sfSA2U_40']\
+				= bool(f & SA2SurfaceFlags.sa2U_40.value)
+			saProps['sfUnclimbable']\
 				= bool(f & SA2SurfaceFlags.Unclimbable.value)
-			saProps["sa2_stairs"]\
+
+			saProps['sfStairs']\
 				= bool(f & SA2SurfaceFlags.Stairs.value)
-			saProps["sa2_hurt"]\
+			saProps['sfSA2U_200']\
+				= bool(f & SA2SurfaceFlags.sa2U_200.value)
+			saProps['sfHurt']\
 				= bool(f & SA2SurfaceFlags.Hurt.value)
-			saProps["sa2_footprints"]\
+			saProps['sfFootprints']\
 				= bool(f & SA2SurfaceFlags.Footprints.value)
-			saProps["sa2_cannotLand"]\
+
+			saProps['sfCannotLand']\
 				= bool(f & SA2SurfaceFlags.CannotLand.value)
-			saProps["sa2_water2"]\
+			saProps['sfWater2']\
 				= bool(f & SA2SurfaceFlags.Water2.value)
-			saProps["sa2_noShadows"]\
+			saProps['sfSA2U_4000']\
+				= bool(f & SA2SurfaceFlags.sa2U_4000.value)
+			saProps['sfNoShadows']\
 				= bool(f & SA2SurfaceFlags.NoShadows.value)
-			saProps["sa2_noFog"]\
+
+			saProps['sfSA2U_10000']\
+				= bool(f & SA2SurfaceFlags.sa2U_10000.value)
+			saProps['sfSA2U_20000']\
+				= bool(f & SA2SurfaceFlags.sa2U_20000.value)
+			saProps['sfSA2U_40000']\
+				= bool(f & SA2SurfaceFlags.sa2U_40000.value)
+			saProps['sfGravity']\
+				= bool(f & SA2SurfaceFlags.Gravity.value)
+
+			saProps['sfAccel']\
+				= bool(f & SA2SurfaceFlags.Accelerate.value)
+			saProps['sfIncAccel']\
+				= bool(f & SA2SurfaceFlags.IncreasedAcceleration.value)
+			saProps['sfNoFog']\
 				= bool(f & SA2SurfaceFlags.noFog.value)
-			saProps["sa2_unknown24"]\
-				= bool(f & SA2SurfaceFlags.Unknown24.value)
-			saProps["sa2_unknown29"]\
-				= bool(f & SA2SurfaceFlags.Unknown29.value)
-			saProps["sa2_unknown30"]\
-				= bool(f & SA2SurfaceFlags.Unknown30.value)
+			saProps['sfSA2U_800000']\
+				= bool(f & SA2SurfaceFlags.sa2U_800000.value)
+
+			saProps['sfSA2U_1000000']\
+				= bool(f & SA2SurfaceFlags.sa2U_1000000.value)
+			saProps['sfSA2U_2000000']\
+				= bool(f & SA2SurfaceFlags.sa2U_2000000.value)
+			saProps['sfSA2U_4000000']\
+				= bool(f & SA2SurfaceFlags.sa2U_4000000.value)
+			saProps['sfDynCollision']\
+				= bool(f & SA2SurfaceFlags.DynamicCollision.value)
+
+			saProps['sfUseRotation']\
+				= bool(f & SA2SurfaceFlags.UseRotation.value)
+			saProps['sfSA2U_20000000']\
+				= bool(f & SA2SurfaceFlags.sa2U_20000000.value)
+			saProps['sfSA2U_40000000']\
+				= bool(f & SA2SurfaceFlags.sa2U_40000000.value)
 			saProps['sfVisible']\
 				= bool(f & SA2SurfaceFlags.Visible.value)
+			
 
 			saProps["userFlags"]\
 				= hex4((f & ~SA2SurfaceFlags.known.value) & 0xFFFFFFFF)
@@ -1859,55 +1901,76 @@ class Col:
 			from .enums import SA1SurfaceFlags
 
 			saProps['sfSolid']\
-				= bool(f & SA1SurfaceFlags.Solid.value)
-			saProps["sa1_water"]\
-				= bool(f & SA1SurfaceFlags.Water.value)
-			saProps["sa1_noFriction"]\
-				= bool(f & SA1SurfaceFlags.NoFriction.value)
-			saProps["sa1_noAcceleration"]\
-				= bool(f & SA1SurfaceFlags.NoAcceleration.value)
-			saProps["sa1_lowAcceleration"]\
-				= bool(f & SA1SurfaceFlags.LowAcceleration.value)
-			saProps["sa1_useSkyDrawDistance"]\
-				= bool(f & SA1SurfaceFlags.UseSkyDrawDistance.value)
-			saProps["sa1_increasedAcceleration"]\
-				= bool(f & SA1SurfaceFlags.IncreasedAcceleration.value)
-			saProps["sa1_cannotLand"]\
-				= bool(f & SA1SurfaceFlags.CannotLand.value)
-			saProps["sa1_diggable"]\
-				= bool(f & SA1SurfaceFlags.Diggable.value)
-			saProps["sa1_waterfall"]\
-				= bool(f & SA1SurfaceFlags.Waterfall.value)
-			saProps["sa1_unclimbable"]\
-				= bool(f & SA1SurfaceFlags.Unclimbable.value)
-			saProps["sa1_chaos0Land"]\
-				= bool(f & SA1SurfaceFlags.Chaos0Land.value)
-			saProps["sa1_stairs"]\
-				= bool(f & SA1SurfaceFlags.Stairs.value)
-			saProps["sa1_hurt"]\
-				= bool(f & SA1SurfaceFlags.Hurt.value)
-			saProps["sa1_lowDepth"]\
-				= bool(f & SA1SurfaceFlags.LowDepth.value)
-			saProps["sa1_footprints"]\
-				= bool(f & SA1SurfaceFlags.Footprints.value)
-			saProps["sa1_accelerate"]\
-				= bool(f & SA1SurfaceFlags.Accelerate.value)
-			saProps["sa1_colWater"]\
-				= bool(f & SA1SurfaceFlags.WaterCollision.value)
-			saProps["sa1_rotByGravity"]\
-				= bool(f & SA1SurfaceFlags.Gravity.value)
-			saProps["sa1_noZWrite"]\
-				= bool(f & SA1SurfaceFlags.NoZWrite.value)
-			saProps["sa1_drawByMesh"]\
-				= bool(f & SA1SurfaceFlags.DrawByMesh.value)
-			saProps["sa1_enableManipulation"]\
-				= bool(f & SA1SurfaceFlags.EnableManipulation.value)
-			saProps["sa1_dynCollision"]\
-				= bool(f & SA1SurfaceFlags.DynamicCollision.value)
-			saProps["sa1_useRotation"]\
-				= bool(f & SA1SurfaceFlags.UseRotation.value)
+				= bool(f & SA1SurfaceFlags.Solid.value)                
+			saProps['sfWater']\
+				= bool(f & SA1SurfaceFlags.Water.value)                
+			saProps['sfNoFriction']\
+				= bool(f & SA1SurfaceFlags.NoFriction.value)            
+			saProps['sfNoAccel']\
+				= bool(f & SA1SurfaceFlags.NoAcceleration.value)        
+
+			saProps['sfLowAccel']\
+				= bool(f & SA1SurfaceFlags.LowAcceleration.value)       
+			saProps['sfUseSkyDrawDistance']\
+				= bool(f & SA1SurfaceFlags.UseSkyDrawDistance.value)    
+			saProps['sfCannotLand']\
+				= bool(f & SA1SurfaceFlags.CannotLand.value)            
+			saProps['sfIncAccel']\
+				= bool(f & SA1SurfaceFlags.IncreasedAcceleration.value) 
+
+			saProps['sfDiggable']\
+				= bool(f & SA1SurfaceFlags.Diggable.value)              
+			saProps['sfSA1U_200']\
+				= bool(f & SA1SurfaceFlags.sa1U_200.value)
+			saProps['sfWaterfall']\
+				= bool(f & SA1SurfaceFlags.Waterfall.value)             
+			saProps['sfSA1U_800']\
+				= bool(f & SA1SurfaceFlags.sa1U_800.value)
+
+			saProps['sfUnclimbable']\
+				= bool(f & SA1SurfaceFlags.Unclimbable.value)           
+			saProps['sfChaos0Land']\
+				= bool(f & SA1SurfaceFlags.Chaos0Land.value)            
+			saProps['sfStairs']\
+				= bool(f & SA1SurfaceFlags.Stairs.value)                
+			saProps['sfSA1U_8000']\
+				= bool(f & SA1SurfaceFlags.sa1U_8000.value)
+
+			saProps['sfHurt']\
+				= bool(f & SA1SurfaceFlags.Hurt.value)                  
+			saProps['sfSA1U_20000']\
+				= bool(f & SA1SurfaceFlags.sa1U_20000.value)
+			saProps['sfLowDepth']\
+				= bool(f & SA1SurfaceFlags.LowDepth.value)              
+			saProps['sfSA1U_80000']\
+				= bool(f & SA1SurfaceFlags.sa1U_80000.value)
+
+			saProps['sfFootprints']\
+				= bool(f & SA1SurfaceFlags.Footprints.value)            
+			saProps['sfAccel']\
+				= bool(f & SA1SurfaceFlags.Accelerate.value)            
+			saProps['sfWaterCollision']\
+				= bool(f & SA1SurfaceFlags.WaterCollision.value)        
+			saProps['sfGravity']\
+				= bool(f & SA1SurfaceFlags.Gravity.value)         
+
+			saProps['sfNoZWrite']\
+				= bool(f & SA1SurfaceFlags.NoZWrite.value)              
+			saProps['sfDrawByMesh']\
+				= bool(f & SA1SurfaceFlags.DrawByMesh.value)              
+			saProps['sfEnableManipulation']\
+				= bool(f & SA1SurfaceFlags.EnableManipulation.value)    
+			saProps['sfDynCollision']\
+				= bool(f & SA1SurfaceFlags.DynamicCollision.value)      
+
+			saProps['sfUseRotation']\
+				= bool(f & SA1SurfaceFlags.UseRotation.value)           
+			saProps['sfSA1U_20000000']\
+				= bool(f & SA1SurfaceFlags.sa1U_20000000.value)
+			saProps['sfSA1U_40000000']\
+				= bool(f & SA1SurfaceFlags.sa1U_40000000.value)
 			saProps['sfVisible']\
-				= bool(f & SA1SurfaceFlags.Visible.value)
+				= bool(f & SA1SurfaceFlags.Visible.value)  
 
 			saProps["userFlags"]\
 				= hex4((f & ~SA1SurfaceFlags.known.value) & 0xFFFFFFFF)
