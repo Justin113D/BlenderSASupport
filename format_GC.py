@@ -1391,6 +1391,7 @@ def process_GC(models: List[common.Model], attaches: Dict[int, Attach]):
                     elif p.texID == enums.TexCoordID.TexCoordNull:
                         tmpMat["gc_texCoordID"] = 'TEXCOORDNULL'
                 elif p.pType == enums.ParameterType.Texture:
+                    tmpMat["b_useTexture"] = True
                     tmpMat["b_TextureID"] = p.texID
                     tmpMat["b_clampU"] = not bool(p.tilemode & enums.TileMode.WrapU)
                     tmpMat["b_clampV"] = not bool(p.tilemode & enums.TileMode.WrapV)
