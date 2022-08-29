@@ -107,6 +107,7 @@ class ToPrincipledBsdf(bpy.types.Operator):		## Converts all materials in a scen
 				tree.links.new(texture.outputs[1], bsdf.inputs[21]) # Assign alpha
 
 			tree.links.new(bsdf.outputs[0], out.inputs[0])
+			m.blend_method = 'CLIP'
 		return {'FINISHED'}
 
 class UpdateMaterials(bpy.types.Operator):		## Updates all materials in the scene to use the SA Shader.

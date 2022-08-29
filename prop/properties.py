@@ -1188,9 +1188,9 @@ class SAMaterialSettings(bpy.types.PropertyGroup):		## Property Group for managi
 		d["b_useAlpha"] = False
 		d["b_srcAlpha"] = 'SRC'
 		d["b_destAlpha"] = 'INV_SRC'
-		d["b_useTexture"] = True
+		d["b_useTexture"] = False
 		d["b_useEnv"] = False
-		d["b_doubleSided"] = True
+		d["b_doubleSided"] = False
 		d["b_flatShading"] = False
 		d["b_ignoreLighting"] = False
 		d["b_ignoreAmbient"] = False

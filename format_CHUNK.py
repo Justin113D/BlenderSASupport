@@ -1587,6 +1587,7 @@ def ProcessChunkData(models: List[common.Model], attaches: Dict[int, processedAt
                     tmpMat["b_Specular"] = c.specular.toBlenderTuple()
                     tmpMat["b_Exponent"] = c.specularity / 255.0
             elif c.chunkType == enums.ChunkType.Tiny_TextureID:
+                tmpMat["b_useTexture"] = True
                 tmpMat["b_TextureID"] = c.texID
                 tmpMat["b_use_Anisotropy"] = c.anisotropy
                 tf = enums.TextureFiltering
