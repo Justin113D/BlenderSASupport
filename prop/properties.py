@@ -170,16 +170,6 @@ class SASettings(bpy.types.PropertyGroup):				## Property Groups used across the
 		description="A menu for quickly assigning mesh properties to mutliple objects",
 		default=False)
 
-	useObjEdit: BoolProperty(
-		name = "Activate Quick Object Edit",
-		description="When ctive, the buttons will use and apply the object properties.",
-		default=False
-		)
-	expandedObjEdit: BoolProperty(
-		name = "Object Quick Edit",
-		description="A menu for quickly assigning object flags to multiple objects.",
-		default=False)
-
 	# Quick material edit properties
 	b_apply_diffuse: BoolProperty(
 		name = "Apply diffuse",

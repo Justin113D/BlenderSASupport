@@ -41,8 +41,10 @@ from .panel_spaces import(
 )
 from ..ops.quickEdit import(
 	qeUpdate,
-	qeUpdateSet,
-	qeUpdateUnset,
+	qeApplyAll,
+	qeAddProps,
+	qeRemoveProps,
+	qeSelectAll,
 	qeReset,
 	qeInvert
 )
@@ -295,15 +297,27 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit: 
 
 		settings = context.scene.saSettings
 
+		row = layout.row()
+		row.alignment = 'CENTER'
+		row.label(text="Apply Properties")
+		row.scale_x = 1.0
+
+		split = layout.split(factor=0.5)
+		split.operator(qeAddProps.bl_idname)
+		split.operator(qeRemoveProps.bl_idname)
+		layout.operator(qeApplyAll.bl_idname)
+
 		outerBox = layout.box()
 
-		split = outerBox.split(factor=0.5)
-		split.operator(qeUpdateSet.bl_idname)
-		split.operator(qeUpdateUnset.bl_idname)
-		outerBox.separator(factor=0.1)
-		split = outerBox.split(factor=0.5)
-		split.operator(qeReset.bl_idname)
-		split.operator(qeInvert.bl_idname)
+		row = outerBox.row()
+		row.alignment = 'CENTER'
+		row.label(text="Selection Tools")
+		row.scale_x = 1.0
+
+		row = outerBox.row()
+		row.operator(qeSelectAll.bl_idname)
+		row.operator(qeInvert.bl_idname)
+		row.operator(qeReset.bl_idname)
 
 		box = outerBox.box()
 

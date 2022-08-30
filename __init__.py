@@ -68,8 +68,10 @@ from .ops.textures import(
 	AutoNameTextures
 )
 from .ops.quickEdit import(
-	qeUpdateSet,
-	qeUpdateUnset,
+	qeApplyAll,
+	qeAddProps,
+	qeRemoveProps,
+	qeSelectAll,
 	qeReset,
 	qeInvert
 )
@@ -288,10 +290,12 @@ classes = (
 	openSAMDL,
 	openTexEdit,
 
+	qeSelectAll,
 	qeReset,
 	qeInvert,
-	qeUpdateSet,
-	qeUpdateUnset,
+	qeAddProps,
+	qeRemoveProps,
+	qeApplyAll,
 
 	SALandEntrySettings,
 	SASettings,

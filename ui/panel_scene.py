@@ -37,8 +37,8 @@ from .panel_spaces import(
 )
 from ..ops.quickEdit import(
 	qeUpdate,
-	qeUpdateSet,
-	qeUpdateUnset,
+	qeAddProps,
+	qeRemoveProps,
 	qeReset,
 	qeInvert
 )
