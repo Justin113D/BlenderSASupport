@@ -515,6 +515,12 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 		default=False
 		)
 
+	exportAll: BoolProperty(
+		name = "Export All Actions",
+		description = "Exports all actions associated with the selected armature. Relies on Actions being in NLA Strips.",
+		default = False
+	)
+
 	@classmethod
 	def poll(cls, context):
 		active = context.active_object
@@ -529,7 +535,10 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 	def execute(self, context):
 		#return exportFile(self, 'ANIM', context, self.as_keywords())
 		from .. import file_SAANIM
-		file_SAANIM.write(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
+		if (self.exportAll):
+			file_SAANIM.writeBulkAnim(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
+		else:
+			file_SAANIM.write(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
 		return {'FINISHED'}
 
 	def invoke(self, context, event):

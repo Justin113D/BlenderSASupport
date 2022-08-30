@@ -297,10 +297,12 @@ def write(
 		bakeAll: bool,
 		shortRot: bool,
 		bezierInterpolation: bool,
-		cT: bool, obj):
+		cT: bool, obj,
+		action = None):
 
 	from .common import RadToBAMS
-	action: bpy.types.Action = obj.animation_data.action
+	if action == None:
+		action: bpy.types.Action = obj.animation_data.action
 	armature = obj.data
 
 	# mapping the curves to the bones
@@ -539,6 +541,18 @@ def write(
 		json.dump(jsonF, outfile, indent=2)
 
 	return {'FINISHED'}
+
+def writeBulkAnim(filepath: str,
+		bakeAll: bool,
+		shortRot: bool,
+		bezierInterpolation: bool,
+		cT: bool, obj):
+
+	actions = obj.animation_data.nla_tracks
+	for a in actions:
+		action = a.strips[0].action
+		outName = filepath + action.name + '.json'
+		write(outName, bakeAll, shortRot, bezierInterpolation, cT, obj, action)
 
 class ShapeKey:
 	name: str
