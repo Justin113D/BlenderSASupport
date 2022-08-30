@@ -185,6 +185,9 @@ def read(
 
 					scaleFrameID += 1
 
+		#obj.animation_data.nla_tracks.new
+		
+
 def jsonEmptyModel():
 	model = dict()
 	model["Position"] = dict()
