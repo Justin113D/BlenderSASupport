@@ -29,7 +29,7 @@ def hex4(number: int) -> str:
 def RadToBAMS(v: float, asInt=False) -> int:
 	if round(v, 4) == 0:
 		return 0
-	val = int(round((math.degrees(v) / 360.0) * 0x10000))
+	val = int(round((math.degrees(v) / 360.0) * 65535))
 	if not asInt:
 		if val > 0xFFFF:
 			val &= 0xFFFF
@@ -51,7 +51,7 @@ def BAMSToRad(v: int, shortRot=False) -> float:
 		v -= 0x100000000
 	elif shortRot:
 		v &= 0xFFFF
-	return math.radians(v / (0x10000 / 360.0))
+	return math.radians(v / (65535.0 / 360.0))
 
 def getDistinctwID(items: list):
 
@@ -225,50 +225,6 @@ class BoundingBox:
 
 	boundCenter: Vector3
 	radius: float
-
-#	def __init__(self, vertices):
-#		"""Creates a bounding sphere from a set of vertices"""
-#
-#		if vertices is None:
-#			self.radius = 0
-#			self.boundCenter = Vector3((0, 0, 0))
-#			return
-#
-#		x = 0
-#		xn = 0
-#		y = 0
-#		yn = 0
-#		z = 0
-#		zn = 0
-#
-#		for v in vertices:
-#			if x < v.co.x:
-#				x = v.co.x
-#			elif xn > v.co.x:
-#				xn = v.co.x
-#
-#			if y < v.co.y:
-#				y = v.co.y
-#			elif yn > v.co.y:
-#				yn = v.co.y
-#
-#			if z < v.co.z:
-#				z = v.co.z
-#			elif zn > v.co.z:
-#				zn = v.co.z
-#
-#		cx = center(x, xn)
-#		cy = center(y, yn)
-#		cz = center(z, zn)
-#
-#		distance = 0
-#		for v in vertices:
-#			tDist = Vector3((cx - v.co.x,  cy - v.co.y, cz - v.co.z)).length()
-#			if tDist > distance:
-#				distance = tDist
-#
-#		self.boundCenter = Vector3((cx, cy, cz))
-#		self.radius = distance
 
 	def vecAdd(self, v1: Vector3, v2: Vector3):
 		return (Vector3(((v1.x + v2.x), (v1.y + v2.y), (v1.z + v2.z))))
