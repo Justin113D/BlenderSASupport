@@ -295,7 +295,7 @@ class LoadAnimFile(bpy.types.Operator, ImportHelper):		## Imports a SAANIM file 
 		items=(('FILE', "File", "Names the animation after the file"),
 			   ('CONTENT', "Content", "Names the animation after the contents name"),
 			   ('COMB', "File_Content", "Combines both names types to name the animation")),
-		default='CONTENT'
+		default='FILE'
 		)
 
 	@classmethod
