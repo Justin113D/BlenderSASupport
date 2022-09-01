@@ -151,15 +151,17 @@ class ModFile:
 
 		return modFile
 
-def GetCurveCodeAddress(type: str):
+def GetCurveCodeAddress(type: str, addr: str):
 	if (type == 'sa1_loop'):
 		return ('4BB1F0')
-	if (type == 'sa2_rail'):
+	elif (type == 'sa2_rail'):
 		return ('4980C0')
-	if (type == 'sa2_loop'):
+	elif (type == 'sa2_loop'):
 		return ('497B50')
-	if (type == 'sa2_hand'):
+	elif (type == 'sa2_hand'):
 		return ('498140')
+	elif (type == 'none'):
+		return (addr)
 	else:
 		return ('0')
 
@@ -281,12 +283,12 @@ class PathData:
 
 			self.Entries = entries
 
-	def toIni(path, curve: bpy.types.Spline, points: List[bpy.types.Object], pathtype: str):
+	def toIni(path, curve: bpy.types.Spline, points: List[bpy.types.Object], pathtype: str, caddr: str):
 		filepath = os.path.abspath(path)
 		print(filepath)
 		with open(filepath, 'w') as config:
 			config.write('TotalDistance=' + ("%.6f" % curve.calc_length()) + '\n')
-			config.write('Code=' + GetCurveCodeAddress(pathtype) + '\n\n')
+			config.write('Code=' + GetCurveCodeAddress(pathtype, caddr) + '\n\n')
 			idx = 0
 			for p in curve.points:
 				s = str(idx)

@@ -562,13 +562,19 @@ class ExportCurve(bpy.types.Operator, ExportHelper):
 		name='Curve Code',
 		description='Set Code address for Path to use in-game.',
 		items = (
-			('none', 'No Code', 'Code Address is 0'),
+			('none', 'Custom Code', 'Uses the code address supplied in the below textbox. Defaults to 0 if no address is supplied.'),
 			('sa1_loop', 'SA1 Loops', 'Used on most paths where the player is moved, ie Loops.'),
 			('sa2_loop', 'SA2 Loops', 'Used on most paths where the player is moved, ie Loops.'),
 			('sa2_rail', 'SA2 Grind Rails', 'Used for most grind rails.'),
 			('sa2_hand', 'SA2 Hand Rails', 'Used for the hand/gravity rails used in Crazy Gadget.')
 		),
 		default='none'
+	)
+
+	codestring: StringProperty(
+		name="Custom Code Address: ",
+		default="",
+		descrption="Supply a custom code address (in hex)."
 	)
 
 	@classmethod
@@ -585,7 +591,7 @@ class ExportCurve(bpy.types.Operator, ExportHelper):
 		obj = context.active_object
 		curve = obj.data.splines[0]
 		points = obj.children
-		pini.PathData.toIni(self.filepath, curve, points, self.curveTypes)
+		pini.PathData.toIni(self.filepath, curve, points, self.curveTypes, self.codestring)
 		return {'FINISHED'}
 
 	def invoke(self, context, event):
