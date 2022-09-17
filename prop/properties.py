@@ -949,7 +949,7 @@ class SAMaterialSettings(bpy.types.PropertyGroup):		## Property Group for managi
 		)
 
 	b_doubleSided: BoolProperty(
-		name="Disable Backface culling",
+		name="Enable Backface Culling",
 		description="Renders both sides of the mesh",
 		default=False
 		)
