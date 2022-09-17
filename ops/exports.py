@@ -574,7 +574,7 @@ class ExportCurve(bpy.types.Operator, ExportHelper):
 	codestring: StringProperty(
 		name="Custom Code Address: ",
 		default="",
-		descrption="Supply a custom code address (in hex)."
+		description="Supply a custom code address (in hex)."
 	)
 
 	@classmethod

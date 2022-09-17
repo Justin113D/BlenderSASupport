@@ -460,4 +460,4 @@ class SA_AddonInfo_Viewport(SA_UI_Panel, bpy.types.Panel):				## Addon Informati
 		layout = self.layout
 		layout.label(text="Current Version: " + str(verNum))
 
-		addon_updater_ops.update_notice_box_ui()
+		addon_updater_ops.update_notice_box_ui(self, context)
