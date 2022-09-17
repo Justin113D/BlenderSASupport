@@ -177,8 +177,11 @@ class SA_LandProperties_Viewport(SA_UI_Panel, bpy.types.Panel):			## LandEntry I
 	@classmethod
 	def poll(cls, context):
 		if context.scene.saSettings.sceneIsLevel:
-			if context.active_object.type == 'MESH':	# Mesh Nodes/Empty Nodes
-				return True
+			if context.active_object != None:
+				if context.active_object.type == 'MESH':	# Mesh Nodes/Empty Nodes
+					return True
+				else:
+					return False
 			else:
 				return False
 		else:
@@ -272,7 +275,7 @@ class SA_MaterialProps_Viewport(SA_UI_Panel, bpy.types.Panel):			## Material: Ma
 
 		if context.active_object.active_material is not None:
 			menuProps = context.scene.saSettings.editorSettings
-			matProps = context.active_object.active_material.saSettings
+			matProps = context.active_object.active_material
 			drawMaterialPanel(layout, menuProps, matProps)
 
 class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit: All Quick Edit Items
@@ -328,10 +331,10 @@ class SA_QuickEditMenu_Viewport(SA_UI_Panel, bpy.types.Panel):			## Quick Edit: 
 			emboss = False
 			)
 
-		if settings.expandedMatEdit:
-			box.separator()
-			drawMaterialPanel(box, settings.qEditorSettings, settings.matQProps, qe=True)
-			box.separator()
+		#if settings.expandedMatEdit:
+		#	box.separator()
+		#	drawMaterialPanel(box, settings.qEditorSettings, settings.matQProps, qe=True)
+		#	box.separator()
 
 		box = outerBox.box()
 

@@ -2,6 +2,7 @@ import bpy
 import os
 import shutil
 from bpy_extras.io_utils import ExportHelper, ImportHelper
+from bpy_extras.node_utils import find_node_input
 from typing import List, Dict, Union, Tuple
 from bpy.props import (
 	BoolProperty,
@@ -77,18 +78,31 @@ def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False
 		row.alignment='EXPAND'
 		row.prop(prop1, prop1Name, text="")
 
-def drawMaterialPanel(layout, menuProps, matProps, qe = False):									## Draws the Material Properties Panel.
-
+def drawMaterialPanel(layout, menuProps, mat, qe = False):									## Draws the Material Properties Panel.
 	sProps = bpy.context.scene.saSettings
+	nodetree = mat.node_tree
+	matProps = mat.saSettings
+	saShader = nodetree.nodes['Group']
+	if saShader:
+		saImage = nodetree.nodes['Image Texture']
+		if matProps.b_useTexture:
+			layout.prop_search(saImage, "image", bpy.data, "images", text='Texture')
+
+		layout.prop(saShader.inputs[2], 'default_value', text='Diffuse Color')
+		layout.prop(saShader.inputs[6], 'default_value', text='Specular Color')
+		row = layout.row()
+		row.label(text='Specular Strength:')
+		row.prop(saShader.inputs[8], 'default_value', text='')
+		layout.prop(saShader.inputs[10], 'default_value', text='Ambient Color')
 
 	menu = layout
 	menu.alignment = 'RIGHT'
 
-	propAdv(menu, "Diffuse Color:", matProps, "b_Diffuse", sProps, "b_apply_diffuse", qe = qe)
-	propAdv(menu, "Specular Color:", matProps, "b_Specular", sProps, "b_apply_specular", qe = qe)
-	propAdv(menu, "Ambient Color:", matProps, "b_Ambient", sProps, "b_apply_Ambient", qe = qe)
-	propAdv(menu, "Specular Strength:", matProps, "b_Exponent", sProps, "b_apply_specularity", qe = qe)
-	propAdv(menu, "Texture ID:", matProps, "b_TextureID", sProps, "b_apply_texID", qe = qe)
+	#propAdv(menu, "Diffuse Color:", matProps, "b_Diffuse", sProps, "b_apply_diffuse", qe = qe)
+	#propAdv(menu, "Specular Color:", matProps, "b_Specular", sProps, "b_apply_specular", qe = qe)
+	#propAdv(menu, "Ambient Color:", matProps, "b_Ambient", sProps, "b_apply_Ambient", qe = qe)
+	#propAdv(menu, "Specular Strength:", matProps, "b_Exponent", sProps, "b_apply_specularity", qe = qe)
+	#propAdv(menu, "Texture ID:", matProps, "b_TextureID", sProps, "b_apply_texID", qe = qe)
 
 	#mipmap menu
 	box = menu.box()

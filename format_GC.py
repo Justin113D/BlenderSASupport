@@ -936,7 +936,8 @@ class Attach:
                 if matProps.b_mirrorU:
                     tileMode |= enums.TileMode.MirrorU
 
-                parameters.append(Texture(matProps.b_TextureID, tileMode))
+                saImage = mat.node_tree.nodes.get('Image Texture')
+                parameters.append(Texture(common.FindTexture(saImage), tileMode))
                 parameters.append(unknown_9())
 
                 #texMatrixID

@@ -116,16 +116,93 @@ class UpdateMaterials(bpy.types.Operator):		## Updates all materials in the scen
 	bl_description="Sets material nodetrees and variables of all selected objects to imitate how they would look in sadx/sa2"
 
 	@classmethod
-	def addDriver(cls, inputSocket, scene, path, entry = -1):
-		#curve = inputSocket.driver_add("default_value")
-		#driver = curve.driver
-		#driver.type = 'AVERAGE'
-		#variable = driver.variables.new()
-		#variable.targets[0].id_type = 'SCENE'
-		#variable.targets[0].id = scene
-		#variable.targets[0].data_path = "saSettings." + path + ("" if entry == -1 else "[" + str(entry) + "]")
-		#curve.update()
-		inputSocket.default_value = getattr(scene.saSettings, path) if entry == -1 else getattr(scene.saSettings, path)[entry]
+	def addSceneDrivers(cls):
+		grp = bpy.data.node_groups["SAShader"]
+
+		# Specular Toggle
+		dr = grp.driver_add('nodes["DisplSpecular"].outputs[0].default_value')
+		dr.driver.type = 'SCRIPTED'
+		dr.driver.expression = 'var'
+		var = dr.driver.variables.new()
+		var.type = 'SINGLE_PROP'
+		var.name = 'var'
+		var.targets[0].id_type = 'SCENE'
+		var.targets[0].id = bpy.context.scene
+		var.targets[0].data_path = 'saSettings.DisplaySpecular'
+
+		x = 0
+		while x != 3:
+			# Light Color
+			dr = grp.driver_add('nodes["LightCol"].inputs[' + str(x) + '].default_value')
+			dr.driver.type = 'SCRIPTED'
+			dr.driver.expression = 'var'
+			var = dr.driver.variables.new()
+			var.type = 'SINGLE_PROP'
+			var.name = 'var'
+			var.targets[0].id_type = 'SCENE'
+			var.targets[0].id = bpy.context.scene
+			var.targets[0].data_path = 'saSettings.LightColor[' + str(x) + ']'
+
+			# Ambient Color
+			dr = grp.driver_add('nodes["AmbientCol"].inputs[' + str(x) + '].default_value')
+			dr.driver.type = 'SCRIPTED'
+			dr.driver.expression = 'var'
+			var = dr.driver.variables.new()
+			var.type = 'SINGLE_PROP'
+			var.name = 'var'
+			var.targets[0].id_type = 'SCENE'
+			var.targets[0].id = bpy.context.scene
+			var.targets[0].data_path = 'saSettings.LightAmbientColor[' + str(x) + ']'
+
+			x += 1
+
+		# Light Drivers
+		light = 'nodes["LightDir"].inputs'
+		# Light X
+		dr = grp.driver_add(light + '[0].default_value')
+		dr.driver.type = 'SCRIPTED'
+		dr.driver.expression = 'var'
+		var = dr.driver.variables.new()
+		var.type = 'SINGLE_PROP'
+		var.name = 'var'
+		var.targets[0].id_type = 'SCENE'
+		var.targets[0].id = bpy.context.scene
+		var.targets[0].data_path = 'saSettings.LightDir[0]'
+
+		# Light Y
+		dr = grp.driver_add(light + '[1].default_value')
+		dr.driver.type = 'SCRIPTED'
+		dr.driver.expression = '-var'
+		var = dr.driver.variables.new()
+		var.type = 'SINGLE_PROP'
+		var.name = 'var'
+		var.targets[0].id_type = 'SCENE'
+		var.targets[0].id = bpy.context.scene
+		var.targets[0].data_path = 'saSettings.LightDir[2]'
+
+		# Light Z
+		dr = grp.driver_add(light + '[2].default_value')
+		dr.driver.type = 'SCRIPTED'
+		dr.driver.expression = 'var'
+		var = dr.driver.variables.new()
+		var.type = 'SINGLE_PROP'
+		var.name = 'var'
+		var.targets[0].id_type = 'SCENE'
+		var.targets[0].id = bpy.context.scene
+		var.targets[0].data_path = 'saSettings.LightDir[1]'
+
+	@classmethod
+	def addDriver(cls, material, path, dataPath, idx = -1, expression = 'var'):
+		#mat = bpy.data.materials[material]
+		dr = material.node_tree.driver_add(path, idx)
+		dr.driver.type = 'SCRIPTED'
+		dr.driver.expression = expression
+		var = dr.driver.variables.new()
+		var.type = 'SINGLE_PROP'
+		var.name = 'var'
+		var.targets[0].id_type = 'MATERIAL'
+		var.targets[0].id = material
+		var.targets[0].data_path = 'saSettings.' + dataPath
 
 	def execute(self, context):
 		# remove old trees
@@ -140,60 +217,37 @@ class UpdateMaterials(bpy.types.Operator):		## Updates all materials in the scen
 		if n > -1:
 			ng.remove(ng[n])
 
-		n = ng.find("EnvMap")
-		if n > -1:
-			ng.remove(ng[n])
-
 		# now reload them them
 		directory = os.path.dirname(os.path.realpath(__file__)) + "\\..\\Shaders.blend\\NodeTree\\"
 		bpy.ops.wm.append(filename="UV Tiling", directory=directory)
 		bpy.ops.wm.append(filename="SAShader", directory=directory)
-		bpy.ops.wm.append(filename="EnvMap", directory=directory)
 
 		tilingGroup = ng[ng.find("UV Tiling")]
 		saShaderGroup = ng[ng.find("SAShader")]
 		envMapGroup = ng[ng.find("EnvMap")]
 
-		# Drivers dont update automatically when set like this, and i cant find a way to update them through python, so we'll just set them temporarily
-		nd = saShaderGroup.nodes
-		lightDirNode: bpy.types.ShaderNodeCombineXYZ = nd[nd.find("LightDir")]
-		lightColNode: bpy.types.ShaderNodeCombineRGB = nd[nd.find("LightCol")]
-		ambientColNode: bpy.types.ShaderNodeCombineRGB = nd[nd.find("AmbientCol")]
-		displSpecularNode: bpy.types.ShaderNodeValue = nd[nd.find("DisplSpecular")]
-
-		UpdateMaterials.addDriver(lightDirNode.inputs[0], context.scene, "LightDir", 0)
-		UpdateMaterials.addDriver(lightDirNode.inputs[1], context.scene, "LightDir", 1)
-		UpdateMaterials.addDriver(lightDirNode.inputs[2], context.scene, "LightDir", 2)
-
-		UpdateMaterials.addDriver(lightColNode.inputs[0], context.scene, "LightColor", 0)
-		UpdateMaterials.addDriver(lightColNode.inputs[1], context.scene, "LightColor", 1)
-		UpdateMaterials.addDriver(lightColNode.inputs[2], context.scene, "LightColor", 2)
-
-		UpdateMaterials.addDriver(ambientColNode.inputs[0], context.scene, "LightAmbientColor", 0)
-		UpdateMaterials.addDriver(ambientColNode.inputs[1], context.scene, "LightAmbientColor", 1)
-		UpdateMaterials.addDriver(ambientColNode.inputs[2], context.scene, "LightAmbientColor", 2)
-
-		UpdateMaterials.addDriver(displSpecularNode.outputs[0], context.scene, "DisplaySpecular")
+		#UpdateMaterials.addSceneDrivers()
 
 		# The materials know whether the shader displays vertex colors based on the object color, its weird i know, but i didnt find any better way
-		import math
-		for o in context.scene.objects:
-			if o.type == 'MESH':
-				isNrm = o.data.saSettings.sa2ExportType == 'NRM'
-				r = o.color[0]
-				rc = bool(math.floor(r * 1000) % 2)
+#		import math
+#		for o in context.scene.objects:
+#			if o.type == 'MESH':
+#				isNrm = o.data.saSettings.sa2ExportType == 'NRM'
+#				r = o.color[0]
+#				rc = bool(math.floor(r * 1000) % 2)
+#
+#				if isNrm and rc:
+#					r = (math.floor(r * 1000) + (1 if r < 1 else (-1))) / 1000.0
+#				elif not isNrm and not rc:
+#					r = (math.floor(r * 1000) + ((-1) if r > 0 else 1)) / 1000.0
+#				o.color[0] = r
 
-				if isNrm and rc:
-					r = (math.floor(r * 1000) + (1 if r < 1 else (-1))) / 1000.0
-				elif not isNrm and not rc:
-					r = (math.floor(r * 1000) + ((-1) if r > 0 else 1)) / 1000.0
-				o.color[0] = r
-
-		# now its time to set all of the materials
+		# Update all Materials within the Scene.
 		for m in bpy.data.materials:
 			#creating an settings nodes
 			mProps = m.saSettings
 			m.use_nodes = True
+			m.show_transparent_back = False
 			tree: bpy.types.NodeTree = m.node_tree
 			nodes = tree.nodes
 			nodes.clear()
@@ -201,26 +255,35 @@ class UpdateMaterials(bpy.types.Operator):		## Updates all materials in the scen
 			out = nodes.new("ShaderNodeOutputMaterial")
 			saShader = nodes.new("ShaderNodeGroup")
 			saShader.node_tree = saShaderGroup
-
-			saShader.inputs[2].default_value = mProps.b_Diffuse
-			saShader.inputs[3].default_value = mProps.b_Diffuse[3]
-			saShader.inputs[4].default_value = mProps.b_ignoreLighting
-
-			saShader.inputs[5].default_value = mProps.b_Specular
-			saShader.inputs[6].default_value = mProps.b_Specular[3]
-			saShader.inputs[7].default_value = mProps.b_Exponent
-			saShader.inputs[8].default_value = mProps.b_ignoreSpecular
-
-			saShader.inputs[9].default_value = mProps.b_Ambient
-			saShader.inputs[10].default_value = mProps.b_Ambient[3]
-			saShader.inputs[11].default_value = mProps.b_ignoreAmbient
-
-			saShader.inputs[12].default_value = mProps.b_flatShading
-
 			saShader.location = (-200, 0)
-
 			tree.links.new(out.inputs[0], saShader.outputs[0])
+			tex = nodes.new("ShaderNodeTexImage")
+			tex.location = (-500, 0)
+			tree.links.new(tex.outputs[0], saShader.inputs[0])
+			tree.links.new(tex.outputs[1], saShader.inputs[1])
+			uvNode = nodes.new("ShaderNodeGroup")
+			uvNode.node_tree = tilingGroup
+			uvSrc = nodes.new("ShaderNodeUVMap")
+			uvSrc.location = (-900, 0)
+			tree.links.new(uvSrc.outputs[0], uvNode.inputs[0])
+			tree.links.new(uvNode.outputs[0], tex.inputs[0])
+			uvNode.location = (-700, 0)
 
+			# Setup imported data that's not driver managed.
+			saShader.inputs[2].default_value[0] = mProps.b_Diffuse[0]
+			saShader.inputs[2].default_value[1] = mProps.b_Diffuse[1]
+			saShader.inputs[2].default_value[2] = mProps.b_Diffuse[2]
+			saShader.inputs[2].default_value[3] = mProps.b_Diffuse[3]
+			saShader.inputs[6].default_value[0] = mProps.b_Specular[0]
+			saShader.inputs[6].default_value[1] = mProps.b_Specular[1]
+			saShader.inputs[6].default_value[2] = mProps.b_Specular[2]
+			saShader.inputs[6].default_value[3] = mProps.b_Specular[3]
+			saShader.inputs[8].default_value = mProps.b_Exponent
+			saShader.inputs[10].default_value[0] = mProps.b_Ambient[0]
+			saShader.inputs[10].default_value[1] = mProps.b_Ambient[1]
+			saShader.inputs[10].default_value[2] = mProps.b_Ambient[2]
+			saShader.inputs[10].default_value[3] = mProps.b_Ambient[3]
+			saShader.inputs[13].default_value = mProps.b_flatShading
 			if mProps.b_useTexture:
 				try:
 					img = context.scene.saSettings.textureList[mProps.b_TextureID]
@@ -228,40 +291,75 @@ class UpdateMaterials(bpy.types.Operator):		## Updates all materials in the scen
 					img = None
 
 				if img is not None:
-					tex = nodes.new("ShaderNodeTexImage")
 					tex.image = img.image
 					tex.interpolation = 'Closest' if mProps.b_texFilter == 'POINT' else 'Smart'
-					tex.location = (-500, 0)
-					tree.links.new(tex.outputs[0], saShader.inputs[0])
-					tree.links.new(tex.outputs[1], saShader.inputs[1])
 
+			# Driver Management
+			# SAShader Lighting/Alpha Drivers
+			UpdateMaterials.addDriver(m, 'nodes["Group"].inputs[3].default_value', 'b_useAlpha')
+			UpdateMaterials.addDriver(m, 'nodes["Group"].inputs[5].default_value', 'b_ignoreLighting')
+			UpdateMaterials.addDriver(m, 'nodes["Group"].inputs[9].default_value', 'b_ignoreSpecular')
+			UpdateMaterials.addDriver(m, 'nodes["Group"].inputs[12].default_value', 'b_ignoreAmbient')
+			#UpdateMaterials.addDriver(m, 'nodes["Group"].inputs[13].default_value', 'b_flatShading')
+			UpdateMaterials.addDriver(m, 'nodes["Group"].inputs[14].default_value', 'b_useTexture')
 
-					uvNode = nodes.new("ShaderNodeGroup")
-					if mProps.b_useEnv:
-						uvNode.node_tree = envMapGroup
-					else:
-						uvNode.node_tree = tilingGroup
+			# SAShader UV Drivers
+			UpdateMaterials.addDriver(m, 'nodes["Group.001"].inputs[1].default_value', 'b_mirrorU')
+			UpdateMaterials.addDriver(m, 'nodes["Group.001"].inputs[2].default_value', 'b_mirrorV')
+			UpdateMaterials.addDriver(m, 'nodes["Group.001"].inputs[3].default_value', 'b_clampV')
+			UpdateMaterials.addDriver(m, 'nodes["Group.001"].inputs[4].default_value', 'b_clampU')
+			UpdateMaterials.addDriver(m, 'nodes["Group.001"].inputs[5].default_value', 'b_useEnv')
 
-						uvNode.inputs[1].default_value = mProps.b_mirrorV
-						uvNode.inputs[2].default_value = mProps.b_mirrorU
-						uvNode.inputs[3].default_value = mProps.b_clampV
-						uvNode.inputs[4].default_value = mProps.b_clampU
+			# SA Shader Material Drivers
+			# Diffuse Alpha (Texture Alpha) Driver
+			dr = m.node_tree.driver_add('nodes["Group"].inputs[4].default_value')
+			dr.driver.type = 'SCRIPTED'
+			dr.driver.expression = 'var'
+			var = dr.driver.variables.new()
+			var.type = 'SINGLE_PROP'
+			var.name = 'var'
+			var.targets[0].id_type = 'MATERIAL'
+			var.targets[0].id = m
+			var.targets[0].data_path = 'node_tree.nodes["Group"].inputs[2].default_value[3]'
+			# Specular Alpha Driver
+			dr = m.node_tree.driver_add('nodes["Group"].inputs[7].default_value')
+			dr.driver.type = 'SCRIPTED'
+			dr.driver.expression = 'var'
+			var = dr.driver.variables.new()
+			var.type = 'SINGLE_PROP'
+			var.name = 'var'
+			var.targets[0].id_type = 'MATERIAL'
+			var.targets[0].id = m
+			var.targets[0].data_path = 'node_tree.nodes["Group"].inputs[6].default_value[3]'
+			# Ambient Alpha Driver
+			dr = m.node_tree.driver_add('nodes["Group"].inputs[11].default_value')
+			dr.driver.type = 'SCRIPTED'
+			dr.driver.expression = 'var'
+			var = dr.driver.variables.new()
+			var.type = 'SINGLE_PROP'
+			var.name = 'var'
+			var.targets[0].id_type = 'MATERIAL'
+			var.targets[0].id = m
+			var.targets[0].data_path = 'node_tree.nodes["Group"].inputs[10].default_value[3]'
+			# Material Settings
+			dr = m.driver_add('use_backface_culling')
+			dr.driver.type = 'SCRIPTED'
+			dr.driver.expression = 'var'
+			var = dr.driver.variables.new()
+			var.type = 'SINGLE_PROP'
+			var.name = 'var'
+			var.targets[0].id_type = 'MATERIAL'
+			var.targets[0].id = m
+			var.targets[0].data_path = 'saSettings.b_doubleSided'
 
-						uvSrc = nodes.new("ShaderNodeUVMap")
-						uvSrc.location = (-900, 0)
-						tree.links.new(uvSrc.outputs[0], uvNode.inputs[0])
-					tree.links.new(uvNode.outputs[0], tex.inputs[0])
-					uvNode.location = (-700, 0)
-				else:
-					saShader.inputs[0].default_value = (1,0,1,1)
-
+			# General Material Proper Management
 			if mProps.b_useAlpha:
 				m.blend_method = context.scene.saSettings.viewportAlphaType
 				m.alpha_threshold = context.scene.saSettings.viewportAlphaCutoff
 			else:
 				m.blend_method = 'OPAQUE'
-			m.shadow_method = 'NONE'
-			m.use_backface_culling = not mProps.b_doubleSided
+			#m.shadow_method = 'NONE'
+			m.preview_render_type = 'FLAT'
 
 		# setting the color management
 		context.scene.display_settings.display_device = 'sRGB'

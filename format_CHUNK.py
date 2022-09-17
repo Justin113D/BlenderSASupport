@@ -727,16 +727,18 @@ class Attach:
                     alphaflags = enums.SA2AlphaInstructions.SA_SRC \
                         | enums.SA2AlphaInstructions.DA_INV_SRC
 
+                saShader = material.node_tree.nodes.get('Group')
+                saImage = material.node_tree.nodes.get('Image Texture')
                 polyChunks.append(
                     PolyChunk_Material(
                         alphaflags,
-                        ColorARGB(matProps.b_Diffuse),
-                        ColorARGB(matProps.b_Ambient),
-                        ColorARGB(matProps.b_Specular),
+                        ColorARGB((saShader.inputs[2].default_value[0], saShader.inputs[2].default_value[1], saShader.inputs[2].default_value[2], saShader.inputs[2].default_value)),
+                        ColorARGB((saShader.inputs[10].default_value[0], saShader.inputs[10].default_value[1], saShader.inputs[10].default_value[2], saShader.inputs[10].default_value[3])),
+                        ColorARGB((saShader.inputs[6].default_value[0], saShader.inputs[6].default_value[1], saShader.inputs[6].default_value[2], saShader.inputs[6].default_value)),
                         round(matProps.b_Exponent * 255)))
                 polyChunks.append(
                     PolyChunk_Texture(
-                        matProps.b_TextureID,
+                        common.FindTexture(saImage),
                         textureFlags,
                         matProps.b_use_Anisotropy,
                         filtering))
