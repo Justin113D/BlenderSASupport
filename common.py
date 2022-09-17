@@ -1048,8 +1048,9 @@ def convertObjectData(context: bpy.types.Context,
 	# getting the objects without parents
 	noParents = list()
 	for o in objects:
-		if o.parent is None or not (o.parent in objects):
-			noParents.append(o)
+		if (o.type == 'EMPTY') or (o.type == 'MESH') or (o.type == 'ARMATURE'):
+			if o.parent is None or not (o.parent in objects):
+				noParents.append(o)
 
 	# correct object order
 	# sort top level objects first
@@ -2016,3 +2017,12 @@ def PGetAngleXZFromNormal(px: float, py: float, pz: float):
 	print(str(retx))
 	print(str(retz))
 	return [retx, retz]
+
+def FindTexture(iNode):
+	texID = 0
+	texlist = bpy.context.scene.saSettings.textureList
+	if iNode != None:
+		texName = os.path.splitext(iNode.image.name)[0]
+		texID = texlist.find(texName)
+
+	return texID
