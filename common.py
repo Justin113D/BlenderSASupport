@@ -47,11 +47,7 @@ def RadToBAMS(v: float, asInt=False) -> int:
 	return val
 
 def BAMSToRad(v: int, shortRot=False) -> float:
-	if not shortRot and v & 0x80000000:
-		v -= 0x100000000
-	elif shortRot:
-		v &= 0xFFFF
-	return math.radians(v / (65535.0 / 360.0))
+	return (v / (65536.0 / (2 * math.pi)))
 
 def getDistinctwID(items: list):
 
