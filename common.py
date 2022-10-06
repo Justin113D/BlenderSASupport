@@ -396,7 +396,7 @@ class ModelData:
 					s = o.scale[2]
 				o.bounds.radius = s * bounds.radius * 1.01
 
-	def getObjectFlags(self) -> enums.ObjectFlags:
+	def getObjectFlags(self, lvl = False) -> enums.ObjectFlags:
 		"""Calculates the Objectflags"""
 		from .enums import ObjectFlags
 		flags = ObjectFlags.null
@@ -422,9 +422,10 @@ class ModelData:
 			flags |= ObjectFlags.NoMorph
 
 		# Checks for NONE object type or if no children for an object to auto-set those flags in the event the user did not set them.
-		if (flags & ObjectFlags.NoDisplay) or (flags & ObjectFlags.NoChildren):
+		if (flags & ObjectFlags.NoDisplay):
 			if self.origObject.type == 'NONE':
 				flags |= ObjectFlags.NoDisplay
+		if (flags & ObjectFlags.NoChildren):
 			if len(self.origObject.children) == 0:
 				flags |= ObjectFlags.NoChildren
 
@@ -610,7 +611,7 @@ class ModelData:
 		self.objectPtr = fileW.tell()
 		labels[self.objectPtr] = name
 
-		fileW.wUInt(self.getObjectFlags().value)
+		fileW.wUInt(self.getObjectFlags(lvl).value)
 		fileW.wUInt(self.meshPtr)
 		self.position.write(fileW)
 		self.rotation.write(fileW)
