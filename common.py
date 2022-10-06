@@ -422,11 +422,11 @@ class ModelData:
 			flags |= ObjectFlags.NoMorph
 
 		# Checks for NONE object type or if no children for an object to auto-set those flags in the event the user did not set them.
-		if (flags & ObjectFlags.NoDisplay):
+		if ((flags & ObjectFlags.NoDisplay) != 0):
 			if self.origObject.type == 'NONE':
 				flags |= ObjectFlags.NoDisplay
-		if (flags & ObjectFlags.NoChildren):
-			if len(self.origObject.children) == 0:
+		if ((flags & ObjectFlags.NoChildren) != 0):
+			if len(self.origObject.children) < 1:
 				flags |= ObjectFlags.NoChildren
 
 		return flags
