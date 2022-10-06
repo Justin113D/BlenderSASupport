@@ -27,10 +27,10 @@ def hex4(number: int) -> str:
 	return '{:08x}'.format(number)
 
 def RadToBAMS(v: float, asInt=False) -> int:
-	return (v * (65536 / (2 * math.pi)))
+	return int(v * (65536 / (2 * math.pi)))
 
 def BAMSToRad(v: int, shortRot=False) -> float:
-	return (v / (65536.0 / (2 * math.pi)))
+	return float(v / (65536.0 / (2 * math.pi)))
 
 def getDistinctwID(items: list):
 
@@ -1998,11 +1998,24 @@ def PGetAngleXZFromNormal(px: float, py: float, pz: float):
 	print(str(retz))
 	return [retx, retz]
 
-def FindTexture(iNode):
+def GetColor(saShader, type, oldColor):
+	if (saShader != None):
+		if type == 0:
+			return ColorARGB(c=(saShader.inputs[2].default_value[0], saShader.inputs[2].default_value[1], saShader.inputs[2].default_value[2], saShader.inputs[4].default_value))
+		elif type == 1:
+			return ColorARGB(c=(saShader.inputs[6].default_value[0], saShader.inputs[6].default_value[1], saShader.inputs[6].default_value[2], saShader.inputs[7].default_value))
+		elif type == 2:
+			return ColorARGB((saShader.inputs[10].default_value[0], saShader.inputs[10].default_value[1], saShader.inputs[10].default_value[2], saShader.inputs[10].default_value[3]))
+	else:
+		return ColorARGB(oldColor)
+
+def FindTexture(iNode, oldID):
 	texID = 0
 	texlist = bpy.context.scene.saSettings.textureList
 	if iNode != None:
 		texName = os.path.splitext(iNode.image.name)[0]
 		texID = texlist.find(texName)
+	else:
+		texID = oldID
 
 	return texID

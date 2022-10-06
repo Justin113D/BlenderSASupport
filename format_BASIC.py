@@ -42,10 +42,10 @@ class Material:
 		saImage = material.node_tree.nodes.get('Image Texture')
 
 		matProps = material.saSettings
-		diffuse = ColorARGB(c=(saShader.inputs[2].default_value[0], saShader.inputs[2].default_value[1], saShader.inputs[2].default_value[2], saShader.inputs[4].default_value))
-		specular = ColorARGB(c=(saShader.inputs[6].default_value[0], saShader.inputs[6].default_value[1], saShader.inputs[6].default_value[2], saShader.inputs[7].default_value))
+		diffuse = common.GetColor(saShader, 0, matProps.b_Diffuse)
+		specular = common.GetColor(saShader, 1, matProps.b_Specular)
 		exponent = matProps.b_Exponent * 11
-		textureID = common.FindTexture(saImage)
+		textureID = common.FindTexture(saImage, matProps.b_TextureID)
 		mFlags = enums.MaterialFlags.null
 
 		# translating the properties to flags

@@ -922,8 +922,9 @@ class Attach:
                     else:
                         dstInst = enums.AlphaInstruction.Zero
 
+                saShader = mat.node_tree.nodes.get('Group')
                 parameters.append(AlphaBlend(srcInst, dstInst, matProps.b_useAlpha))
-                parameters.append(AmbientColor(ColorARGB(matProps.b_Ambient)))
+                parameters.append(AmbientColor(common.GetColor(saShader, 2, matProps.b_Ambient)))
 
                 tileMode = enums.TileMode.null
 
@@ -937,7 +938,7 @@ class Attach:
                     tileMode |= enums.TileMode.MirrorU
 
                 saImage = mat.node_tree.nodes.get('Image Texture')
-                parameters.append(Texture(common.FindTexture(saImage), tileMode))
+                parameters.append(Texture(common.FindTexture(saImage, matProps.b_TextureID), tileMode))
                 parameters.append(unknown_9())
 
                 #texMatrixID
