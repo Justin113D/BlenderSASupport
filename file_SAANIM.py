@@ -17,7 +17,8 @@ class ArmatureInvalidException(Exception):
 def read(
 		filepath: str,
 		nameConv,
-		obj):
+		obj, 
+		cTransforms = True):
 	from .common import BAMSToRad
 
 	print("importing", filepath)
@@ -185,8 +186,21 @@ def read(
 
 					scaleFrameID += 1
 
-		#obj.animation_data.nla_tracks.new
+		# Clear data that may mess with the import. Need to make this a toggle in case things break.
+		if (cTransforms):
+			bpy.ops.object.rotation_clear(clear_delta=False)
+			bpy.ops.object.location_clear(clear_delta=False)
+			bpy.ops.object.scale_clear(clear_delta=False)
+		# Add animation to NLA Strips
+		if (obj.animation_data is None):
+			obj.animation_data_create()
+
+		track = obj.animation_data.nla_tracks.new()
+		track.name = action.name
+		track.strips.new(action.name, int(action.frame_range[0]), action)
+		obj.animation_data.action = None
 		
+
 
 def jsonEmptyModel():
 	model = dict()
