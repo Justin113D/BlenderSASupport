@@ -130,7 +130,7 @@ bl_info = {
 	"author": "Justin113D",
 	"description": "Import/Exporter for the SA Models Formats.",
 	"version": (1, 7, 6),
-	"blender": (2, 91, 0),
+	"blender": (3, 2, 0),
 	"location": "File > Import/Export",
 	"warning": "",
 	"doc_url": "https://github.com/Justin113D/BlenderSASupport/wiki",
