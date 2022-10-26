@@ -27,10 +27,16 @@ def hex4(number: int) -> str:
 	return '{:08x}'.format(number)
 
 def RadToBAMS(v: float, asInt=False) -> int:
-	return int(v * (65536 / (2 * math.pi)))
+	return int(((v) * ((65536) / ((2) * (math.pi)))))
 
 def BAMSToRad(v: int, shortRot=False) -> float:
-	return float(v / (65536.0 / (2 * math.pi)))
+	return float(((v) / ((65536.0) / ((2) * (math.pi)))))
+
+def RotStr(s:str):
+	if (s.__contains__('-')):
+		return s.lstrip('-0x')
+	else:
+		return s.lstrip('0x')
 
 def getDistinctwID(items: list):
 
@@ -2001,9 +2007,9 @@ def PGetAngleXZFromNormal(px: float, py: float, pz: float):
 def GetColor(saShader, type, oldColor):
 	if (saShader != None):
 		if type == 0:
-			return ColorARGB(c=(saShader.inputs[2].default_value[0], saShader.inputs[2].default_value[1], saShader.inputs[2].default_value[2], saShader.inputs[4].default_value))
+			return ColorARGB(c=(saShader.inputs[2].default_value[0], saShader.inputs[2].default_value[1], saShader.inputs[2].default_value[2], saShader.inputs[4].default_value[3]))
 		elif type == 1:
-			return ColorARGB(c=(saShader.inputs[6].default_value[0], saShader.inputs[6].default_value[1], saShader.inputs[6].default_value[2], saShader.inputs[7].default_value))
+			return ColorARGB(c=(saShader.inputs[6].default_value[0], saShader.inputs[6].default_value[1], saShader.inputs[6].default_value[2], saShader.inputs[7].default_value[3]))
 		elif type == 2:
 			return ColorARGB((saShader.inputs[10].default_value[0], saShader.inputs[10].default_value[1], saShader.inputs[10].default_value[2], saShader.inputs[10].default_value[3]))
 	else:
