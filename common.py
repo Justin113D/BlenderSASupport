@@ -2007,9 +2007,9 @@ def PGetAngleXZFromNormal(px: float, py: float, pz: float):
 def GetColor(saShader, type, oldColor):
 	if (saShader != None):
 		if type == 0:
-			return ColorARGB(c=(saShader.inputs[2].default_value[0], saShader.inputs[2].default_value[1], saShader.inputs[2].default_value[2], saShader.inputs[4].default_value[3]))
+			return ColorARGB(c=(saShader.inputs[2].default_value[0], saShader.inputs[2].default_value[1], saShader.inputs[2].default_value[2], saShader.inputs[4].default_value))
 		elif type == 1:
-			return ColorARGB(c=(saShader.inputs[6].default_value[0], saShader.inputs[6].default_value[1], saShader.inputs[6].default_value[2], saShader.inputs[7].default_value[3]))
+			return ColorARGB(c=(saShader.inputs[6].default_value[0], saShader.inputs[6].default_value[1], saShader.inputs[6].default_value[2], saShader.inputs[7].default_value))
 		elif type == 2:
 			return ColorARGB((saShader.inputs[10].default_value[0], saShader.inputs[10].default_value[1], saShader.inputs[10].default_value[2], saShader.inputs[10].default_value[3]))
 	else:
