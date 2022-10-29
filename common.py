@@ -27,7 +27,10 @@ def hex4(number: int) -> str:
 	return '{:08x}'.format(number)
 
 def RadToBAMS(v: float, asInt=False) -> int:
-	return int(((v) * ((65536) / ((2) * (math.pi)))))
+	o = int(((v) * ((65536) / ((2) * (math.pi)))))
+	if o < 0:
+		o = (o + (2**32))
+	return o
 
 def BAMSToRad(v: int, shortRot=False) -> float:
 	return float(((v) / ((65536.0) / ((2) * (math.pi)))))
