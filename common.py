@@ -33,7 +33,11 @@ def RadToBAMS(v: float, asInt=False) -> int:
 	return o
 
 def BAMSToRad(v: int, shortRot=False) -> float:
-	return float(((v) / ((65536.0) / ((2) * (math.pi)))))
+	if not shortRot and v & 0x80000000:
+		v -= 0x100000000
+	elif shortRot:
+		v &= 0xFFFF
+	return float(v / (65536.0 / (2 * math.pi)))
 
 def RotStr(s:str):
 	if (s.__contains__('-')):
@@ -347,7 +351,7 @@ class ModelData:
 
 		obj_mat: mathutils.Matrix = global_matrix @ matrix
 		scale = matrix.to_scale()
-		rot: mathutils.Euler = matrix.to_euler('XZY')
+		rot: mathutils.Euler = matrix.to_euler('XYZ')
 		rot = global_matrix @ mathutils.Vector((rot.x, rot.y, rot.z))
 
 		self.position = Vector3(obj_mat.to_translation())
@@ -1662,15 +1666,16 @@ def readObjects(fileR:
 
 	meshPtr = fileR.rUInt(address + 4)
 	# getting the rotation is a bit more difficult
-	xRot = BAMSToRad(fileR.rInt(address + 20))
-	yRot = BAMSToRad(fileR.rInt(address + 24))
-	zRot = BAMSToRad(fileR.rInt(address + 28))
+	xRot = BAMSToRad(fileR.rUInt(address + 20))
+	yRot = BAMSToRad(fileR.rUInt(address + 24))
+	zRot = BAMSToRad(fileR.rUInt(address + 28))
 
 	pos = (fileR.rFloat(address + 8),
 		-fileR.rFloat(address + 16),
 		fileR.rFloat(address + 12))
 
 	posMtx = mathutils.Matrix.Translation(pos)
+	print(name + ' rot: ' + str(math.degrees(xRot)) + ', ' + str(math.degrees(-zRot)) + ', ' + str(math.degrees(yRot)))
 	rotMtx = mathutils.Euler((xRot, -zRot, yRot), 'XZY').to_matrix().to_4x4()
 	scaleMtx = matrixFromScale(
 		(fileR.rFloat(address + 32),
