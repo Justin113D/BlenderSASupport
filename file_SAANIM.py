@@ -198,6 +198,7 @@ def read(
 		track = obj.animation_data.nla_tracks.new()
 		track.name = action.name
 		track.strips.new(action.name, int(action.frame_range[0]), action)
+		track.mute = True
 		obj.animation_data.action = None
 		
 
@@ -314,8 +315,8 @@ def write(
 		bakeAll: bool,
 		shortRot: bool,
 		bezierInterpolation: bool,
-		cT: bool, obj,
-		action = None):
+		cT: bool, clamp: bool,
+		obj, action = None):
 
 	from .common import RadToBAMS
 	if action == None:
@@ -502,11 +503,10 @@ def write(
 				matrix = mtx @ v.to_matrix().to_4x4()
 
 				rot = matrix.to_euler('XZY')
-
-				x = hex(RadToBAMS(rot.x, True))[2:]
-				y = hex(RadToBAMS(rot.z, True))[2:]
-				z = hex(RadToBAMS(-rot.y, True))[2:]
-
+				
+				x = hex(RadToBAMS(rot.x, True, clamp))[2:]
+				y = hex(RadToBAMS(rot.z, True, clamp))[2:]
+				z = hex(RadToBAMS(-rot.y, True, clamp))[2:]
 				jsonRot[str(k)] = "{0}, {1}, {2}".format(x, y, z)
 
 		# and lastly the scale curves
@@ -563,13 +563,14 @@ def writeBulkAnim(filepath: str,
 		bakeAll: bool,
 		shortRot: bool,
 		bezierInterpolation: bool,
-		cT: bool, obj):
+		cT: bool, 
+		clamp: bool, obj):
 
 	actions = obj.animation_data.nla_tracks
 	for a in actions:
 		action = a.strips[0].action
 		outName = filepath + action.name + '.json'
-		write(outName, bakeAll, shortRot, bezierInterpolation, cT, obj, action)
+		write(outName, bakeAll, shortRot, bezierInterpolation, cT, clamp, obj, action)
 
 class ShapeKey:
 	name: str
@@ -698,4 +699,186 @@ def readAnim_Camera(filepath: str):
 			cam = bpy.data.cameras.add(anim.Name)
 			tgt = bpy.data.objects.add(aCam.TargetName, None)
 			tgt.empty_display_type = 'SPHERE'
-			
+
+
+def readAnim(
+		filepath: str,
+		nameConv,
+		obj, 
+		cTransforms = True):
+	from .common import BAMSToRad
+
+	print("importing", filepath)
+	if filepath.endswith(".json"):
+		import json
+		anim = animJsonFile()
+		anim.ReadJsonFile(filepath)
+
+		armature = obj.data
+
+		if len(obj.pose.bones) + 1 != anim.ModelParts:
+			raise ArmatureInvalidException(
+				f"Could not load Animation "
+				f"{os.path.basename(filepath)[:len(filepath) - 5]}"
+				": Bone Count does not match!\n"
+				f"{obj.name} bone count: {str(len(obj.pose.bones) + 1)}\n"
+				f"File Bone count: {str(anim.ModelParts)}")
+
+		name = ""
+		if nameConv != "CONTENT":
+			name = os.path.basename(filepath)[:-5]
+			try:
+				name = int(name)
+				name = str(name).zfill(3)
+			except Exception:
+				pass
+		if nameConv != "FILE":
+			if len(name) > 0:
+				name += "_"
+			name += anim.Name
+
+		action = bpy.data.actions.new(name)
+		action.use_fake_user = True
+		frame_count = anim.Frames
+		shortRot = anim.ShortRot
+
+		# creating the fcurves for later usage
+		for m, mdl in anim.Models.items():
+			if int(m) == 0:
+				basePath = ""
+				mtx = obj.matrix_local
+				group = action.groups.new("Root")
+				rotMode = obj.rotation_mode
+			else:
+				# the root is a bone too, but doesnt count as one, hence -1
+				try:
+					bone = obj.pose.bones[int(m) - 1]
+				except Exception:
+					continue
+				basePath = "pose.bones[\"{}\"].".format(bone.name)
+
+				if bone.bone.parent is None:
+					mtx = obj.matrix_local.inverted() @ bone.bone.matrix_local
+				else:
+					mtx = (obj.matrix_local.inverted()
+						   @ bone.bone.parent.matrix_local).inverted() \
+						  @ bone.bone.matrix_local
+
+				group = action.groups.new(bone.name)
+				rotMode = bone.rotation_mode
+
+			isQuat = rotMode == 'QUATERNION'
+
+			posCurves: list = None
+			rotCurves: list = None
+			scaleCurves: list = None
+
+			if len(mdl.Position) > 0:
+				posCurves = list()
+				dataPath = basePath + "location"
+				for pos in range(3):
+					pos_comp = action.fcurves.new(data_path=dataPath,
+												  index=pos)
+					pos_comp.keyframe_points.add(len(mdl.Position))
+					pos_comp.auto_smoothing = "NONE"
+					pos_comp.group = group
+					posCurves.append(pos_comp)
+
+			if len(mdl.Rotation) > 0:
+				rotCurves = list()
+				dataPath = basePath + (
+					"rotation_quaternion" if isQuat else "rotation_euler")
+				for rot in range(4 if isQuat else 3):
+					quat_comp = action.fcurves.new(data_path=dataPath,
+												   index=rot)
+					quat_comp.keyframe_points.add(len(mdl.Rotation))
+					quat_comp.auto_smoothing = "CONT_ACCEL"
+					quat_comp.extrapolation = 'LINEAR'
+					quat_comp.group = group
+					rotCurves.append(quat_comp)
+
+			if len(mdl.Scale) > 0:
+				scaleCurves = list()
+				dataPath = basePath + "scale"
+				for scale in range(3):
+					scale_comp = action.fcurves.new(
+						data_path=dataPath,
+						index=scale)
+					scale_comp.keyframe_points.add(len(mdl.Scale))
+					scale_comp.group = group
+					scaleCurves.append(scale_comp)
+
+			posFrameID = 0
+			rotFrameID = 0
+			scaleFrameID = 0
+
+			for frame in range(frame_count):
+				frameStr = str(frame)
+
+				if posCurves is not None and frameStr in mdl.Position:
+					posVec = mdl.Position[frameStr]
+					posVec = posVec.split(", ")
+					posVec = mathutils.Vector(
+						(float(posVec[0]),
+						 -float(posVec[2]),
+						 float(posVec[1])))
+					posVec = posVec - mtx.to_translation()
+
+					for i, k in enumerate(posCurves):
+						keyframe = k.keyframe_points[posFrameID]
+						keyframe.interpolation = "LINEAR"
+						keyframe.co = frame, posVec[i]
+
+					posFrameID += 1
+
+				if rotCurves is not None and frameStr in mdl.Rotation:
+					rotVec = mdl.Rotation[frameStr]
+					rotVec = rotVec.split(", ")
+					rotVec = (BAMSToRad(int(rotVec[0], 16), shortRot),
+							  -BAMSToRad(int(rotVec[2], 16), shortRot),
+							  BAMSToRad(int(rotVec[1], 16), shortRot))
+
+					rotMtx = mathutils.Euler(rotVec, 'XZY')\
+						.to_matrix().to_4x4()
+
+					if isQuat:
+						rotVec = (mtx.inverted() @ rotMtx).to_quaternion()
+					else:
+						rotVec = (mtx.inverted() @ rotMtx).to_euler(rotMode)
+
+					for i, k in enumerate(rotCurves):
+						keyframe = k.keyframe_points[rotFrameID]
+						keyframe.interpolation = "LINEAR"
+						keyframe.co = frame, rotVec[i]
+
+					rotFrameID += 1
+
+				if scaleCurves is not None and frameStr in mdl.Scale:
+					scaleVec = mdl.Scale[frameStr]
+					scaleVec = scaleVec.split(", ")
+					scaleVec = (
+						float(scaleVec[0]),
+						float(scaleVec[2]),
+						float(scaleVec[1]))
+
+					for i, k in enumerate(scaleCurves):
+						keyframe = k.keyframe_points[scaleFrameID]
+						keyframe.interpolation = "LINEAR"
+						keyframe.co = frame, scaleVec[i]
+
+					scaleFrameID += 1
+
+		# Clear data that may mess with the import. Need to make this a toggle in case things break.
+		if (cTransforms):
+			bpy.ops.object.rotation_clear(clear_delta=False)
+			bpy.ops.object.location_clear(clear_delta=False)
+			bpy.ops.object.scale_clear(clear_delta=False)
+		# Add animation to NLA Strips
+		if (obj.animation_data is None):
+			obj.animation_data_create()
+
+		track = obj.animation_data.nla_tracks.new()
+		track.name = action.name
+		track.strips.new(action.name, int(action.frame_range[0]), action)
+		track.mute = True
+		obj.animation_data.action = None

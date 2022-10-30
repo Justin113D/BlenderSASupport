@@ -78,7 +78,6 @@ def exportFile(op, outType, context, **keywords):			## Main definition for expor
 	if(os.path.isfile(filepath)):
 		os.remove(filepath)
 	shutil.move(fileW.filepath, filepath)
-
 	return {'FINISHED'}
 
 class ExportSA1MDL(bpy.types.Operator, ExportHelper):		## Exports an SA1MDL file.
@@ -478,7 +477,7 @@ class ExportPVMX(bpy.types.Operator, ExportHelper):			## Non-functional. Planned
 		self.filepath = common.getDefaultPath()
 		wm = context.window_manager.fileselect_add(self)
 		return {'RUNNING_MODAL'}
-
+		
 class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 	bl_idname = "object.export_anim"
 	bl_label = "Export JSON Animation"
@@ -521,6 +520,12 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 		default = False
 	)
 
+	clampVal: BoolProperty(
+		name = "Clamp Rotations",
+		description = "Clamps rotations to never be negative.",
+		default = True
+	)
+
 	@classmethod
 	def poll(cls, context):
 		active = context.active_object
@@ -536,9 +541,9 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 		#return exportFile(self, 'ANIM', context, self.as_keywords())
 		from .. import file_SAANIM
 		if (self.exportAll):
-			file_SAANIM.writeBulkAnim(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
+			file_SAANIM.writeBulkAnim(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, self.clampVal, context.active_object)
 		else:
-			file_SAANIM.write(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, context.active_object)
+			file_SAANIM.write(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, self.clampVal, context.active_object)
 		return {'FINISHED'}
 
 	def invoke(self, context, event):

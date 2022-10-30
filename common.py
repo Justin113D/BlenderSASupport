@@ -26,7 +26,10 @@ def center(p1: float, p2: float) -> float:
 def hex4(number: int) -> str:
 	return '{:08x}'.format(number)
 
-def RadToBAMS(v: float, asInt=False) -> int:
+def RadToBAMS(v: float, asInt=False, clamp=False) -> int:
+	if (clamp):
+		if (v < 0):
+			v = math.radians(math.degrees(v) + 360.0)
 	o = int(((v) * ((65536) / ((2) * (math.pi)))))
 	if o < 0:
 		o = (o + (2**32))
@@ -38,12 +41,6 @@ def BAMSToRad(v: int, shortRot=False) -> float:
 	elif shortRot:
 		v &= 0xFFFF
 	return float(v / (65536.0 / (2 * math.pi)))
-
-def RotStr(s:str):
-	if (s.__contains__('-')):
-		return s.lstrip('-0x')
-	else:
-		return s.lstrip('0x')
 
 def getDistinctwID(items: list):
 
