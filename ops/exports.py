@@ -490,6 +490,16 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 		options={'HIDDEN'},
 		)
 
+	rotType: EnumProperty(
+		name = "Rotation Type",
+		description = "Export rotations to Rotation or Quaternion types.",
+		items = (
+			('rotation', 'Rotation', 'Euler Angles in BAMS Format.'),
+			('quat', 'Quaternion', 'Quaternion Angles in Floats.'),
+		),
+		default='rotation'
+	)
+
 	bakeAll: BoolProperty(
 		name = "Bake all keyframes",
 		description="Bakes all keyframes of the exported curves, instead of calculating only the necessary ones",
@@ -541,9 +551,16 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 		#return exportFile(self, 'ANIM', context, self.as_keywords())
 		from .. import file_SAANIM
 		if (self.exportAll):
-			file_SAANIM.writeBulkAnim(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, self.clampVal, context.active_object)
+			file_SAANIM.writeBulkAnim(self.filepath, self.bakeAll, 
+			self.shortRot, self.bezierInterpolation, self.currentTransforms, 
+			self.clampVal, self.rotType,
+			context.active_object)
 		else:
-			file_SAANIM.write(self.filepath, self.bakeAll, self.shortRot, self.bezierInterpolation, self.currentTransforms, self.clampVal, context.active_object)
+			file_SAANIM.write(self.filepath, self.bakeAll, 
+			self.shortRot, self.bezierInterpolation, 
+			self.currentTransforms, self.clampVal, 
+			self.rotType, 
+			context.active_object)
 		return {'FINISHED'}
 
 	def invoke(self, context, event):

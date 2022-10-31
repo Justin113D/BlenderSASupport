@@ -316,6 +316,7 @@ def write(
 		shortRot: bool,
 		bezierInterpolation: bool,
 		cT: bool, clamp: bool,
+		wRotType: str,
 		obj, action = None):
 
 	from .common import RadToBAMS
@@ -497,17 +498,33 @@ def write(
 						c.array_index,
 						rotations)
 
-			jsonRot = model["Rotation"]
-			for k, v in rotations.items():
-				# please dont kill me mathematicians owo'
-				matrix = mtx @ v.to_matrix().to_4x4()
 
-				rot = matrix.to_euler('XZY')
-				
-				x = hex(RadToBAMS(rot.x, True, clamp))[2:]
-				y = hex(RadToBAMS(rot.z, True, clamp))[2:]
-				z = hex(RadToBAMS(-rot.y, True, clamp))[2:]
-				jsonRot[str(k)] = "{0}, {1}, {2}".format(x, y, z)
+			if (wRotType == 'rotation'):
+				jsonRot = model["Rotation"]
+				for k, v in rotations.items():
+					# please dont kill me mathematicians owo'
+					matrix = mtx @ v.to_matrix().to_4x4()
+
+					rot = matrix.to_euler('XZY')
+					
+					x = hex(RadToBAMS(rot.x, True, clamp))[2:]
+					y = hex(RadToBAMS(rot.z, True, clamp))[2:]
+					z = hex(RadToBAMS(-rot.y, True, clamp))[2:]
+					jsonRot[str(k)] = "{0}, {1}, {2}".format(x, y, z)
+			elif (wRotType == 'quat'):
+				jsonRot = model["Quaternion"]
+				for k, v in rotations.items():
+					matrix = mtx @ v.to_matrix().to_4x4()
+
+					rot = matrix.to_quaternion()
+					out = list()
+
+					out.append(rot.w)
+					out.append(rot.x)
+					out.append(rot.z)
+					out.append(-rot.y)
+					
+					jsonRot[str(k)] = out
 
 		# and lastly the scale curves
 		if len(scaleCurves) > 0:
@@ -563,14 +580,15 @@ def writeBulkAnim(filepath: str,
 		bakeAll: bool,
 		shortRot: bool,
 		bezierInterpolation: bool,
-		cT: bool, 
-		clamp: bool, obj):
+		cT: bool, clamp: bool, 
+		rotType: str, 
+		obj):
 
 	actions = obj.animation_data.nla_tracks
 	for a in actions:
 		action = a.strips[0].action
 		outName = filepath + action.name + '.json'
-		write(outName, bakeAll, shortRot, bezierInterpolation, cT, clamp, obj, action)
+		write(outName, bakeAll, shortRot, bezierInterpolation, cT, clamp, rotType, obj, action)
 
 class ShapeKey:
 	name: str
