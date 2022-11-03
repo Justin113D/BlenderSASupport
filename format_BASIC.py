@@ -38,8 +38,11 @@ class Material:
 
 	@classmethod
 	def fromBlenderMat(cls, material: bpy.types.Material):
-		saShader = material.node_tree.nodes.get('Group')
-		saImage = material.node_tree.nodes.get('Image Texture')
+		saShader = None
+		saImage = None
+		if (material.node_tree != None):
+			saShader = material.node_tree.nodes.get('Group')
+			saImage = material.node_tree.nodes.get('Image Texture')
 
 		matProps = material.saSettings
 		diffuse = common.GetColor(saShader, 0, matProps.b_Diffuse)

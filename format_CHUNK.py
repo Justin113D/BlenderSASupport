@@ -727,8 +727,11 @@ class Attach:
 					alphaflags = enums.SA2AlphaInstructions.SA_SRC \
 						| enums.SA2AlphaInstructions.DA_INV_SRC
 
-				saShader = material.node_tree.nodes.get('Group')
-				saImage = material.node_tree.nodes.get('Image Texture')
+				saShader = None
+				saImage = None
+				if (material.node_tree != None):
+					saShader = material.node_tree.nodes.get('Group')
+					saImage = material.node_tree.nodes.get('Image Texture')
 				polyChunks.append(
 					PolyChunk_Material(
 						alphaflags,
