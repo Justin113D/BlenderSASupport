@@ -1,4 +1,11 @@
-# Blender SA Support
-An addon for **Blender 2.8**, which adds exporting options for **all sonic adventure 3D formats (and a bit more)**!
+# Blender SA Support Addon
 
-A full usage guide can be found **[here](https://github.com/Justin113D/BlenderSASupport/wiki#how-to-create-model-mods-for-the-sonic-adventure-games)**
+### Current Minimum Blender Version: 3.2+
+
+This addon adds support for the Sonic Adventure formats regarding import, export, animation editing, and additional features.
+
+The latest release can always be found [here](https://github.com/Justin113D/BlenderSASupport/releases). 
+
+Please visit the [wiki](https://github.com/Justin113D/BlenderSASupport/wiki) for general usage and setup.
+
+**The addon supports automatic updating.** This can be setup when installing the addon.
