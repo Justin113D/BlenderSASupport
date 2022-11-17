@@ -314,7 +314,7 @@ class LoadAnimFile(bpy.types.Operator, ImportHelper):		## Imports a SAANIM file 
 
 		for f in self.files:
 			try:
-				file_SAANIM.read(path + "\\" + f.name, self.naming, context.active_object)
+				file_SAANIM.readAnim(path + "\\" + f.name, self.naming, context.active_object)
 			except file_SAANIM.ArmatureInvalidException as e:
 				self.report({'WARNING'}, str(e))
 				continue
