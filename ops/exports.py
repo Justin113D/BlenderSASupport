@@ -494,7 +494,7 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 		name = "Rotation Type",
 		description = "Export rotations to Rotation or Quaternion types.",
 		items = (
-			('rotation', 'Rotation', 'Euler Angles in BAMS Format.'),
+			('rotation', 'BAMS Rotation', 'Euler Angles in BAMS Format.'),
 			('quat', 'Quaternion', 'Quaternion Angles in Floats.'),
 		),
 		default='rotation'
@@ -507,8 +507,8 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 		)
 
 	shortRot: BoolProperty(
-		name = "Short Rotation",
-		description="Save rotation values in a short, not an int. Required for chao anmimations",
+		name = "Use Short Rotation",
+		description="Saves rotation values as shorts. Not compatible with Quaternions. Required for Chao Animations.",
 		default = False
 		)
 
@@ -532,7 +532,7 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 
 	clampVal: BoolProperty(
 		name = "Clamp Rotations",
-		description = "Clamps rotations to never be negative.",
+		description = "Clamps rotations to never be negative. E.g. A rotation of -80d would be 320d on export.",
 		default = True
 	)
 
@@ -633,6 +633,12 @@ class ExportShapeMotion(bpy.types.Operator, ExportHelper):			## Exports an SAANI
 		default="*.json;",
 		options={'HIDDEN'},
 		)
+
+	useNormals: BoolProperty(
+		name = "Export Normals",
+		description = "Exports the Normals of the shape. Not all shape motions use normals.",
+		default = False
+	)
 
 	@classmethod
 	def poll(cls, context):
