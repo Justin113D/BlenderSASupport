@@ -2024,7 +2024,7 @@ def FindTexture(iNode, oldID):
 	texID = 0
 	texlist = bpy.context.scene.saSettings.textureList
 	if iNode != None:
-		texName = os.path.splitext(iNode.image.name)[0]
+		texName = iNode.image.name.split('.')[0]
 		texID = texlist.find(texName)
 	else:
 		texID = oldID
