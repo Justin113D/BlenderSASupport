@@ -1,29 +1,11 @@
 from doctest import BLANKLINE_MARKER
 from multiprocessing.pool import MapResult
 import bpy
-import os
-import shutil
-from bpy.props import (
-	BoolProperty,
-	FloatProperty,
-	FloatVectorProperty,
-	IntProperty,
-	EnumProperty,
-	StringProperty,
-	CollectionProperty
-	)
-from bpy_extras.io_utils import ExportHelper, ImportHelper
-from typing import List, Dict, Union, Tuple
-
-from .. import common
 from ..prop.properties import(
 	SASettings,
-	SAEditPanelSettings,
 	SALandEntrySettings,
 	SAMaterialSettings,
-	SAMeshSettings,
-	SAObjectSettings,
-	SATexture
+	SAObjectSettings
 )
 
 def qeUpdate(context, qType, newValue = True):			## Quick Edit Menu Update Definition.

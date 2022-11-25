@@ -1,25 +1,9 @@
 import bpy
-import os
-import shutil
-import math
 from bpy.props import (
 	BoolProperty,
-	FloatProperty,
-	FloatVectorProperty,
-	IntProperty,
-	EnumProperty,
-	StringProperty,
-	CollectionProperty
+	EnumProperty
 	)
-from bpy_extras.io_utils import ExportHelper, ImportHelper
-from typing import List, Dict, Union, Tuple
-from mathutils import Vector
-
-from .. import common
-from ..parse.pini import (
-	PathData,
-	PathEntry
-)
+from ..text.paths import PathEntry
 
 class ArmatureFromObjects(bpy.types.Operator):		## Creates an armature for models that do not use armatures.
 	'''Generates an armature based on the selected node and its child hierarchy'''

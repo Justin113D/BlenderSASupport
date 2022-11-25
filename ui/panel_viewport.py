@@ -1,46 +1,19 @@
 import bpy
 import addon_utils
-import os
-import shutil
-from bpy_extras.io_utils import ExportHelper, ImportHelper
-from typing import List, Dict, Union, Tuple
-from bpy.props import (
-	BoolProperty,
-	FloatProperty,
-	FloatVectorProperty,
-	IntProperty,
-	EnumProperty,
-	StringProperty,
-	CollectionProperty
-	)
-
 #region Addon Imports
 from .. import common
-from ..prop.properties import(
-    SASettings,
-    SAEditPanelSettings,
-    SALandEntrySettings,
-    SAMaterialSettings,
-    SAMeshSettings,
-    SATexture
-)
 from .panel_draw import(
-	propAdv,
 	drawMaterialPanel,
 	drawLandEntryPanel,
 	drawMeshPanel,
 	drawObjPanel,
 	drawScenePanel,
-	SCENE_UL_SATexList,
-	SCENE_MT_Texture_Context_Menu,
-	MATERIAL_UL_saMaterialSlots,
 	drawProjectData
 )
 from .panel_spaces import(
     SA_UI_Panel
 )
 from ..ops.quickEdit import(
-	qeUpdate,
 	qeApplyAll,
 	qeAddProps,
 	qeRemoveProps,
@@ -56,15 +29,12 @@ from ..ops.exports import (
 	ExportSA1LVL,
 	ExportSA2LVL,
 	ExportSA2BLVL,
-	ExportPAK,
-	ExportPVMX,
 	ExportAnim,
 	ExportShapeMotion
 )
 from ..ops.imports import(
 	ImportMDL,
 	ImportLVL,
-	ImportTexFile,
 	LoadProjectFile,
 	LoadSetFile,
 	LoadCamFile,
@@ -73,12 +43,6 @@ from ..ops.imports import(
 	LoadCameraMotion,
 	LoadPathFile,
 	LoadProjectFile
-)
-from ..ops.materials import(
-	AutoAssignTextures,
-	ToPrincipledBsdf,
-	MatToAssetLibrary,
-	UpdateMaterials
 )
 from ..ops.object import(
 	ArmatureFromObjects,
@@ -94,7 +58,7 @@ from ..ops.projects import(
 from ..ops.mesh import(
 	StrippifyTest
 )
-from ..parse.pxml import(
+from ..text.saproject import(
 	ProjectFile
 )
 from .. import addon_updater_ops

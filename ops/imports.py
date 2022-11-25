@@ -1,30 +1,20 @@
 import bpy
-import os
-import shutil
-
-from .. import common, setReader
-from .. import file_SAANIM
+from bpy_extras.io_utils import ImportHelper
 from bpy.props import (
 	BoolProperty,
-	FloatProperty,
-	FloatVectorProperty,
-	IntProperty,
 	EnumProperty,
 	StringProperty,
 	CollectionProperty
 	)
-from bpy_extras.io_utils import ExportHelper, ImportHelper
-from typing import List, Dict, Union, Tuple
-from ..parse.pxml import ProjectFile
-from ..parse.pini import (
-	ModFile,
-	PathEntry,
-	PathData,
-	saTexFile
-)
-from .object import(
-	CreatePath
-)
+import os
+from typing import List, Tuple
+from .. import common, setReader
+from .. import file_SAANIM
+from ..text.saproject import ProjectFile
+from ..text.mod import ModFile
+from .object import	CreatePath
+from ..text.satex import SATexFile
+from ..text.paths import PathData
 
 class ImportMDL(bpy.types.Operator, ImportHelper):			## Imports *MDL files made with the SA Tools.
 	"""Imports any sonic adventure mdl file"""
@@ -140,7 +130,7 @@ class ImportTexFile(bpy.types.Operator, ImportHelper):		## Imports texture archi
 		folder = os.path.dirname(self.filepath)
 		textures: List[Tuple[int, str]] = list()
 		loaded = False
-		satexf = saTexFile()
+		satexf = SATexFile()
 		if extension == '.txt' or extension == '.tls':
 			content: List[str] = None
 			with open(self.filepath) as f:

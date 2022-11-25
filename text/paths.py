@@ -1,155 +1,11 @@
-from operator import ge
-import bpy
-from typing import List, Dict, Tuple
+import math
+from typing import List
+import configparser
 import os
 import io
-import configparser
-from .. import common
-import math
+import bpy
 import mathutils
-from ..common import (
-	Vector3
-)
-
-class DLLMetaData:
-	"""Metadata used in SAMDL."""
-
-	Filename: str
-	Name: str
-	Texture: str
-
-	def __init__(self,
-				Filename: str,
-				Name: str,
-				Texture: str
-				):
-		self.Filename = Filename
-		self.Name = Name
-		self.Texture = Texture
-
-class DataFile:
-	"""Data File Class for *_data.ini project files."""
-
-	Name: str
-	Type: str
-	Filename: str
-	Texture: str
-
-	def __init__(self,
-				Name: str,
-				Type: str,
-				Filename: str,
-				Texture: str
-				):
-
-		self.Name = Name
-		self.Type = Type
-		self.Filename = Filename
-		self.Texture = Texture
-
-class salvl_char:
-	"""SALVL Character Sections"""
-
-	Character: str
-	Model: str
-	Textures: str
-	Height: float
-	StartPos: str
-
-	def __init__(self,
-			chr: str,
-			mdl: str,
-			tex: str,
-			hgt: float,
-			sPos: str):
-		self.Character = chr
-		self.Model = mdl
-		self.Textures = tex
-		self.Height = hgt
-		self.StartPos = sPos
-
-class salvl_level:
-	"""SALVL Level Sections"""
-
-	LevelType: str
-	LevelName: str
-	LevelGeometry: str
-	LevelID: str
-	Textures: str
-	ObjList: str
-	ObjTexList: str
-	DeathZones: str
-	Effects: str
-	ObjDefs: str
-
-	def __init__(self,
-			type: str,
-			name: str,
-			geo: str,
-			id: str,
-			tex: str,
-			objList: str,
-			objTList: str,
-			dZones: str,
-			effect: str,
-			objDefs: str):
-		self.LevelType = type
-		self.LevelName = name
-		self.LevelGeometry = geo
-		self.LevelID = id
-		self.Textures = tex
-		self.ObjList = objList
-		self.ObjTexList = objTList
-		self.DeathZones = dZones
-		self.Effects = effect
-		self.ObjDefs = objDefs
-
-class ModFile:
-	"""Partial Mod File class ported from SA Tools."""
-
-	Name: str
-	Description: str
-	Author: str
-	Version: str
-
-	def __init__(self,
-				name: str,
-				desc: str,
-				auth: str,
-				vers: str):
-		self.Name = name
-		self.Description = desc
-		self.Author = auth
-		self.Version = vers
-
-
-	def ReadFile(path):
-		modFile = None
-		config = io.StringIO()
-		filepath = os.path.abspath(path)
-		print(filepath)
-		if os.path.isfile(path):
-			config.write('[mod]\n')
-			config.write(open(filepath).read())
-			config.seek(0, os.SEEK_SET)
-			cp = configparser.ConfigParser()
-			cp.read_file(config)
-			name = ""
-			desc = ""
-			auth = ""
-			vers = ""
-			if cp.has_option('mod', 'Name'):
-				name = cp.get('mod', 'Name')
-			if cp.has_option('mod', 'Description'):
-				desc = cp.get('mod', 'Description')
-			if cp.has_option('mod', 'Author'):
-				auth = cp.get('mod', 'Author')
-			if cp.has_option('mod', 'Version'):
-				vers = cp.get('mod', 'Version')
-
-			modFile = ModFile(name, desc, auth, vers)
-
-		return modFile
+from .. import common
 
 def GetCurveCodeAddress(type: str, addr: str):
 	if (type == 'sa1_loop'):
@@ -161,7 +17,10 @@ def GetCurveCodeAddress(type: str, addr: str):
 	elif (type == 'sa2_hand'):
 		return ('498140')
 	elif (type == 'none'):
-		return (addr)
+		if addr != '':
+			return (addr)
+		else:
+			return ('0')
 	else:
 		return ('0')
 
@@ -218,7 +77,7 @@ class PathEntry:
 		else:
 			self.ZRotation = 0
 
-		if distance is not "":
+		if distance != "":
 			self.Distance = float(distance)
 		else:
 			self.Distance = 0
@@ -284,7 +143,7 @@ class PathData:
 			self.Entries = entries
 
 	def toIni(path, curve: bpy.types.Spline, points: List[bpy.types.Object], pathtype: str, caddr: str):
-		filepath = os.path.abspath(path)
+		filepath = os.path.abspath(path) + '.ini'
 		print(filepath)
 		with open(filepath, 'w') as config:
 			config.write('TotalDistance=' + ("%.6f" % curve.calc_length()) + '\n')
@@ -314,39 +173,28 @@ class PathData:
 
 			config.close()
 		
-class saTexFile:
-	'''SA Tex File (.satex) Class Handler'''
+	def toCode(path, curve: bpy.types.Spline, points: List[bpy.types.Object], pathtype: str, caddr: str, pathname: str):
+		filepath = os.path.abspath(path) + '.c'
+		pathname = pathname.split('.')[0]
+		with open(filepath, 'w') as config:
+			# Write Loop/Path Array
+			config.write("Loop %s_Points[] = {\n" % (pathname))
+			idx = 0
+			for p in curve.points:
+				c = points[idx]
+				rx = hex(common.RadToBAMS(c.rotation_euler[0])).upper()
+				rz = hex(common.RadToBAMS(-c.rotation_euler[1])).upper()
+				if (p != curve.points[-1]):
+					dist = (mathutils.Vector((curve.points[idx+1].co - p.co)).length)
+					config.write("\t{ %s, %s, %.6f, { %.6f, %.6f, %.6f } },\n" % (rx, rz, dist, p.co[0], p.co[2], -p.co[1]))
+				else:
+					dist = 0.0
+					config.write("\t{ %s, %s, %.6f, { %.6f, %.6f, %.6f } }\n" % (rx, rz, dist, p.co[0], p.co[2], -p.co[1]))	
+				idx += 1
+			config.write("};\n\n")
 
-	Name: str
-	TexnameArrayName: str
-	Num: int
-	TextureNames: List[str]
+			# Write LoopHead/PathTag
+			info = ("{ 0, LengthOfArray(%s_Points), %.6f, %s_Points, (ObjectFuncPtr)0x%s };" % (pathname, curve.calc_length(), pathname, GetCurveCodeAddress(pathtype, caddr)))
+			config.write("LoopHead %s_Path = %s" % (pathname, info))
 
-	def __init__(self):
-		self.Name = ""
-		self.TexnameArrayName = ""
-		self.Num = 0
-		self.TextureNames = list()
-
-	def fromIni(self, path):
-		'''Loads .satex data into Blender.'''
-		config = io.StringIO()
-		filepath = os.path.abspath(path)
-		print(filepath)
-
-		if os.path.isfile(path):
-			config.write('[Head]\n')
-			config.write(open(filepath).read())
-			config.seek(0, os.SEEK_SET)
-
-			cp = configparser.ConfigParser()
-			cp.read_file(config)
-			s = "Head"
-			self.Name = cp.get(s, "Name")
-			self.TexnameArrayName = cp.get(s, "TexnameArrayName")
-			self.Num = cp.getint(s, "NumTextures")
-			for i in range(self.Num):
-				name = cp.get(s, "TextureNames[" + str(i) + "]") + ".png"
-				print(name)
-				self.TextureNames.append(name)
-
+			config.close()

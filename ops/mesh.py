@@ -1,19 +1,8 @@
 import bpy
-import os
-import shutil
 from bpy.props import (
-	BoolProperty,
-	FloatProperty,
-	FloatVectorProperty,
-	IntProperty,
-	EnumProperty,
-	StringProperty,
-	CollectionProperty
+	BoolProperty
 	)
-from bpy_extras.io_utils import ExportHelper, ImportHelper
-from typing import List, Dict, Union, Tuple
-
-from .. import common, strippifier
+from .. import common
 
 class StrippifyTest(bpy.types.Operator):		## Tests strippifying models for export.
 	'''An operator for test-strippifying a model'''

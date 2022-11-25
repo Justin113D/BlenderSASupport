@@ -1,28 +1,10 @@
 import bpy
-import os
-import shutil
-from bpy_extras.io_utils import ExportHelper, ImportHelper
-from bpy_extras.node_utils import find_node_input
-from typing import List, Dict, Union, Tuple
 from bpy.props import (
-	BoolProperty,
-	FloatProperty,
-	FloatVectorProperty,
-	IntProperty,
-	EnumProperty,
-	StringProperty,
-	CollectionProperty
+	EnumProperty
 	)
 
-from .. import common
 from ..prop.properties import(
 	SASettings,
-	SAEditPanelSettings,
-	SALandEntrySettings,
-	SAMaterialSettings,
-	SAMeshSettings,
-	SATexture,
-	SAObjectSettings,
 	SAProjectSettings
 )
 from ..ops.materials import(
@@ -45,16 +27,8 @@ from ..ops.exports import(
 	ExportPAK,
 	ExportPVMX
 )
-from ..parse.pxml import(
-	ProjectInfo,
-	SplitEntry,
-	SplitEntryMdl,
+from ..text.saproject import(
 	ProjectFile
-)
-from ..parse.pini import(
-	ModFile,
-	DLLMetaData,
-	DataFile
 )
 
 def propAdv(layout, label, prop1, prop1Name, prop2, prop2Name, autoScale = False, qe = False):	## Advanced Properties draw definition.

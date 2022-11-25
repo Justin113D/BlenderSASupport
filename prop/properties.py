@@ -1,7 +1,4 @@
 import bpy
-import os
-import shutil
-from bpy_extras.io_utils import ExportHelper, ImportHelper
 from typing import List, Dict, Union, Tuple
 from bpy.props import (
 	BoolProperty,
@@ -9,11 +6,8 @@ from bpy.props import (
 	FloatVectorProperty,
 	IntProperty,
 	EnumProperty,
-	StringProperty,
-	CollectionProperty
+	StringProperty
 	)
-from ..parse.pxml import ProjectFile
-from ..ops import projects
 from .. import common
 
 class SASettings(bpy.types.PropertyGroup):				## Property Groups used across the Addon.

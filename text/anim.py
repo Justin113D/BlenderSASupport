@@ -1,17 +1,6 @@
-import bpy
-import mathutils
-import os
-import math
 import json
-
 from ..enums import InterpolationModeEnums
-
-from typing import Dict, List, Tuple
-from ..common import (
-	ColorARGB, Vector3,
-	BAMSRotation,
-	RadToBAMS, BAMSToRad
-)
+from typing import Dict, List
 
 def NewJsonModel():
 	mdl = dict()
@@ -62,7 +51,7 @@ def NewJsonFile():
 	file["ObjectName"] = ""
 	return file
 
-class animJsonModel:
+class AnimJsonModel:
 	Position: dict()
 	Rotation: dict()
 	Scale: dict()
@@ -368,7 +357,7 @@ class animJsonModel:
 
 		return outMdl
 
-class animJsonFile:
+class AnimJsonFile:
 	Frames: int
 	Name: str
 	Description: str
@@ -378,7 +367,7 @@ class animJsonFile:
 	ShortRot: bool
 	ActionName: str
 	ObjectName: str
-	Models: Dict[int, animJsonModel]
+	Models: Dict[int, AnimJsonModel]
 
 	def __init__(self):
 		self.Frames = 0
@@ -402,7 +391,7 @@ class animJsonFile:
 			if (jsonF["Models"] != None):
 				if (len(jsonF["Models"]) > 0):
 					for k, v in jsonF["Models"].items():
-						animModel = animJsonModel()
+						animModel = AnimJsonModel()
 						animModel.ReadModelEntry(v)
 						self.Models[k] = animModel
 		if (jsonF.get('Frames') != None):

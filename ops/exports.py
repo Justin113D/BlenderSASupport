@@ -1,19 +1,14 @@
 import bpy
 import os
 import shutil
-from .. import common, setReader, strippifier
+from bpy_extras.io_utils import ExportHelper
 from bpy.props import (
 	BoolProperty,
-	FloatProperty,
-	FloatVectorProperty,
-	IntProperty,
 	EnumProperty,
-	StringProperty,
-	CollectionProperty
+	StringProperty
 	)
-from ..parse import pini
-from bpy_extras.io_utils import ExportHelper, ImportHelper
-from typing import List, Dict, Union, Tuple
+from .. import common, strippifier
+from ..text import paths
 
 def removeFile() -> None:									## Removes the temporarily created export file.
 	'''Removes the currently assigned temporary export file'''
@@ -571,18 +566,28 @@ class ExportAnim(bpy.types.Operator, ExportHelper):			## Exports an SAANIM file.
 class ExportCurve(bpy.types.Operator, ExportHelper):
 	bl_idname = "object.export_curve"
 	bl_label = "Export Path Data"
-	bl_description = "Currently non-functional."
+	bl_description = "Export Path data that can be used in-game."
 
-	filename_ext = ".ini"
+	filename_ext = ''
 
 	filter_glob: StringProperty(
-		default="*.ini;",
-		options={'HIDDEN'},
-		)
+		default="*.ini;*.c;",
+		options={'HIDDEN'}
+	)
+
+	outType: EnumProperty(
+		name = 'Export Type',
+		description = 'Export to ini or C formatted file.',
+		items = (
+			('ini', 'Ini File', 'Export to ini formatted file.'),
+			('code', 'C File', 'Export to C formatted file.')
+		),
+		default='ini'
+	)
 
 	curveTypes: EnumProperty(
 		name='Curve Code',
-		description='Set Code address for Path to use in-game.',
+		description='Set the Code address for the Path to use in-game.',
 		items = (
 			('none', 'Custom Code', 'Uses the code address supplied in the below textbox. Defaults to 0 if no address is supplied.'),
 			('sa1_loop', 'SA1 Loops', 'Used on most paths where the player is moved, ie Loops.'),
@@ -613,7 +618,12 @@ class ExportCurve(bpy.types.Operator, ExportHelper):
 		obj = context.active_object
 		curve = obj.data.splines[0]
 		points = obj.children
-		pini.PathData.toIni(self.filepath, curve, points, self.curveTypes, self.codestring)
+		if (self.outType == 'ini'):
+			self.filename_ext = '.ini'
+			paths.PathData.toIni(self.filepath, curve, points, self.curveTypes, self.codestring)
+		if (self.outType == 'code'):
+			self.filename_ext = '.c'
+			paths.PathData.toCode(self.filepath, curve, points, self.curveTypes, self.codestring, obj.name)
 		return {'FINISHED'}
 
 	def invoke(self, context, event):

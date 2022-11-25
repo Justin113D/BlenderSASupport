@@ -1,19 +1,9 @@
 import bpy
 import os
-import shutil
 from bpy.props import (
-	BoolProperty,
-	FloatProperty,
-	FloatVectorProperty,
-	IntProperty,
-	EnumProperty,
-	StringProperty,
-	CollectionProperty
+	EnumProperty
 	)
-from bpy_extras.io_utils import ExportHelper, ImportHelper
-from typing import List, Dict, Union, Tuple
-
-from .. import common
+from ..prop.properties import SAMaterialSettings
 
 class AddTextureSlot(bpy.types.Operator):		## Adds a texture slot to the Scene Texture List.
 	bl_idname = "scene.saaddtexturesslot"

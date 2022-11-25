@@ -4,10 +4,8 @@ import os
 import math
 
 from .enums import InterpolationModeEnums
-from .parse.pjson import animJsonFile, animJsonModel
+from .text.anim import AnimJsonFile, AnimJsonModel
 from typing import Dict, List, Tuple
-from .common import BAMSRotation, ColorARGB, Vector3
-
 # Big thanks to @SageOfMirrors, without whom
 # this would have taken at least 10 times longer to make!
 class ArmatureInvalidException(Exception):
@@ -417,7 +415,7 @@ class ShapeKey:
 def readShape(filepath: str,
 		obj: bpy.types.Object):
 	if filepath.endswith(".json"):
-		anim = animJsonFile()
+		anim = AnimJsonFile()
 		anim.ReadJsonFile(filepath)
 
 		objCount = anim.ModelParts
@@ -469,7 +467,7 @@ def writeShape(filepath: str,
 	for c in obj.children:
 		objArr.append(c)
 
-	animModels = animJsonFile()
+	animModels = AnimJsonFile()
 
 	objIdx = 0
 	for o in objArr:
@@ -494,7 +492,7 @@ def writeShape(filepath: str,
 						vMorphs = verts
 					))
 				shapeidx += 1
-		animModelEntry = animJsonModel()
+		animModelEntry = AnimJsonModel()
 		if (len(shapes) > 0):
 			vtxItemNames = list()
 			for s in shapes:
@@ -516,7 +514,7 @@ def writeShape(filepath: str,
 	animModels.toJson(filepath)
 
 def readAnim_Camera(filepath: str):
-	anim = animJsonFile()
+	anim = AnimJsonFile()
 	anim.ReadJsonFile(filepath)
 
 	if (len(anim.Models) == 1):
@@ -540,7 +538,7 @@ def readAnim(
 	print("importing", filepath)
 	if filepath.endswith(".json"):
 		import json
-		anim = animJsonFile()
+		anim = AnimJsonFile()
 		anim.ReadJsonFile(filepath)
 
 		armature = obj.data
