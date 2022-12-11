@@ -663,7 +663,7 @@ class ExportShapeMotion(bpy.types.Operator, ExportHelper):			## Exports an SAANI
 
 	def execute(self, context):
 		from .. import file_SAANIM
-		file_SAANIM.writeShape(self.filepath, context.active_object)
+		file_SAANIM.writeShape(self.filepath, context.active_object, self.useNormals)
 		return {'FINISHED'}
 
 	def invoke(self, context, event):

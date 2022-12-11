@@ -19,7 +19,7 @@ def NewJsonModel():
 	mdl["Point"] = dict()
 	mdl["Quaternion"] = dict()
 	mdl["PositionName"] = ""
-	mdl["Rotation"] = ""
+	mdl["RotationName"] = ""
 	mdl["ScaleName"] = ""
 	mdl["VectorName"] = ""
 	mdl["VertexName"] = ""
@@ -267,12 +267,12 @@ class AnimJsonModel:
 			for k, v in self.Vertex.items():
 				outMdl["Vertex"][k] = v
 		else:
-			outMdl["Vertex"] = None
+			outMdl["Vertex"] = dict()
 		if (len(self.Normal) > 0):
 			for k, v in self.Normal.items():
 				outMdl["Normal"][k] = v
 		else:
-			outMdl["Normal"] = None
+			outMdl["Normal"] = dict()
 		if (len(self.Target) > 0):
 			for k, v in self.Target.items():
 				outMdl["Target"][k] = v
